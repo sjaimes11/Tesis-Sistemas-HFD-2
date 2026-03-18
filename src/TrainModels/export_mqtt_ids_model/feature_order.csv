@@ -1,0 +1,13 @@
+num_pkts
+mean_iat
+std_iat
+min_iat
+max_iat
+mean_pkt_len
+num_bytes
+num_psh_flags
+num_rst_flags
+num_urg_flags
+std_pkt_len
+min_pkt_len
+max_pkt_len

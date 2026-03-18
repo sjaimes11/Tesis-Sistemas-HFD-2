@@ -1,0 +1,371 @@
+#include <Arduino.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include "model_weights.h"
+
+// ==========================================
+// CONFIGURACION DE RED Y SERVIDOR (MQTT)
+// ==========================================
+const char* SSID = "JAIMES_PUERTO 2.4";
+const char* PASS = "Anderson123";
+
+// IP del Broker MQTT en la Raspberry Pi
+const char* MQTT_SERVER = "192.168.40.26"; 
+const int MQTT_PORT = 1883;
+
+// Topics MQTT
+const char* TOPIC_UPDATE = "fl/updates";
+const char* TOPIC_GLOBAL = "fl/global_model";
+
+const String CLIENT_ID = "esp32s3_02"; 
+
+WiFiClient espClient;
+PubSubClient mqttClient(espClient);
+
+constexpr uint32_t WINDOW_MS = 5000;
+
+// ==========================================
+// PARÁMETROS DEL MODELO MLP
+// ==========================================
+constexpr size_t FEATURE_COUNT = 31;
+constexpr size_t L1_UNITS = 64;
+constexpr size_t L2_UNITS = 32;
+constexpr size_t NUM_CLASSES = 10;
+const float LEARNING_RATE = 0.001f;
+
+// Variables de estado del FL
+int currentRound = 0;
+int numSamples = 0; 
+constexpr int SAMPLES_PER_UPDATE = 5;
+
+// ==========================================
+// ESTRUCTURA DEL MODELO (Pesos Actuales)
+// ==========================================
+// Dado que Keras guarda los pesos de la capa Dense como [input_dim][output_dim],
+// mantenemos esa misma estructura para multiplicar: output[j] = sum(input[i] * W[i][j]) + b[j]
+
+// Capa 1 (31 -> 64)
+float W1[FEATURE_COUNT][L1_UNITS];
+float b1[L1_UNITS];
+
+// Capa 2 (64 -> 32)
+float W2[L1_UNITS][L2_UNITS];
+float b2[L2_UNITS];
+
+// Capa 3 (32 -> 10)
+float W3[L2_UNITS][NUM_CLASSES];
+float b3[NUM_CLASSES];
+
+// Activaciones intermedias (necesarias para Backpropagation)
+float a0[FEATURE_COUNT]; // Input normalizado
+float z1[L1_UNITS];      // Salida pre-activacion L1
+float a1[L1_UNITS];      // Salida post-activacion L1 (ReLU)
+float z2[L2_UNITS];      // Salida pre-activacion L2
+float a2[L2_UNITS];      // Salida post-activacion L2 (ReLU)
+float z3[NUM_CLASSES];   // Salida pre-activacion L3 (Logits)
+float a3[NUM_CLASSES];   // Salida post-activacion L3 (Softmax = Probs)
+
+uint32_t lastWindowMs = 0;
+
+// Inicializa el modelo con los pesos exportados (transfer learning inicial)
+void initModel() {
+  for (size_t i = 0; i < FEATURE_COUNT; i++) {
+    for (size_t j = 0; j < L1_UNITS; j++) W1[i][j] = W1_base[i][j];
+  }
+  for (size_t j = 0; j < L1_UNITS; j++) b1[j] = b1_base[j];
+
+  for (size_t i = 0; i < L1_UNITS; i++) {
+    for (size_t j = 0; j < L2_UNITS; j++) W2[i][j] = W2_base[i][j];
+  }
+  for (size_t j = 0; j < L2_UNITS; j++) b2[j] = b2_base[j];
+
+  for (size_t i = 0; i < L2_UNITS; i++) {
+    for (size_t j = 0; j < NUM_CLASSES; j++) W3[i][j] = W3_base[i][j];
+  }
+  for (size_t j = 0; j < NUM_CLASSES; j++) b3[j] = b3_base[j];
+
+  Serial.println("Modelo MLP Multi-Capa inicializado con pesos base.");
+}
+
+void connectWiFi() {
+  if (WiFi.status() == WL_CONNECTED) return;
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(SSID, PASS);
+
+  Serial.print("Conectando a WiFi");
+  unsigned long t0 = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print("WiFi conectado! IP: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("Error: Timeout WiFi.");
+  }
+}
+
+void reconnectMQTT() {
+  while (!mqttClient.connected()) {
+    Serial.print("Intentando conexion MQTT al Broker ");
+    Serial.print(MQTT_SERVER);
+    Serial.print("...");
+    
+    // Intenta conectar usando el CLIENT_ID
+    if (mqttClient.connect(CLIENT_ID.c_str())) {
+      Serial.println(" conectado!");
+      // Suscribirse al topico global (por si queremos recibir el modelo de vuelta por MQTT)
+      // mqttClient.subscribe(TOPIC_GLOBAL);
+    } else {
+      Serial.print(" falló, rc=");
+      Serial.print(mqttClient.state());
+      Serial.println(" reintentando en 5 segundos...");
+      delay(5000);
+    }
+  }
+}
+
+// Simulacion de captura de ventana de datos
+void computeWindowFeatures(float out[FEATURE_COUNT]) {
+  for (size_t i = 0; i < FEATURE_COUNT; ++i) out[i] = 0.0f;
+  // Dummy values para prueba, aqui debes conectar tu logica de extraccion real
+  out[0]  = 64.0f; out[1]  = 6.0f; out[2]  = 64.0f; out[3]  = 25.0f;
+  out[8]  = 1.0f;  out[9]  = 8.0f; out[16] = 1.0f;  out[22] = 512.0f;
+  out[23] = 64.0f; out[24] = 64.0f; out[25] = 64.0f; out[27] = 512.0f;
+  out[28] = 20.0f; out[29] = 8.0f;
+}
+
+// FUNCIONES MATEMATICAS
+float relu(float x) { return x > 0 ? x : 0.0f; }
+float relu_derivative(float x) { return x > 0 ? 1.0f : 0.0f; }
+
+// FORWARD PASS -> Inferencia completa a traves de las 3 capas
+int predictLocal(const float raw_features[FEATURE_COUNT]) {
+  // 0. Normalizacion: (x - mean) / sqrt(variance + epsilon)
+  float epsilon = 1e-7;
+  for (size_t i = 0; i < FEATURE_COUNT; i++) {
+    a0[i] = (raw_features[i] - norm_mean[i]) / sqrt(norm_var[i] + epsilon);
+  }
+
+  // 1. Capa Densa 1 (31 -> 64)
+  for (size_t j = 0; j < L1_UNITS; j++) {
+    z1[j] = b1[j];
+    for (size_t i = 0; i < FEATURE_COUNT; i++) {
+      z1[j] += a0[i] * W1[i][j];
+    }
+    a1[j] = relu(z1[j]); // Activacion ReLU
+  }
+
+  // 2. Capa Densa 2 (64 -> 32)
+  for (size_t j = 0; j < L2_UNITS; j++) {
+    z2[j] = b2[j];
+    for (size_t i = 0; i < L1_UNITS; i++) {
+      z2[j] += a1[i] * W2[i][j];
+    }
+    a2[j] = relu(z2[j]); // Activacion ReLU
+  }
+
+  // 3. Capa Densa 3 - Salida (32 -> 10)
+  float maxLogit = -1e9;
+  for (size_t j = 0; j < NUM_CLASSES; j++) {
+    z3[j] = b3[j];
+    for (size_t i = 0; i < L2_UNITS; i++) {
+      z3[j] += a2[i] * W3[i][j];
+    }
+    if (z3[j] > maxLogit) maxLogit = z3[j];
+  }
+
+  // 4. Softmax
+  float sumExp = 0.0f;
+  for (size_t j = 0; j < NUM_CLASSES; j++) {
+    a3[j] = exp(z3[j] - maxLogit);
+    sumExp += a3[j];
+  }
+  
+  int predClass = -1;
+  float maxProb = -1.0;
+  for (size_t j = 0; j < NUM_CLASSES; j++) {
+    a3[j] /= sumExp; // Probabilidades finales
+    if (a3[j] > maxProb) {
+      maxProb = a3[j];
+      predClass = j;
+    }
+  }
+  return predClass;
+}
+
+// BACKWARD PASS -> Entrenamiento local usando el algoritmo SGD
+void trainLocalStep(const float raw_features[FEATURE_COUNT], int true_label) {
+  // Primero hacemos la inferencia para poblar todas las activaciones (a0 ... a3)
+  predictLocal(raw_features);
+
+  // --- GRADIENTES ---
+  float dZ3[NUM_CLASSES], dZ2[L2_UNITS], dZ1[L1_UNITS];
+
+  // 1. Delta Capa 3 (Cross Entropy + Softmax derivada = probs - y_true)
+  for (size_t j = 0; j < NUM_CLASSES; j++) {
+    float y_onehot = (j == true_label) ? 1.0f : 0.0f;
+    dZ3[j] = a3[j] - y_onehot;
+  }
+
+  // 2. Delta Capa 2 (Retropropagar de L3 a L2 pasando por derivada de ReLU)
+  for (size_t i = 0; i < L2_UNITS; i++) {
+    float error = 0.0f;
+    for (size_t j = 0; j < NUM_CLASSES; j++) {
+      error += dZ3[j] * W3[i][j];
+    }
+    dZ2[i] = error * relu_derivative(z2[i]);
+  }
+
+  // 3. Delta Capa 1 (Retropropagar de L2 a L1 pasando por derivada de ReLU)
+  for (size_t i = 0; i < L1_UNITS; i++) {
+    float error = 0.0f;
+    for (size_t j = 0; j < L2_UNITS; j++) {
+      error += dZ2[j] * W2[i][j];
+    }
+    dZ1[i] = error * relu_derivative(z1[i]);
+  }
+
+  // --- ACTUALIZAR PESOS Y BIAS ---
+  
+  // Capa 3: W3 = W3 - LR * a2^T * dZ3
+  for (size_t j = 0; j < NUM_CLASSES; j++) {
+    b3[j] -= LEARNING_RATE * dZ3[j];
+    for (size_t i = 0; i < L2_UNITS; i++) {
+      W3[i][j] -= LEARNING_RATE * a2[i] * dZ3[j];
+    }
+  }
+
+  // Capa 2: W2 = W2 - LR * a1^T * dZ2
+  for (size_t j = 0; j < L2_UNITS; j++) {
+    b2[j] -= LEARNING_RATE * dZ2[j];
+    for (size_t i = 0; i < L1_UNITS; i++) {
+      W2[i][j] -= LEARNING_RATE * a1[i] * dZ2[j];
+    }
+  }
+
+  // Capa 1: W1 = W1 - LR * a0^T * dZ1
+  for (size_t j = 0; j < L1_UNITS; j++) {
+    b1[j] -= LEARNING_RATE * dZ1[j];
+    for (size_t i = 0; i < FEATURE_COUNT; i++) {
+      W1[i][j] -= LEARNING_RATE * a0[i] * dZ1[j];
+    }
+  }
+
+  numSamples++;
+}
+
+// Convertir los deltas W a String es ineficiente en memoria en la ESP32 para redes grandes,
+// pero para matrices pequeñas (~18KB) usando chunks o concatenaciones iterativas todavia entra.
+// Recomendacion futura: Usar binario (MQTT) o ArduinoJson con buffer estatico.
+String buildUpdatePayload() {
+  String json = "{";
+  json += "\"client_id\":\"" + CLIENT_ID + "\",";
+  json += "\"round\":" + String(currentRound) + ",";
+  json += "\"num_samples\":" + String(numSamples) + ",";
+  
+  // A fines ilustrativos enviamos solo W3 y b3 para ahorrar RAM en el string building The String object memory dynamically grows.
+  // Para enviar todas las capas requiere un stream JSON en lugar de String.
+  // Vamos a enviar la ultima capa (la capa de clasificacion) que a menudo es la mas critica en transfer learning / personalizacion.
+  json += "\"weight_delta\":{\"W3\":[";
+
+  for (size_t i = 0; i < L2_UNITS; i++) {
+    json += "[";
+    for (size_t j = 0; j < NUM_CLASSES; j++) {
+      float delta = W3[i][j] - W3_base[i][j];
+      json += String(delta, 5);
+      if (j < NUM_CLASSES - 1) json += ",";
+    }
+    json += "]";
+    if (i < L2_UNITS - 1) json += ",";
+  }
+  
+  json += "],\"b3\":[";
+  for (size_t j = 0; j < NUM_CLASSES; j++) {
+    float delta = b3[j] - b3_base[j];
+    json += String(delta, 5);
+    if (j < NUM_CLASSES - 1) json += ",";
+  }
+  json += "]}}";
+
+  return json;
+}
+
+void postUpdateToAggregator() {
+  if (numSamples == 0) return;
+  
+  if (WiFi.status() != WL_CONNECTED) {
+    connectWiFi();
+    if (WiFi.status() != WL_CONNECTED) return;
+  }
+
+  if (!mqttClient.connected()) {
+    reconnectMQTT();
+  }
+
+  String payload = buildUpdatePayload();
+
+  Serial.println("Enviando deltas de la Capa 3 via MQTT...");
+  
+  // Publicar usando PubSubClient
+  // Nota: si el JSON es mas grande que MQTT_MAX_PACKET_SIZE, 
+  // es necesario aumentarlo en la librería PubSubClient (por defecto 256 bytes) o cambiar library.
+  bool success = mqttClient.publish(TOPIC_UPDATE, payload.c_str());
+
+  if (success) {
+    Serial.println("Update aceptado por el broker MQTT.");
+    numSamples = 0; // Reiniciar contador de muestras
+  } else {
+    Serial.println("Error publicando en MQTT (JSON muy grande o desconexion).");
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(2000);
+
+  connectWiFi();
+  mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
+  
+  mqttClient.setBufferSize(4096);
+
+  initModel();
+  
+  lastWindowMs = millis();
+}
+
+void loop() {
+  if (!mqttClient.connected()) {
+    reconnectMQTT();
+  }
+  mqttClient.loop();
+
+  if (millis() - lastWindowMs >= WINDOW_MS) {
+    lastWindowMs = millis();
+    
+    // 1. Extracción de Features
+    float features[FEATURE_COUNT];
+    computeWindowFeatures(features);
+
+    // 2. Inferencia local (Forward pass)
+    int pred = predictLocal(features);
+    Serial.print("Predicción Multiclase (Local): ");
+    Serial.println(pred);
+
+    // 3. Simulamos etiqueta real y entrenamos (Backward pass)
+    int true_label = 0; // Benign
+    trainLocalStep(features, true_label);
+    Serial.print("Paso de Backpropagation completado. Muestras entrenadas: ");
+    Serial.println(numSamples);
+
+    // 4. Enviar updates cada N muestras
+    if (numSamples >= SAMPLES_PER_UPDATE) {
+      postUpdateToAggregator();
+    }
+  }
+  delay(50);
+}
+

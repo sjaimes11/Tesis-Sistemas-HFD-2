@@ -1,0 +1,12 @@
+{
+  "benign": 0,
+  "ddos_ack_fragmentation": 1,
+  "ddos_http_flood": 2,
+  "ddos_icmp_flood": 3,
+  "ddos_tcp_flood": 4,
+  "dns_spoofing": 5,
+  "dos_http_flood": 6,
+  "dos_syn_flood": 7,
+  "dos_tcp_flood": 8,
+  "sql_injection_uploading": 9
+}

@@ -1,0 +1,220 @@
+// =====================================================================
+// main_client.cpp - ESP32-S3 Cliente MQTT (Publicador de Features)
+// =====================================================================
+// Modelo: 36 features crudas (sin log1p ni clipping)
+// Se conecta al AP del Broker ESP32 y publica features cada 5 seg.
+// =====================================================================
+
+#include <Arduino.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+
+// ==========================================
+// CONFIGURACION WiFi
+// ==========================================
+const char* BROKER_AP_SSID = "FL_BROKER_NET";
+const char* BROKER_AP_PASS = "federated123";
+
+const char* MQTT_BROKER_IP = "192.168.4.1";
+const int MQTT_PORT = 1883;
+
+const char* TOPIC_FEATURES = "fl/features";
+const char* TOPIC_ALERTS   = "fl/alerts";
+
+const char* CLIENT_ID = "esp32_client_01";
+
+constexpr uint32_t WINDOW_MS = 5000;
+constexpr size_t FEATURE_COUNT = 36;
+
+// Nombres de las 36 features (de feature_order.csv del modelo de 6 clases)
+static const char* FEATURE_NAMES[FEATURE_COUNT] = {
+  "Header_Length", "Protocol Type", "Time_To_Live", "Rate",
+  "fin_flag_number", "syn_flag_number", "rst_flag_number", "psh_flag_number",
+  "ack_flag_number", "ece_flag_number", "cwr_flag_number",
+  "ack_count", "syn_count", "fin_count", "rst_count",
+  "HTTP", "HTTPS", "DNS", "SSH", "TCP", "UDP", "DHCP", "ARP", "ICMP", "IGMP",
+  "IPv", "LLC",
+  "Tot sum", "Min", "Max", "AVG", "Std", "Tot size", "IAT", "Number", "Variance"
+};
+
+WiFiClient espClient;
+PubSubClient mqttClient(espClient);
+
+uint32_t lastWindowMs = 0;
+int windowCount = 0;
+
+// ==========================================
+// CALLBACK: Alertas del Broker
+// ==========================================
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  if (String(topic) == TOPIC_ALERTS) {
+    StaticJsonDocument<512> doc;
+    DeserializationError err = deserializeJson(doc, payload, length);
+    if (!err) {
+      const char* attackType = doc["attack_type"] | "desconocido";
+      float confidence = doc["confidence"] | 0.0;
+      const char* source = doc["source"] | "unknown";
+      int totalAlerts = doc["total_alerts"] | 0;
+
+      Serial.println();
+      Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      Serial.println("  ALERTA DE ATAQUE RECIBIDA");
+      Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      Serial.print("  Tipo: "); Serial.println(attackType);
+      Serial.print("  Confianza: "); Serial.print(confidence * 100, 1); Serial.println("%");
+      Serial.print("  Fuente: "); Serial.println(source);
+      Serial.print("  Alertas totales: "); Serial.println(totalAlerts);
+      Serial.println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      Serial.println();
+    }
+  }
+}
+
+// ==========================================
+// CONEXION WiFi
+// ==========================================
+void connectWiFi() {
+  if (WiFi.status() == WL_CONNECTED) return;
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(BROKER_AP_SSID, BROKER_AP_PASS);
+  Serial.print("[CLIENT] Conectando a "); Serial.print(BROKER_AP_SSID);
+  unsigned long t0 = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 15000) {
+    delay(500); Serial.print(".");
+  }
+  Serial.println();
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print("[CLIENT] Conectado! IP: "); Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("[CLIENT] Timeout WiFi.");
+  }
+}
+
+// ==========================================
+// CONEXION MQTT
+// ==========================================
+void reconnectMQTT() {
+  while (!mqttClient.connected()) {
+    Serial.print("[CLIENT] Conectando MQTT...");
+    if (mqttClient.connect(CLIENT_ID)) {
+      Serial.println(" OK!");
+      mqttClient.subscribe(TOPIC_ALERTS);
+      Serial.println("[CLIENT] Suscrito a fl/alerts");
+    } else {
+      Serial.print(" fallo, rc="); Serial.print(mqttClient.state());
+      Serial.println(" reintentando en 5s...");
+      delay(5000);
+    }
+  }
+}
+
+// ==========================================
+// FEATURES DE TRAFICO - DATOS CRUDOS (sin log1p)
+// ==========================================
+void computeWindowFeatures(float out[FEATURE_COUNT]) {
+  for (size_t i = 0; i < FEATURE_COUNT; ++i) out[i] = 0.0f;
+
+  // Valores de trafico normal (benigno) - DATOS CRUDOS
+  out[0]  = 64.0f;   // Header_Length
+  out[1]  = 6.0f;    // Protocol Type (TCP=6)
+  out[2]  = 64.0f;   // Time_To_Live
+  out[3]  = 25.0f;   // Rate
+  out[4]  = 0.0f;    // fin_flag_number
+  out[5]  = 0.0f;    // syn_flag_number
+  out[6]  = 0.0f;    // rst_flag_number
+  out[7]  = 0.0f;    // psh_flag_number
+  out[8]  = 1.0f;    // ack_flag_number
+  out[9]  = 0.0f;    // ece_flag_number
+  out[10] = 0.0f;    // cwr_flag_number
+  out[11] = 8.0f;    // ack_count
+  out[12] = 0.0f;    // syn_count
+  out[13] = 0.0f;    // fin_count
+  out[14] = 0.0f;    // rst_count
+  out[15] = 0.0f;    // HTTP
+  out[16] = 0.0f;    // HTTPS
+  out[17] = 0.0f;    // DNS
+  out[18] = 0.0f;    // SSH
+  out[19] = 1.0f;    // TCP
+  out[20] = 0.0f;    // UDP
+  out[21] = 0.0f;    // DHCP
+  out[22] = 0.0f;    // ARP
+  out[23] = 0.0f;    // ICMP
+  out[24] = 0.0f;    // IGMP
+  out[25] = 1.0f;    // IPv
+  out[26] = 0.0f;    // LLC
+  out[27] = 512.0f;  // Tot sum
+  out[28] = 64.0f;   // Min
+  out[29] = 64.0f;   // Max
+  out[30] = 64.0f;   // AVG
+  out[31] = 0.0f;    // Std
+  out[32] = 512.0f;  // Tot size
+  out[33] = 20.0f;   // IAT
+  out[34] = 8.0f;    // Number
+  out[35] = 0.0f;    // Variance
+
+  windowCount++;
+}
+
+// ==========================================
+// PUBLICAR FEATURES
+// ==========================================
+void publishFeatures(const float features[FEATURE_COUNT]) {
+  StaticJsonDocument<2048> doc;
+  doc["client_id"] = CLIENT_ID;
+  doc["window"] = windowCount;
+
+  JsonArray arr = doc.createNestedArray("features");
+  for (size_t i = 0; i < FEATURE_COUNT; i++) {
+    arr.add(features[i]);
+  }
+
+  char buffer[2048];
+  size_t len = serializeJson(doc, buffer);
+
+  Serial.print("[CLIENT] Ventana ");
+  Serial.print(windowCount);
+  Serial.print(" (");
+  Serial.print(len);
+  Serial.print(" bytes)...");
+
+  bool ok = mqttClient.publish(TOPIC_FEATURES, buffer);
+  Serial.println(ok ? " OK!" : " ERROR!");
+}
+
+// ==========================================
+// SETUP
+// ==========================================
+void setup() {
+  Serial.begin(115200);
+  delay(2000);
+
+  Serial.println("========================================");
+  Serial.println(" ESP32-S3 CLIENTE MQTT (36 features)");
+  Serial.println("========================================");
+
+  connectWiFi();
+  mqttClient.setServer(MQTT_BROKER_IP, MQTT_PORT);
+  mqttClient.setCallback(mqttCallback);
+  mqttClient.setBufferSize(4096);
+
+  lastWindowMs = millis();
+  Serial.println("[CLIENT] Publicando features cada 5s...\n");
+}
+
+// ==========================================
+// LOOP
+// ==========================================
+void loop() {
+  if (WiFi.status() != WL_CONNECTED) connectWiFi();
+  if (!mqttClient.connected()) reconnectMQTT();
+  mqttClient.loop();
+
+  if (millis() - lastWindowMs >= WINDOW_MS) {
+    lastWindowMs = millis();
+    float features[FEATURE_COUNT];
+    computeWindowFeatures(features);
+    publishFeatures(features);
+  }
+  delay(10);
+}

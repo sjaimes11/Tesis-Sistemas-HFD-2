@@ -1,0 +1,8 @@
+{
+  "benign": 0,
+  "ddos_ack_fragmentation": 1,
+  "ddos_icmp_flood": 2,
+  "ddos_tcp_flood": 3,
+  "dos_syn_flood": 4,
+  "dos_tcp_flood": 5
+}

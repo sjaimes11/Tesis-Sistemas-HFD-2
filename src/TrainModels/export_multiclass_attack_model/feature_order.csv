@@ -1,0 +1,31 @@
+Header_Length
+Protocol Type
+Time_To_Live
+Rate
+fin_flag_number
+syn_flag_number
+rst_flag_number
+psh_flag_number
+ack_flag_number
+ack_count
+syn_count
+fin_count
+rst_count
+HTTP
+HTTPS
+DNS
+TCP
+UDP
+ARP
+ICMP
+IPv
+LLC
+Tot sum
+Min
+Max
+AVG
+Std
+Tot size
+IAT
+Number
+Variance
