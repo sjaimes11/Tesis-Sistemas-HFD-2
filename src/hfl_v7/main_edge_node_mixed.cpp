@@ -1,9 +1,10 @@
 // =====================================================================
-// main_edge_node_simulated.cpp — ESP32-S3 Edge Node (HFL v7)
+// main_edge_node_mixed.cpp — ESP32-S3 Edge Node (HFL v7)
 // =====================================================================
 // Rol:
-// 1. Simulación Interna: Genera tráfico (Normal, Bruteforce, Scan_A)
-//    hacia sí mismo sin requerir clientes ESP32 externos.
+// 1. Simulación Interna Mixta: Genera tráfico mayoritariamente Normal
+//    (60%) con ataques intercalados (20% Bruteforce, 20% Scan_A).
+//    Perfil realista intermedio entre normal y simulated.
 // 2. Extracción de Features (13 variables, incluyendo simulación PSH).
 // 3. Inferencia Local (TinyML) con el modelo Keras.
 // 4. Envía Features a la Raspberry Pi (fl/features).
@@ -24,7 +25,7 @@
 // ==========================================
 // CONFIG WiFi y MQTT GATEWAY
 // ==========================================
-const char* STA_SSID = "JAIMES_PUERTO 2.4"; // Reemplaza por el WiFi de tu casa
+const char* STA_SSID = "JAIMES_PUERTO 2.4";
 const char* STA_PASS = "Anderson123";
 
 const char* GATEWAY_MQTT_SERVER = "192.168.40.124"; // <-- IP Raspberry Pi 4 Gateway
@@ -36,7 +37,7 @@ const int GATEWAY_MQTT_PORT = 1883;
 const char* TOPIC_FEATURES     = "fl/features";
 const char* TOPIC_ALERTS       = "fl/alerts";
 const char* TOPIC_GLOBAL_MODEL = "fl/global_model";
-const String CLIENT_ID = "esp32_edge_simulator_1";
+const String CLIENT_ID = "esp32_edge_mixed_1";
 
 // ==========================================
 // MODELO MLP: 13 -> 32 -> 16 -> 8 -> 3
@@ -127,30 +128,30 @@ void brokerExtractFeatures(float out[FEATURE_COUNT]) {
 }
 
 // ==========================================
-// SIMULACIÓN DE TRÁFICO INTERNO
+// SIMULACIÓN DE TRÁFICO INTERNO (MIXTO)
+// 60% Normal, 20% Bruteforce, 20% Scan_A
 // ==========================================
 void simulateSelfTraffic() {
     int r = random(100);
     int pkts = 0;
     
-    if (r < 40) {
-        // NORMAL (40% de las veces): 12-16 pkts, IAT ~150ms, con PSH
+    if (r < 60) {
+        // NORMAL (60%): 12-16 pkts, IAT ~150ms, con PSH
         pkts = random(12, 16);
-        Serial.print("\n--- [SIM] Llegando Tráfico Benigno ("); Serial.print(pkts); Serial.println(" payloads) ---");
+        Serial.print("\n--- [MIX] Tráfico Benigno ("); Serial.print(pkts); Serial.println(" payloads) ---");
         for(int i=0; i<pkts; i++){ brokerTrackEvent(90, true); delay(150); }
-    } else if (r < 70) {
-        // BRUTEFORCE (30%): 100-150 pkts, IAT ~2ms, con PSH
+    } else if (r < 80) {
+        // BRUTEFORCE (20%): 100-150 pkts, IAT ~2ms, con PSH
         pkts = random(100, 150);
-        Serial.print("\n>>> [SIM] INTRUSIÓN MQTT Bruteforce detectada! ("); Serial.print(pkts); Serial.println(" payloads) <<<");
+        Serial.print("\n>>> [MIX] INTRUSIÓN MQTT Bruteforce! ("); Serial.print(pkts); Serial.println(" payloads) <<<");
         for(int i=0; i<pkts; i++){ brokerTrackEvent(70, true); delay(2); }
     } else {
-        // SCAN A (30%): 120-180 pkts, IAT ~3ms, SIN PSH (Puro TCP SYN crudo)
+        // SCAN A (20%): 120-180 pkts, IAT ~3ms, SIN PSH
         pkts = random(120, 180);
-        Serial.print("\n$$$ [SIM] ESCANEO TCP Scan_A detectado! ("); Serial.print(pkts); Serial.println(" raw sockets) $$$");
+        Serial.print("\n$$$ [MIX] ESCANEO TCP Scan_A! ("); Serial.print(pkts); Serial.println(" raw sockets) $$$");
         for(int i=0; i<pkts; i++){ brokerTrackEvent(40, false); delay(3); }
     }
     
-    // Al terminar de generar el "Flujo", procesamos inmediatamente las features.
     float features[FEATURE_COUNT];
     brokerExtractFeatures(features);
     bool ruleTriggered = (brokerGlobalPkts >= RULE_PKTS_ALERT);
@@ -246,7 +247,6 @@ void analyzeAndAlert(float features[FEATURE_COUNT], bool ruleTriggered) {
     setLED(0, 10, 0);
   }
 
-  // SIEMPRE retroalimentamos a la Gateway (Fog) para que ella consolide y entrene.
   sendFeaturesToGateway(features);
 }
 
@@ -267,7 +267,6 @@ void onMqttGatewayCallback(char* topic, byte* payload, unsigned int length) {
     JsonArray w4arr = doc["W4"].as<JsonArray>();
     JsonArray b4arr = doc["b4"].as<JsonArray>();
 
-    // Atualizar matriz de inferencia
     for (size_t i=0; i<L2_UNITS; i++) {
         JsonArray row = w3arr[i].as<JsonArray>();
         for(size_t j=0; j<L3_UNITS; j++) W3[i][j] = row[j].as<float>();
@@ -318,7 +317,6 @@ void loop() {
     mqttGateway.loop();
   }
 
-  // Generamos una ráfaga de tráfico cada 5 segundos
   if (millis() - lastSimulationMs >= 5000) {
       lastSimulationMs = millis();
       simulateSelfTraffic();
