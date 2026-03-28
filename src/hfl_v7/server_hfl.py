@@ -12,6 +12,7 @@
 """
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 import numpy as np
@@ -19,9 +20,16 @@ import requests
 import json
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 
-app = FastAPI(title="Servidor HFL v7 - 3 Clases")
+app = FastAPI(title="Servidor HFL v7 - Analytics Dashboard")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ====================== ARQUITECTURA ======================
 FEATURE_COUNT = 13
@@ -31,7 +39,6 @@ L3_UNITS = 8
 OUTPUT_UNITS = 3
 
 CLASS_NAMES = ["normal", "mqtt_bruteforce", "scan_A"]
-CLASS_COLORS = ["#2ecc71", "#e74c3c", "#e67e22"]
 
 # ====================== MODELO GLOBAL ======================
 W3_global = np.zeros((L2_UNITS, L3_UNITS), dtype=np.float32)
@@ -40,23 +47,24 @@ W4_global = np.zeros((L3_UNITS, OUTPUT_UNITS), dtype=np.float32)
 b4_global = np.zeros(OUTPUT_UNITS, dtype=np.float32)
 
 # ====================== FEDAVG ACUMULADORES ======================
-# Acumuladores de las diferentes Raspberrys
 W3_update_sum = np.zeros((L2_UNITS, L3_UNITS), dtype=np.float32)
 b3_update_sum = np.zeros(L3_UNITS, dtype=np.float32)
 W4_update_sum = np.zeros((L3_UNITS, OUTPUT_UNITS), dtype=np.float32)
 b4_update_sum = np.zeros(OUTPUT_UNITS, dtype=np.float32)
-total_samples_this_round = 0
 
+# Acumuladores de métricas
+accuracy_sum = 0.0
+loss_sum = 0.0
+
+total_samples_this_round = 0
 current_round = 0
 updates_received = 0
-MIN_UPDATES_PER_ROUND = 2  # Esperamos a las 2 Raspberry Pi 4
+MIN_UPDATES_PER_ROUND = 2
 
 history = []
-round_in_progress = False
+round_in_progress = True
 
 # ====================== IPs de GATEWAYS ======================
-# Se puede agregar un registro dinámico, pero por ahora las mantenemos estáticas
-# Modifícalas con las IPs reales de tus Raspberry Pi 4
 GATEWAYS = [
     "http://192.168.40.120:5000",
     "http://192.168.40.124:5000"
@@ -65,11 +73,13 @@ GATEWAYS = [
 class AggregatedModelRequest(BaseModel):
     gateway_id: str
     num_samples: int
+    round: int
+    accuracy: float
+    loss: float
     W3: List[List[float]]
     b3: List[float]
     W4: List[List[float]]
     b4: List[float]
-    round: int
 
 
 def distribute_global_model():
@@ -90,14 +100,6 @@ def distribute_global_model():
         except Exception as e:
             print(f"  -> ERROR publicando a {gw_url}: {e}")
 
-    class_mags = [float(np.mean(np.abs(W4_global[:, j]))) for j in range(OUTPUT_UNITS)]
-    history.append({
-        "round": current_round,
-        "time": datetime.now().strftime("%H:%M:%S"),
-        "w3_mag": float(np.mean(np.abs(W3_global))),
-        "class_mags": class_mags,
-        "event": "deployed"
-    })
     round_in_progress = True
 
 
@@ -105,12 +107,12 @@ def distribute_global_model():
 def receive_gateway_model(data: AggregatedModelRequest):
     global W3_global, b3_global, W4_global, b4_global
     global W3_update_sum, b3_update_sum, W4_update_sum, b4_update_sum
+    global accuracy_sum, loss_sum
     global total_samples_this_round, updates_received
     global current_round, round_in_progress
 
-    print(f"\n[SERVIDOR] Pesos recibidos del Gateway '{data.gateway_id}' con {data.num_samples} muestras")
+    print(f"\n[SERVIDOR] Pesos recibidos de '{data.gateway_id}' | {data.num_samples} muestras | Acc: {data.accuracy:.2%}")
 
-    # Acumulamos sumando ponderadamente por numero de muestras
     W3_np = np.array(data.W3, dtype=np.float32)
     b3_np = np.array(data.b3, dtype=np.float32)
     W4_np = np.array(data.W4, dtype=np.float32)
@@ -121,92 +123,344 @@ def receive_gateway_model(data: AggregatedModelRequest):
     W4_update_sum += W4_np * data.num_samples
     b4_update_sum += b4_np * data.num_samples
     
+    accuracy_sum += data.accuracy * data.num_samples
+    loss_sum += data.loss * data.num_samples
+
     total_samples_this_round += data.num_samples
     updates_received += 1
 
     print(f"  Acumulado: {updates_received} / {MIN_UPDATES_PER_ROUND} gateways")
 
-    # Hacer el FedAvg global cuando superamos el umbral
     if updates_received >= MIN_UPDATES_PER_ROUND:
         current_round += 1
-        print(f"\n{'='*60}")
-        print(f" FEDAVG GLOBAL - Ronda {current_round} completada con {total_samples_this_round} muestras totales")
-        print(f"{'='*60}")
         
         W3_global = W3_update_sum / total_samples_this_round
         b3_global = b3_update_sum / total_samples_this_round
         W4_global = W4_update_sum / total_samples_this_round
         b4_global = b4_update_sum / total_samples_this_round
+        
+        acc_global = accuracy_sum / total_samples_this_round
+        loss_global = loss_sum / total_samples_this_round
 
-        # Limpiar buffers
+        print(f"\n{'='*60}")
+        print(f" FEDAVG GLOBAL - Ronda {current_round} completada ({total_samples_this_round} muestras)")
+        print(f" Global Accuracy: {acc_global:.2%} | Global Loss: {loss_global:.4f}")
+        print(f"{'='*60}")
+
+        class_mags = [float(np.mean(np.abs(W4_global[:, j]))) for j in range(OUTPUT_UNITS)]
+        
+        history.append({
+            "round": current_round,
+            "time": datetime.now().strftime("%H:%M:%S"),
+            "accuracy": float(acc_global),
+            "loss": float(loss_global),
+            "w3_mag": float(np.mean(np.abs(W3_global))),
+            "w4_normal": class_mags[0],
+            "w4_brute": class_mags[1],
+            "w4_scan": class_mags[2]
+        })
+
         W3_update_sum.fill(0); b3_update_sum.fill(0)
         W4_update_sum.fill(0); b4_update_sum.fill(0)
+        accuracy_sum = 0.0
+        loss_sum = 0.0
         updates_received = 0
         total_samples_this_round = 0
         round_in_progress = False
 
-        # Inmediato despliegue hacia las Raspberrys de nuevo
         distribute_global_model()
         
-    return {"status": "ok", "ack_gateway": data.gateway_id}
+    return {"status": "ok"}
 
 
 @app.get("/start-round")
 def start_round():
     global current_round
-    current_round += 1
+    # Si presionan forzar, no sumamos ronda pero distribuimos lo que tengamos
     distribute_global_model()
-    return {"status": "ok", "message": f"Ronda {current_round} iniciada."}
+    return {"status": "ok"}
+
+
+@app.get("/api/status")
+def get_status():
+    return {
+        "round_in_progress": round_in_progress,
+        "current_round": current_round,
+        "updates_received": updates_received,
+        "min_updates": MIN_UPDATES_PER_ROUND,
+        "class_names": CLASS_NAMES
+    }
+
+
+@app.get("/api/history")
+def get_history():
+    return {"history": history}
 
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard():
-    class_mags = [float(np.mean(np.abs(W4_global[:, j]))) for j in range(OUTPUT_UNITS)]
-    w3_mag = float(np.mean(np.abs(W3_global)))
-    max_mag = max(max(class_mags), w3_mag)
-    if max_mag == 0: max_mag = 1.0
-
-    status_color = "#f39c12" if round_in_progress else "#2ecc71"
-    status_text = f"Esperando Gateways ({updates_received}/{MIN_UPDATES_PER_ROUND})" if round_in_progress else "Global Sync OK"
-
-    # HTML es similar, simplificado por espacio
-    html = f"""<!DOCTYPE html>
+    html = """<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Servidor Central HFL v7</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HFL Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        body {{ font-family:sans-serif; background:#1a1a2e; color:#eee; padding:20px; }}
-        h1 {{ color:#e94560; }}
-        .card {{ background:#16213e; padding:15px; border-radius:8px; border:1px solid #0f3460; text-align:center; }}
-        .stat {{ font-size: 1.5em; font-weight: bold; color: {status_color}; }}
-        .btn {{ padding: 10px 20px; background: #2ecc71; color: white; cursor:pointer; text-decoration:none; border-radius:5px; }}
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --success: #10b981;
+            --danger: #f43f5e;
+            --warning: #f59e0b;
+        }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg-color); 
+            color: var(--text-main); 
+            margin: 0; 
+            padding: 30px; 
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .title { margin: 0; font-size: 2rem; font-weight: 800; color: var(--accent); }
+        .button {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(56, 189, 248, 0.4);
+        }
+        .button:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 6px 15px rgba(56, 189, 248, 0.6);}
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+        }
+        .card-title { color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;}
+        .card-value { font-size: 2.2rem; font-weight: 800; }
+        
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .chart-box {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+            height: 350px;
+        }
+
+        .table-container {
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 12px;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        th, td { padding: 14px; border-bottom: 1px solid #334155; }
+        th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; position: sticky; top: 0; background: var(--panel-bg); z-index: 10;}
+        tbody tr:hover { background-color: #334155; }
+        
+        .status-dot {
+            height: 14px; width: 14px; border-radius: 50%; display: inline-block; margin-right: 10px;
+        }
+        .dot-green { background-color: var(--success); box-shadow: 0 0 12px var(--success);}
+        .dot-orange { background-color: var(--warning); box-shadow: 0 0 12px var(--warning);}
     </style>
-    <script>setTimeout(()=>location.reload(), 5000);</script>
 </head>
 <body>
-    <h1>Servidor HFL v7 - Servidor Central (PC)</h1>
-    <p>Topología: Servidor PC <-> 2 Edge Gateways (RPi 4) <-> IoT Nodos (ESP32)</p>
-    
-    <div style="display:flex; gap: 20px; margin: 20px 0;">
-        <div class="card">Ronda Global<br><span class="stat" style="color:#e94560">{current_round}</span></div>
-        <div class="card">Gateways Listos<br><span class="stat">{updates_received} / {MIN_UPDATES_PER_ROUND}</span></div>
-        <div class="card">Estado<br><span class="stat">{status_text}</span></div>
+    <div class="header">
+        <h1 class="title">🚀 Federated IDS Analytics</h1>
+        <button class="button" onclick="startRound()">Forzar Sincronización Global</button>
     </div>
-    
-    <a href="/start-round" class="btn">🚀 Iniciar Distribuci&oacute;n Forzada</a>
-    
-    <br><br><h2>Pesos actuales (magnitudes)</h2>
-    <p>W3: {w3_mag:.4f} | W4 Normal: {class_mags[0]:.4f} | W4 Bruteforce: {class_mags[1]:.4f} | W4 Scan: {class_mags[2]:.4f}</p>
+
+    <div class="grid">
+        <div class="card">
+            <div class="card-title">Estado de Red Federada</div>
+            <div class="card-value" style="font-size: 1.2rem; margin-top:20px; display:flex; align-items:center; justify-content:center;">
+                <span id="ui-dot" class="status-dot dot-orange"></span>
+                <span id="ui-status">Esperando Gateways...</span>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Ronda Global</div>
+            <div class="card-value" id="ui-round" style="color: var(--accent);">0</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Gateways / Aggregation</div>
+            <div class="card-value" id="ui-gateways">0 / 2</div>
+        </div>
+    </div>
+
+    <div class="charts-container">
+        <div class="chart-box">
+            <canvas id="accChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <canvas id="lossChart"></canvas>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div class="card-title" style="text-align:left; margin-bottom: 15px; color:white; font-size: 1rem;">Historial Dinámico de Pesos Globales</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Ronda</th>
+                    <th>Hora</th>
+                    <th>Global Accuracy</th>
+                    <th>Global Loss</th>
+                    <th>W3 (General)</th>
+                    <th>W4 Normal</th>
+                    <th>W4 Bruteforce</th>
+                    <th>W4 Scan_A</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <!-- Data is injected here by JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = 'Inter';
+
+        // Inicializar Gráficas
+        const ctxAcc = document.getElementById('accChart').getContext('2d');
+        const accChart = new Chart(ctxAcc, {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'Global Accuracy', data: [], borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 3, tension: 0.4, fill: true, pointRadius: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#f8fafc', font: {size: 14} } } }, scales: { x: { grid:{color:'#334155'}, ticks: { color: '#94a3b8' } }, y: { grid:{color:'#334155'}, min: 0, max: 1, ticks: { color: '#94a3b8', callback: v => (v*100).toFixed(0) + '%' } } } }
+        });
+
+        const ctxLoss = document.getElementById('lossChart').getContext('2d');
+        const lossChart = new Chart(ctxLoss, {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'Global Loss', data: [], borderColor: '#f43f5e', backgroundColor: 'rgba(244, 63, 94, 0.1)', borderWidth: 3, tension: 0.4, fill: true, pointRadius: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#f8fafc', font: {size: 14} } } }, scales: { x: { grid:{color:'#334155'}, ticks: { color: '#94a3b8' } }, y: { grid:{color:'#334155'}, ticks: { color: '#94a3b8' } } } }
+        });
+
+        function populateTable(history) {
+            const tb = document.getElementById('table-body');
+            tb.innerHTML = '';
+            // Mostrar inverso para que las más nuevas estén arriba
+            const rev = [...history].reverse();
+            rev.forEach((row, index) => {
+                const isNew = index === 0 ? 'background-color: rgba(56, 189, 248, 0.1);' : '';
+                const tr = document.createElement('tr');
+                tr.style = isNew;
+                tr.innerHTML = `
+                    <td style="color:var(--accent); font-weight:bold;">#${row.round}</td>
+                    <td style="color:#94a3b8;">${row.time}</td>
+                    <td style="color:var(--success); font-weight:800;">${(row.accuracy * 100).toFixed(2)}%</td>
+                    <td style="color:var(--danger); font-weight:800;">${row.loss.toFixed(4)}</td>
+                    <td>${row.w3_mag.toFixed(5)}</td>
+                    <td>${row.w4_normal.toFixed(5)}</td>
+                    <td>${row.w4_brute.toFixed(5)}</td>
+                    <td>${row.w4_scan.toFixed(5)}</td>
+                `;
+                tb.appendChild(tr);
+            });
+        }
+
+        async function fetchDashboard() {
+            try {
+                const resStatus = await fetch('/api/status');
+                const stat = await resStatus.json();
+                
+                document.getElementById('ui-round').innerText = stat.current_round;
+                document.getElementById('ui-gateways').innerText = `${stat.updates_received} / ${stat.min_updates}`;
+                
+                const dot = document.getElementById('ui-dot');
+                const txt = document.getElementById('ui-status');
+                
+                if (stat.round_in_progress) {
+                    dot.className = 'status-dot dot-orange';
+                    txt.innerText = 'Entrenamiento Activo...';
+                } else {
+                    dot.className = 'status-dot dot-green';
+                    txt.innerText = 'Actualización Global Distribuida';
+                }
+
+                // Fetch histórico para gráficas
+                const resHist = await fetch('/api/history');
+                const dataHist = await resHist.json();
+                const hist = dataHist.history;
+
+                if (hist.length > 0) {
+                    const labels = hist.map(h => 'R ' + h.round);
+                    const accData = hist.map(h => h.accuracy);
+                    const lossData = hist.map(h => h.loss);
+
+                    // Actualizar Chart solo si hay datos nuevos
+                    if(accChart.data.labels.length !== labels.length) {
+                        accChart.data.labels = labels;
+                        accChart.data.datasets[0].data = accData;
+                        accChart.update();
+
+                        lossChart.data.labels = labels;
+                        lossChart.data.datasets[0].data = lossData;
+                        lossChart.update();
+
+                        // Llenar tabla
+                        populateTable(hist);
+                    }
+                }
+
+            } catch (err) {
+                console.error("Dashboard fetch error (Server may be down):", err);
+            }
+        }
+
+        function startRound() {
+            fetch('/start-round').then(() => fetchDashboard());
+        }
+
+        // Auto-refresh via AJAX sin parpadeos cada 2.5 segundos
+        setInterval(fetchDashboard, 2500);
+        fetchDashboard();
+    </script>
 </body>
 </html>"""
     return html
 
 if __name__ == "__main__":
+    import uvicorn
     print("=" * 60)
-    print(" SERVIDOR CENTRAL HFL v7 - PC")
-    print(" (Recibe pesos de RPi 4, hace FedAvg, distribuye el modelo global)")
-    print(" Dashboard: http://localhost:8001/")
+    print(" SERVIDOR CENTRAL FEDERADO HFL v7 - ANALYTICS DASHBOARD")
+    print(" -> Dashboard Gráfico: http://localhost:8001/")
     print("=" * 60)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     uvicorn.run(app, host="0.0.0.0", port=8001, log_level="warning")

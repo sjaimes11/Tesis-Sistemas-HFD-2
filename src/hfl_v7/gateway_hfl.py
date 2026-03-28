@@ -145,20 +145,24 @@ def train_local_model():
     
     print(f"\n[ENTRENAMIENTO LOCAL] Iniciando fit sobre {len(X)} muestras incrustadas en Dataset Local...")
     
-    # Entrenar modelo
-    model.fit(X, Y, epochs=2, batch_size=8, verbose=1)
+    # Entrenar modelo y capturar historial (para Analytics)
+    hist = model.fit(X, Y, epochs=2, batch_size=8, verbose=1)
+    final_acc = float(hist.history.get('accuracy', [0.0])[-1])
+    final_loss = float(hist.history.get('loss', [0.0])[-1])
     
     # Extraer pesos buscando explícitamente las capas por su nombre interno
     W3, b3 = model.get_layer("dense_3").get_weights()
     W4, b4 = model.get_layer("dense_out").get_weights()
     
-    print(f"[ENTRENAMIENTO LOCAL] Finalizado. Enviando al servidor PC...")
+    print(f"[ENTRENAMIENTO LOCAL] Finalizado (Acc: {final_acc:.2%}, Loss: {final_loss:.4f}). Enviando al servidor PC...")
     
     # Enviar al servidor central
     payload = {
         "gateway_id": GATEWAY_ID,
         "num_samples": len(X),
         "round": current_round,
+        "accuracy": final_acc,
+        "loss": final_loss,
         "W3": W3.tolist(), "b3": b3.tolist(),
         "W4": W4.tolist(), "b4": b4.tolist()
     }
