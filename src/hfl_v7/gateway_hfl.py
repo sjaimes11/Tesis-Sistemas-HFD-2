@@ -2,10 +2,11 @@
 =============================================================================
  gateway_hfl.py — Raspberry Pi 4 (Edge Gateway) — HFL v7 (3 Clases)
 =============================================================================
- Topología: 3x Nodos ESP32 -> Raspberry Pi 4 (Aquí) -> PC
- Nodos esperados: esp32_edge_normal_1, esp32_edge_simulator_1, esp32_edge_mixed_1
+ Topología: 2x Nodos ESP32 -> Raspberry Pi 4 (Aquí) -> PC
+ Nodos esperados: esp32_edge_normal_1, esp32_edge_simulator_1
  Modelo: 13 -> 32 -> 16 -> 8 -> 3 (softmax)
  Capas FL: W3(16,8) + b3(8) + W4(8,3) + b4(3)
+ Seguridad: ASCON-128 en todos los canales (ESP32<->RPi, RPi<->PC)
  
  Ejecutar: python gateway_hfl.py
 =============================================================================
@@ -19,17 +20,29 @@ import threading
 import paho.mqtt.client as mqtt
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import tensorflow as tf
+import base64
+import time
+from ascon128 import encrypt as ascon_encrypt, decrypt as ascon_decrypt, generate_nonce
+from ascon_metrics import AsconMetrics
+
+metrics = AsconMetrics("gateway")
 
 # ====================== CONFIGURACIÓN ======================
-GATEWAY_ID = "gateway_A"  # Cambiar a "gateway_B" en la otra Raspberry
-IP_PC = "192.168.40.95"     # <- Cambiar por IP del PC (server_hfl.py)
+GATEWAY_ID = "gateway_A"
+IP_PC = "192.168.40.95"
 PORT_PC = "8001"
 url_servidor = f"http://{IP_PC}:{PORT_PC}/aggregate-from-gateway"
 
-MQTT_BROKER = "localhost"  # Mosquitto corriendo en esta RPi 4
+MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 TOPIC_FEATURES = "fl/features"
 TOPIC_GLOBAL_MODEL = "fl/global_model"
+
+# Clave ASCON pre-compartida (misma que en ESP32 y PC)
+ASCON_KEY = bytes([0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x18,
+                   0x29, 0x3A, 0x4B, 0x5C, 0x6D, 0x7E, 0x8F, 0x90])
+
+msg_counter = 0
 
 # ====================== DATASET LOCAL ======================
 FEATURE_COUNT = 13
@@ -37,18 +50,16 @@ CLASS_NAMES = ["normal", "mqtt_bruteforce", "scan_A"]
 MIN_PKTS_FOR_ML = 10
 RULE_PKTS_ALERT = 200
 
-# Buffers de entrenamiento local
 X_train_buffer = []
 Y_train_buffer = []
-SAMPLES_PER_UPDATE = 30  # Con 3 nodos enviando, el buffer se llena ~3x más rápido
+SAMPLES_PER_UPDATE = 25  # Con 2 nodos enviando c/5s, buffer se llena en ~1 min
 
 current_round = 0
 
 # ====================== TRACKING DE NODOS ======================
-node_stats = {}  # {client_id: {"samples": int, "last_seen": float, "labels": {0:n, 1:n, 2:n}}}
+node_stats = {}
 
 def update_node_stats(client_id, label):
-    import time
     if client_id not in node_stats:
         node_stats[client_id] = {"samples": 0, "last_seen": 0, "labels": {0:0, 1:0, 2:0}}
     node_stats[client_id]["samples"] += 1
@@ -57,7 +68,6 @@ def update_node_stats(client_id, label):
         node_stats[client_id]["labels"][label] = node_stats[client_id]["labels"].get(label, 0) + 1
 
 def print_node_summary():
-    import time
     now = time.time()
     print(f"\n{'─'*60}")
     print(f" RESUMEN DE NODOS CONECTADOS ({len(node_stats)} activos)")
@@ -92,15 +102,31 @@ except Exception as e:
 
 mqtt_client = None
 
-# ====================== HTTP SERVER (Recibe global) ======================
+# ====================== HTTP SERVER (Recibe global cifrado del PC) ======================
 class DeployModelHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         global current_round
         if self.path == "/deploy-model":
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
-            data = json.loads(body.decode('utf-8'))
-
+            envelope = json.loads(body.decode('utf-8'))
+            
+            ct = base64.b64decode(envelope["ct"])
+            tag = base64.b64decode(envelope["tag"])
+            nonce = base64.b64decode(envelope["nonce"])
+            
+            t0 = time.perf_counter()
+            plaintext = ascon_decrypt(ct, ASCON_KEY, nonce, tag)
+            dec_ms = (time.perf_counter() - t0) * 1000
+            
+            if plaintext is None:
+                print("[ERROR] ASCON: Tag inválido desde PC. Mensaje rechazado.")
+                self.send_response(403)
+                self.end_headers()
+                return
+            
+            metrics.record("PC->RPi", "decrypt", len(plaintext), len(body), dec_ms, current_round)
+            data = json.loads(plaintext.decode('utf-8'))
             W3 = np.array(data["W3"], dtype=np.float32)
             b3 = np.array(data["b3"], dtype=np.float32)
             W4 = np.array(data["W4"], dtype=np.float32)
@@ -109,8 +135,8 @@ class DeployModelHandler(BaseHTTPRequestHandler):
 
             print(f"\n{'='*60}")
             print(f" MODELO GLOBAL RECIBIDO DEL PC (Ronda {current_round})")
+            print(f" ASCON: Descifrado y autenticado exitosamente")
             
-            # Buscamos de forma segura solo las capas Dense (ignorando Dropouts/Activations sueltas)
             dense_layers = [l for l in model.layers if isinstance(l, tf.keras.layers.Dense)]
             if len(dense_layers) >= 2:
                 dense_layers[-2].set_weights([W3, b3])
@@ -119,7 +145,6 @@ class DeployModelHandler(BaseHTTPRequestHandler):
             print(f" Pesos Keras actualizados. W4 mag: {np.mean(np.abs(W4)):.6f}")
             print(f"{'='*60}")
 
-            # Reenviar a los ESP32 para que actualicen su inferencia
             broadcast_model_to_esp32s(W3, b3, W4, b4)
 
             self.send_response(200)
@@ -134,15 +159,33 @@ class DeployModelHandler(BaseHTTPRequestHandler):
 
 
 def broadcast_model_to_esp32s(W3, b3, W4, b4):
+    global msg_counter
     payload = {
         "round": current_round,
         "W3": W3.tolist(), "b3": b3.tolist(),
         "W4": W4.tolist(), "b4": b4.tolist()
     }
-    payload_str = json.dumps(payload)
+    payload_bytes = json.dumps(payload).encode('utf-8')
+    
+    nonce = generate_nonce(int(time.time() * 1000), msg_counter)
+    msg_counter += 1
+    
+    t0 = time.perf_counter()
+    ciphertext, tag = ascon_encrypt(payload_bytes, ASCON_KEY, nonce)
+    enc_ms = (time.perf_counter() - t0) * 1000
+    
+    envelope = {
+        "ct": base64.b64encode(ciphertext).decode('ascii'),
+        "tag": base64.b64encode(tag).decode('ascii'),
+        "nonce": base64.b64encode(nonce).decode('ascii')
+    }
+    envelope_str = json.dumps(envelope)
+    
+    metrics.record("RPi->ESP32", "encrypt", len(payload_bytes), len(envelope_str), enc_ms, current_round)
+    
     if mqtt_client and mqtt_client.is_connected():
-        mqtt_client.publish(TOPIC_GLOBAL_MODEL, payload_str, qos=1)
-        print(f"[MQTT] Modelo global publicado para ESP32s ({len(payload_str)} bytes)")
+        mqtt_client.publish(TOPIC_GLOBAL_MODEL, envelope_str, qos=1)
+        print(f"[MQTT] Modelo global cifrado (ASCON) publicado para ESP32s ({len(envelope_str)} bytes)")
 
 
 # ====================== HEURÍSTICA Y ENTRENAMIENTO ======================
@@ -159,30 +202,25 @@ def heuristicLabel(features):
     return -1
 
 def train_local_model():
-    global X_train_buffer, Y_train_buffer
+    global X_train_buffer, Y_train_buffer, msg_counter
 
-    # Convertir a numpy
     X = np.array(X_train_buffer, dtype=np.float32)
     Y = np.array(Y_train_buffer, dtype=np.int32)
     
-    # Vaciar buffers
     X_train_buffer = []
     Y_train_buffer = []
     
-    print(f"\n[ENTRENAMIENTO LOCAL] Iniciando fit sobre {len(X)} muestras incrustadas en Dataset Local...")
+    print(f"\n[ENTRENAMIENTO LOCAL] Iniciando fit sobre {len(X)} muestras...")
     
-    # Entrenar modelo y capturar historial (para Analytics)
     hist = model.fit(X, Y, epochs=2, batch_size=8, verbose=1)
     final_acc = float(hist.history.get('accuracy', [0.0])[-1])
     final_loss = float(hist.history.get('loss', [0.0])[-1])
     
-    # Extraer pesos buscando explícitamente las capas por su nombre interno
     W3, b3 = model.get_layer("dense_3").get_weights()
     W4, b4 = model.get_layer("dense_out").get_weights()
     
-    print(f"[ENTRENAMIENTO LOCAL] Finalizado (Acc: {final_acc:.2%}, Loss: {final_loss:.4f}). Enviando al servidor PC...")
+    print(f"[ENTRENAMIENTO LOCAL] Finalizado (Acc: {final_acc:.2%}, Loss: {final_loss:.4f})")
     
-    # Enviar al servidor central
     payload = {
         "gateway_id": GATEWAY_ID,
         "num_samples": len(X),
@@ -192,8 +230,26 @@ def train_local_model():
         "W3": W3.tolist(), "b3": b3.tolist(),
         "W4": W4.tolist(), "b4": b4.tolist()
     }
+    payload_bytes = json.dumps(payload).encode('utf-8')
+    
+    nonce = generate_nonce(int(time.time() * 1000), msg_counter)
+    msg_counter += 1
+    
+    t0 = time.perf_counter()
+    ciphertext, tag = ascon_encrypt(payload_bytes, ASCON_KEY, nonce)
+    enc_ms = (time.perf_counter() - t0) * 1000
+    
+    envelope = {
+        "ct": base64.b64encode(ciphertext).decode('ascii'),
+        "tag": base64.b64encode(tag).decode('ascii'),
+        "nonce": base64.b64encode(nonce).decode('ascii')
+    }
+    envelope_json = json.dumps(envelope).encode('utf-8')
+    metrics.record("RPi->PC", "encrypt", len(payload_bytes), len(envelope_json), enc_ms, current_round)
+    
+    print(f"[ASCON] Pesos cifrados. Enviando al servidor PC...")
     try:
-        resp = requests.post(url_servidor, json=payload, timeout=5)
+        resp = requests.post(url_servidor, json=envelope, timeout=5)
         print(f"-> Respuesta PC: {resp.json()}")
     except Exception as e:
         print(f"-> ERROR contactando PC: {e}")
@@ -206,7 +262,22 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     try:
-        data = json.loads(msg.payload.decode('utf-8'))
+        envelope = json.loads(msg.payload.decode('utf-8'))
+        
+        ct = base64.b64decode(envelope["ct"])
+        tag = base64.b64decode(envelope["tag"])
+        nonce = base64.b64decode(envelope["nonce"])
+        
+        t0 = time.perf_counter()
+        plaintext = ascon_decrypt(ct, ASCON_KEY, nonce, tag)
+        dec_ms = (time.perf_counter() - t0) * 1000
+        
+        if plaintext is None:
+            print("[ERROR] ASCON: Tag inválido desde ESP32. Mensaje rechazado.")
+            return
+        
+        metrics.record("ESP32->RPi", "decrypt", len(plaintext), len(msg.payload), dec_ms, current_round)
+        data = json.loads(plaintext.decode('utf-8'))
         client_id = data.get("client_id", "unknown")
         features = data.get("features", [])
         
@@ -224,6 +295,7 @@ def on_message(client, userdata, msg):
             if len(X_train_buffer) >= SAMPLES_PER_UPDATE:
                 print_node_summary()
                 train_local_model()
+                metrics.print_live_summary()
                 
     except Exception as e:
         print(f"[ERROR] {e}")
@@ -233,8 +305,9 @@ def on_message(client, userdata, msg):
 if __name__ == "__main__":
     print("=" * 60)
     print(f" GATEWAY HFL v7 [{GATEWAY_ID}] - RASPBERRY PI 4")
-    print(f" Nodos esperados: normal_1, simulator_1, mixed_1")
-    print(f" Buffer: {SAMPLES_PER_UPDATE} muestras (3 nodos -> llenado ~3x)")
+    print(f" Nodos esperados: normal_1, simulator_1 (2 nodos)")
+    print(f" Buffer: {SAMPLES_PER_UPDATE} muestras")
+    print(f" Seguridad: ASCON-128 (ESP32<->RPi, RPi<->PC)")
     print(f" PC: {url_servidor}")
     print("=" * 60)
 
