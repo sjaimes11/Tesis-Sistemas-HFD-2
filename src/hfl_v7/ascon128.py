@@ -138,6 +138,6 @@ def decrypt(ciphertext, key, nonce, tag):
 
 def generate_nonce(timestamp_ms, counter):
     nonce = bytearray(16)
-    nonce[0:4] = timestamp_ms.to_bytes(4, byteorder='big')
-    nonce[12:16] = counter.to_bytes(4, byteorder='big')
+    nonce[0:4] = (timestamp_ms & 0xFFFFFFFF).to_bytes(4, byteorder='big')
+    nonce[12:16] = (counter & 0xFFFFFFFF).to_bytes(4, byteorder='big')
     return bytes(nonce)
