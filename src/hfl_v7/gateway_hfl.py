@@ -2,7 +2,8 @@
 =============================================================================
  gateway_hfl.py — Raspberry Pi 4 (Edge Gateway) — HFL v7 (3 Clases)
 =============================================================================
- Topología: Nodos ESP32 -> Raspberry Pi 4 (Aqúi) -> PC
+ Topología: 3x Nodos ESP32 -> Raspberry Pi 4 (Aquí) -> PC
+ Nodos esperados: esp32_edge_normal_1, esp32_edge_simulator_1, esp32_edge_mixed_1
  Modelo: 13 -> 32 -> 16 -> 8 -> 3 (softmax)
  Capas FL: W3(16,8) + b3(8) + W4(8,3) + b4(3)
  
@@ -39,9 +40,34 @@ RULE_PKTS_ALERT = 200
 # Buffers de entrenamiento local
 X_train_buffer = []
 Y_train_buffer = []
-SAMPLES_PER_UPDATE = 50  # Entrenar y enviar pesos cada 50 muestras
+SAMPLES_PER_UPDATE = 30  # Con 3 nodos enviando, el buffer se llena ~3x más rápido
 
 current_round = 0
+
+# ====================== TRACKING DE NODOS ======================
+node_stats = {}  # {client_id: {"samples": int, "last_seen": float, "labels": {0:n, 1:n, 2:n}}}
+
+def update_node_stats(client_id, label):
+    import time
+    if client_id not in node_stats:
+        node_stats[client_id] = {"samples": 0, "last_seen": 0, "labels": {0:0, 1:0, 2:0}}
+    node_stats[client_id]["samples"] += 1
+    node_stats[client_id]["last_seen"] = time.time()
+    if label >= 0:
+        node_stats[client_id]["labels"][label] = node_stats[client_id]["labels"].get(label, 0) + 1
+
+def print_node_summary():
+    import time
+    now = time.time()
+    print(f"\n{'─'*60}")
+    print(f" RESUMEN DE NODOS CONECTADOS ({len(node_stats)} activos)")
+    print(f"{'─'*60}")
+    for nid, info in node_stats.items():
+        age = now - info["last_seen"]
+        status = "●" if age < 15 else "○"
+        dist = ", ".join(f"{CLASS_NAMES[k]}:{v}" for k,v in info["labels"].items() if v > 0)
+        print(f"  {status} {nid:30s} | total={info['samples']:4d} | {dist}")
+    print(f"{'─'*60}")
 
 # ====================== MODELO KERAS =======================
 print("[GATEWAY] Cargando modelo base ids_3class.keras...")
@@ -186,16 +212,17 @@ def on_message(client, userdata, msg):
         
         if len(features) != FEATURE_COUNT: return
         
-        # Etiquetado Heurístico (Dataset Local Automático)
         label = heuristicLabel(features)
+        update_node_stats(client_id, label)
         
         if label >= 0 and features[0] >= MIN_PKTS_FOR_ML:
             X_train_buffer.append(features)
             Y_train_buffer.append(label)
             
-            print(f"[DATASET] {client_id} -> Label {CLASS_NAMES[label]} | Buffer: {len(X_train_buffer)}/{SAMPLES_PER_UPDATE}")
+            print(f"[DATASET] {client_id} -> {CLASS_NAMES[label]} | Buffer: {len(X_train_buffer)}/{SAMPLES_PER_UPDATE} | Nodos: {len(node_stats)}")
             
             if len(X_train_buffer) >= SAMPLES_PER_UPDATE:
+                print_node_summary()
                 train_local_model()
                 
     except Exception as e:
@@ -206,7 +233,8 @@ def on_message(client, userdata, msg):
 if __name__ == "__main__":
     print("=" * 60)
     print(f" GATEWAY HFL v7 [{GATEWAY_ID}] - RASPBERRY PI 4")
-    print(f" Entrevista modelos con Keras y agrega en PC")
+    print(f" Nodos esperados: normal_1, simulator_1, mixed_1")
+    print(f" Buffer: {SAMPLES_PER_UPDATE} muestras (3 nodos -> llenado ~3x)")
     print(f" PC: {url_servidor}")
     print("=" * 60)
 
