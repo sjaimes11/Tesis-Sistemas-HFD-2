@@ -84,9 +84,11 @@ class DeployModelHandler(BaseHTTPRequestHandler):
             print(f"\n{'='*60}")
             print(f" MODELO GLOBAL RECIBIDO DEL PC (Ronda {current_round})")
             
-            # Actualizamos las capas FL del modelo Keras local
-            model.layers[-2].set_weights([W3, b3])
-            model.layers[-1].set_weights([W4, b4])
+            # Buscamos de forma segura solo las capas Dense (ignorando Dropouts/Activations sueltas)
+            dense_layers = [l for l in model.layers if isinstance(l, tf.keras.layers.Dense)]
+            if len(dense_layers) >= 2:
+                dense_layers[-2].set_weights([W3, b3])
+                dense_layers[-1].set_weights([W4, b4])
             
             print(f" Pesos Keras actualizados. W4 mag: {np.mean(np.abs(W4)):.6f}")
             print(f"{'='*60}")
@@ -146,9 +148,9 @@ def train_local_model():
     # Entrenar modelo
     model.fit(X, Y, epochs=2, batch_size=8, verbose=1)
     
-    # Extraer pesos de las capas correspondientes (L3 y L4)
-    W3, b3 = model.layers[-2].get_weights()
-    W4, b4 = model.layers[-1].get_weights()
+    # Extraer pesos buscando explícitamente las capas por su nombre interno
+    W3, b3 = model.get_layer("dense_3").get_weights()
+    W4, b4 = model.get_layer("dense_out").get_weights()
     
     print(f"[ENTRENAMIENTO LOCAL] Finalizado. Enviando al servidor PC...")
     
