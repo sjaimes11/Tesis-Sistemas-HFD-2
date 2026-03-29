@@ -5,7 +5,7 @@
  Topología: PC (Servidor) <-> 2 x Raspberry Pi 4 (Edge Gateways)
  Modelo: 13 -> 32 -> 16 -> 8 -> 3 (softmax)
  Capas FL: W3(16,8) + b3(8) + W4(8,3) + b4(3)
- Seguridad: ASCON-128 en comunicación con Gateways
+ SIN ASCON — Rama para medición de tiempos sin cifrado
  
  Ejecutar: python server_hfl.py
  Dashboard: http://localhost:8001/
@@ -20,14 +20,9 @@ import numpy as np
 import requests
 import json
 import logging
-import base64
 import time
 from datetime import datetime
 from typing import List, Optional
-from ascon128 import encrypt as ascon_encrypt, decrypt as ascon_decrypt, generate_nonce
-from ascon_metrics import AsconMetrics
-
-metrics = AsconMetrics("server")
 
 app = FastAPI(title="Servidor HFL v7 - Analytics Dashboard")
 
@@ -77,20 +72,20 @@ GATEWAYS = [
     "http://192.168.40.124:5000"
 ]
 
-# Clave ASCON pre-compartida (misma que ESP32 y Gateway)
-ASCON_KEY = bytes([0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x18,
-                   0x29, 0x3A, 0x4B, 0x5C, 0x6D, 0x7E, 0x8F, 0x90])
-
-msg_counter = 0
-
-class EncryptedPayload(BaseModel):
-    ct: str
-    tag: str
-    nonce: str
+class GatewayPayload(BaseModel):
+    gateway_id: str
+    num_samples: int
+    round: int = 0
+    accuracy: float = 0.0
+    loss: float = 0.0
+    W3: list
+    b3: list
+    W4: list
+    b4: list
 
 
 def distribute_global_model():
-    global round_in_progress, msg_counter
+    global round_in_progress
     payload = {
         "W3": W3_global.tolist(),
         "b3": b3_global.tolist(),
@@ -98,29 +93,16 @@ def distribute_global_model():
         "b4": b4_global.tolist(),
         "round": current_round
     }
-    payload_bytes = json.dumps(payload).encode('utf-8')
+    payload_json = json.dumps(payload)
     
-    nonce = generate_nonce(int(time.time() * 1000), msg_counter)
-    msg_counter += 1
-    
-    t0 = time.perf_counter()
-    ciphertext, tag = ascon_encrypt(payload_bytes, ASCON_KEY, nonce)
-    enc_ms = (time.perf_counter() - t0) * 1000
-    
-    envelope = {
-        "ct": base64.b64encode(ciphertext).decode('ascii'),
-        "tag": base64.b64encode(tag).decode('ascii'),
-        "nonce": base64.b64encode(nonce).decode('ascii')
-    }
-    envelope_json = json.dumps(envelope).encode('utf-8')
-    metrics.record("PC->RPi", "encrypt", len(payload_bytes), len(envelope_json), enc_ms, current_round)
-    
-    print(f"\n[SERVIDOR] Distribuyendo Modelo Global (ASCON) a Gateways (Ronda {current_round})...")
+    print(f"\n[SERVIDOR] Distribuyendo Modelo Global a Gateways (Ronda {current_round}, {len(payload_json)}B, sin cifrado)...")
     
     for gw_url in GATEWAYS:
         try:
-            resp = requests.post(f"{gw_url}/deploy-model", json=envelope, timeout=5)
-            print(f"  -> {gw_url} OK")
+            t0 = time.perf_counter()
+            resp = requests.post(f"{gw_url}/deploy-model", json=payload, timeout=5)
+            send_ms = (time.perf_counter() - t0) * 1000
+            print(f"  -> {gw_url} OK ({send_ms:.1f}ms)")
         except Exception as e:
             print(f"  -> ERROR publicando a {gw_url}: {e}")
 
@@ -128,35 +110,22 @@ def distribute_global_model():
 
 
 @app.post("/aggregate-from-gateway")
-async def receive_gateway_model(envelope: EncryptedPayload):
+async def receive_gateway_model(payload: GatewayPayload):
     global W3_global, b3_global, W4_global, b4_global
     global W3_update_sum, b3_update_sum, W4_update_sum, b4_update_sum
     global accuracy_sum, loss_sum
     global total_samples_this_round, updates_received
     global current_round, round_in_progress
 
-    ct = base64.b64decode(envelope.ct)
-    tag = base64.b64decode(envelope.tag)
-    nonce = base64.b64decode(envelope.nonce)
-    
     t0 = time.perf_counter()
-    plaintext = ascon_decrypt(ct, ASCON_KEY, nonce, tag)
-    dec_ms = (time.perf_counter() - t0) * 1000
+    gateway_id = payload.gateway_id
+    num_samples = payload.num_samples
+    accuracy = payload.accuracy
+    loss = payload.loss
+    data = payload.dict()
+    parse_ms = (time.perf_counter() - t0) * 1000
     
-    if plaintext is None:
-        print("[ERROR] ASCON: Tag inválido desde Gateway. Mensaje rechazado.")
-        return JSONResponse(status_code=403, content={"error": "Invalid ASCON tag"})
-    
-    enc_size = len(envelope.ct) + len(envelope.tag) + len(envelope.nonce) + 50
-    metrics.record("RPi->PC", "decrypt", len(plaintext), enc_size, dec_ms, current_round)
-    
-    data = json.loads(plaintext.decode('utf-8'))
-    gateway_id = data["gateway_id"]
-    num_samples = data["num_samples"]
-    accuracy = data.get("accuracy", 0.0)
-    loss = data.get("loss", 0.0)
-    
-    print(f"\n[SERVIDOR] Pesos recibidos (ASCON OK) de '{gateway_id}' | {num_samples} muestras | Acc: {accuracy:.2%}")
+    print(f"\n[SERVIDOR] Pesos recibidos de '{gateway_id}' | {num_samples} muestras | Acc: {accuracy:.2%} | {parse_ms:.3f}ms (sin cifrado)")
 
     W3_np = np.array(data["W3"], dtype=np.float32)
     b3_np = np.array(data["b3"], dtype=np.float32)
@@ -214,7 +183,6 @@ async def receive_gateway_model(envelope: EncryptedPayload):
         round_in_progress = False
 
         distribute_global_model()
-        metrics.print_live_summary()
         
     return {"status": "ok", "ack_gateway": gateway_id}
 
@@ -349,7 +317,7 @@ def dashboard():
     <div class="header">
         <div>
             <h1 class="title">🚀 Federated IDS Analytics</h1>
-            <p style="color: var(--warning); margin: 4px 0 0 0; font-size: 0.85rem;">🔒 ASCON-128 Authenticated Encryption</p>
+            <p style="color: var(--warning); margin: 4px 0 0 0; font-size: 0.85rem;">⚡ SIN CIFRADO — Medición de baseline</p>
         </div>
         <button class="button" onclick="startRound()">Forzar Sincronización Global</button>
     </div>
@@ -509,7 +477,7 @@ if __name__ == "__main__":
     import uvicorn
     print("=" * 60)
     print(" SERVIDOR CENTRAL FEDERADO HFL v7 - ANALYTICS DASHBOARD")
-    print(" Seguridad: ASCON-128 Authenticated Encryption")
+    print(" *** SIN CIFRADO ASCON — Medición de baseline ***")
     print(" -> Dashboard Gráfico: http://localhost:8001/")
     print("=" * 60)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)

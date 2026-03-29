@@ -15,9 +15,7 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include "model_weights.h"
-#include "ascon128.h"
 #include <math.h>
-#include <mbedtls/base64.h>
 
 #ifndef RGB_BUILTIN
 #define RGB_BUILTIN 48
@@ -84,15 +82,7 @@ PubSubClient mqttGateway(wifiClient);
 int totalAlertas = 0;
 unsigned long ledOffTime = 0;
 uint32_t lastSimulationMs = 0;
-uint32_t msg_counter = 0;
-
-// ==========================================
-// CLAVE ASCON (Pre-compartida con Gateway)
-// ==========================================
-const uint8_t ASCON_KEY[16] = {
-  0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x18,
-  0x29, 0x3A, 0x4B, 0x5C, 0x6D, 0x7E, 0x8F, 0x90
-};
+// SIN ASCON — Rama para medición de tiempos sin cifrado
 
 void resetBrokerFlow() {
   brokerGlobalPkts = 0; brokerGlobalBytes = 0; brokerPshFlags = 0;
@@ -282,7 +272,7 @@ int predictLocal(const float raw_features[FEATURE_COUNT], float* confidence) {
 }
 
 // ==========================================
-// ENVÍO DE FEATURES AL GATEWAY (CIFRADO ASCON)
+// ENVÍO DE FEATURES AL GATEWAY (SIN CIFRADO)
 // ==========================================
 void sendFeaturesToGateway(float features[FEATURE_COUNT]) {
   if (!mqttGateway.connected()) return;
@@ -295,38 +285,11 @@ void sendFeaturesToGateway(float features[FEATURE_COUNT]) {
   char json_buffer[512];
   size_t json_len = serializeJson(doc, json_buffer);
   
-  uint8_t nonce[16];
-  ascon_generate_nonce(nonce, millis(), msg_counter++);
-  
-  uint8_t ciphertext[512];
-  uint8_t tag[16];
-  unsigned long t_enc_start = micros();
-  ascon128_encrypt((uint8_t*)json_buffer, json_len, ASCON_KEY, nonce, ciphertext, tag);
-  unsigned long t_enc_us = micros() - t_enc_start;
-  
-  char encoded[1024];
-  size_t encoded_len = 0;
-  mbedtls_base64_encode((unsigned char*)encoded, sizeof(encoded), &encoded_len, ciphertext, json_len);
-  
-  char tag_b64[32];
-  size_t tag_b64_len = 0;
-  mbedtls_base64_encode((unsigned char*)tag_b64, sizeof(tag_b64), &tag_b64_len, tag, 16);
-  
-  char nonce_b64[32];
-  size_t nonce_b64_len = 0;
-  mbedtls_base64_encode((unsigned char*)nonce_b64, sizeof(nonce_b64), &nonce_b64_len, nonce, 16);
-  
-  StaticJsonDocument<1536> encrypted_doc;
-  encrypted_doc["ct"] = String(encoded).substring(0, encoded_len);
-  encrypted_doc["tag"] = String(tag_b64).substring(0, tag_b64_len);
-  encrypted_doc["nonce"] = String(nonce_b64).substring(0, nonce_b64_len);
-  
-  char final_payload[1536];
-  size_t final_len = serializeJson(encrypted_doc, final_payload);
-  
-  if (mqttGateway.publish(TOPIC_FEATURES, final_payload, final_len)) {
-    Serial.print("  [ASCON ENC] ESP32->RPi: "); Serial.print(t_enc_us); Serial.print("us | ");
-    Serial.print(json_len); Serial.print("B -> "); Serial.print(final_len); Serial.println("B");
+  unsigned long t_send_start = micros();
+  if (mqttGateway.publish(TOPIC_FEATURES, json_buffer, json_len)) {
+    unsigned long t_send_us = micros() - t_send_start;
+    Serial.print("  [SEND] ESP32->RPi: "); Serial.print(t_send_us); Serial.print("us | ");
+    Serial.print(json_len); Serial.println("B (sin cifrado)");
   }
 }
 
@@ -356,44 +319,18 @@ void analyzeAndAlert(float features[FEATURE_COUNT], bool ruleTriggered) {
 }
 
 // ==========================================
-// RECEPCIÓN DE MODELO GLOBALES (DESCIFRADO ASCON)
+// RECEPCIÓN DE MODELO GLOBAL (SIN CIFRADO)
 // ==========================================
 void onMqttGatewayCallback(char* topic, byte* payload, unsigned int length) {
   if (String(topic) == TOPIC_GLOBAL_MODEL) {
     Serial.println("\n[FL] ==============================================");
     Serial.println("[FL] NUEVO MODELO GLOBAL RECIBIDO DEL GATEWAY (RPi)");
     
-    DynamicJsonDocument envelope(12288);
-    DeserializationError err = deserializeJson(envelope, payload, length);
-    if (err) { Serial.println("[ERROR] Parseando envelope"); return; }
-    
-    String ct_b64 = envelope["ct"].as<String>();
-    String tag_b64 = envelope["tag"].as<String>();
-    String nonce_b64 = envelope["nonce"].as<String>();
-    
-    uint8_t ct[8192], tag[16], nonce[16];
-    size_t ct_len = 0, tag_len = 0, nonce_len = 0;
-    
-    mbedtls_base64_decode(ct, sizeof(ct), &ct_len, (unsigned char*)ct_b64.c_str(), ct_b64.length());
-    mbedtls_base64_decode(tag, 16, &tag_len, (unsigned char*)tag_b64.c_str(), tag_b64.length());
-    mbedtls_base64_decode(nonce, 16, &nonce_len, (unsigned char*)nonce_b64.c_str(), nonce_b64.length());
-    
-    uint8_t plaintext[8192];
-    unsigned long t_dec_start = micros();
-    bool dec_ok = ascon128_decrypt(ct, ct_len, ASCON_KEY, nonce, tag, plaintext);
-    unsigned long t_dec_us = micros() - t_dec_start;
-    
-    if (!dec_ok) {
-      Serial.println("[ERROR] ASCON: Tag inválido. Mensaje rechazado.");
-      return;
-    }
-    
-    Serial.print("[FL] [ASCON DEC] RPi->ESP32: "); Serial.print(t_dec_us); Serial.print("us | ");
-    Serial.print(ct_len); Serial.println("B descifrados OK");
+    unsigned long t_recv_start = micros();
     
     DynamicJsonDocument doc(8192);
-    err = deserializeJson(doc, plaintext, ct_len);
-    if (err) { Serial.println("[ERROR] Parseando JSON descifrado"); return; }
+    DeserializationError err = deserializeJson(doc, payload, length);
+    if (err) { Serial.println("[ERROR] Parseando JSON"); return; }
     
     JsonArray w3arr = doc["W3"].as<JsonArray>();
     JsonArray b3arr = doc["b3"].as<JsonArray>();
@@ -411,6 +348,9 @@ void onMqttGatewayCallback(char* topic, byte* payload, unsigned int length) {
     }
     for (size_t j=0; j<OUTPUT_UNITS; j++) b4[j] = b4arr[j].as<float>();
 
+    unsigned long t_recv_us = micros() - t_recv_start;
+    Serial.print("[FL] [RECV] RPi->ESP32: "); Serial.print(t_recv_us); Serial.print("us | ");
+    Serial.print(length); Serial.println("B (sin cifrado)");
     Serial.println("[FL] Pesos actualizados en memoria. Nueva inferencia activa.");
     Serial.println("[FL] ==============================================");
     setLED(30,30,0); ledOffTime = millis()+2000;
