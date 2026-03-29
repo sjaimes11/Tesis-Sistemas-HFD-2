@@ -1,0 +1,105 @@
+\documentclass[12pt,english,openany,letterpaper,pagesize]{scrbook}
+
+\usepackage[utf8]{inputenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage[english]{babel}
+\usepackage{fancyhdr}
+\usepackage{epsfig}
+\usepackage{epic}
+\usepackage{eepic}
+\usepackage{amsmath}
+\usepackage{threeparttable}
+\usepackage{amscd}
+\usepackage{here}
+
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{lscape}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{nameref}
+\usepackage{cleveref}
+\usepackage{siunitx}
+\usepackage{gensymb}
+\usepackage{eurosym}
+\usepackage{multirow}
+\usepackage{multicol}
+\usepackage{rotating}
+\usepackage{graphicx}
+
+\usepackage{subcaption}
+\usepackage{caption}
+\captionsetup{font=small}
+\captionsetup[sub]{font=small,skip=2pt}
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\usepackage{longtable}
+\usepackage{booktabs}
+
+\renewcommand{\theequation}{\thechapter-\arabic{equation}}
+\renewcommand{\thefigure}{\textbf{\thechapter-\arabic{figure}}}
+\renewcommand{\thetable}{\textbf{\thechapter-\arabic{table}}}
+
+
+\pagestyle{fancyplain}
+\textheight22.5cm \topmargin0cm \textwidth16.5cm
+\oddsidemargin0cm \evensidemargin-0cm
+\renewcommand{\chaptermark}[1]{\markboth{\thechapter\; #1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\; #1}}
+\lhead[\fancyplain{}{\thepage}]{\fancyplain{}{\rightmark}}
+\rhead[\fancyplain{}{\leftmark}]{\fancyplain{}{\thepage}}
+\fancyfoot{}
+\thispagestyle{fancy}
+
+
+\addtolength{\headwidth}{0cm}
+\unitlength1mm
+\marginparwidth0cm
+\parindent0cm
+
+\newcommand{\PreserveBackslash}[1]{\let\temp=\\#1\let\\=\temp}
+\let\PBS=\PreserveBackslash
+
+\renewcommand{\baselinestretch}{1.1}
+
+\newcommand{\arr}[1]{\raisebox{1.5ex}[0cm][0cm]{#1}}
+
+\usepackage{Befehle}
+
+\begin{document}
+\pagenumbering{roman}
+\input{HojaTitulo/HojaTituloMSc}
+\renewcommand{\tablename}{\textbf{Table}}
+\renewcommand{\figurename}{\textbf{Figure}}
+\renewcommand{\listtablename}{List of Tables}
+\renewcommand{\listfigurename}{List of Figures}
+\renewcommand{\contentsname}{Table of Contents}
+
+
+\tableofcontents
+
+\clearpage
+
+\addcontentsline{toc}{chapter}{List of Figures}
+\listoffigures
+
+\clearpage
+\addcontentsline{toc}{chapter}{List of Tables}
+\listoftables
+
+\clearpage
+\pagenumbering{arabic}
+\input{Kap1/Kap1}
+\input{Kap2/Kap2}
+\input{Kap3b/Kap3b}
+\input{Kap5/Kap5}
+\input{Kap6/Kap6}
+\renewcommand\bibname{References}
+\addcontentsline{toc}{chapter}{\numberline{}References}
+\bibliographystyle{IEEEtran}
+\bibliography{BibliMSc}
+\input{Anexos/Anexos}
+\end{document}

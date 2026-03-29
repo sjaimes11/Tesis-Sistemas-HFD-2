@@ -1,0 +1,89 @@
+\begin{appendix}
+\chapter{Appendices}\label{chap:ann1}
+
+\section{Appendix A: HFL System Architecture}
+\label{anx:arquitectura}
+
+The deployed architecture consists of three layers:
+
+\begin{itemize}
+    \item \textbf{Edge Layer:} 2 $\times$ ESP32-S3 (normal node + simulated node), running TinyML inference and MQTT communication encrypted with ASCON-128.
+    \item \textbf{Fog Layer:} 1 $\times$ Raspberry Pi 4 (4\,GB RAM), acting as MQTT broker, local training gateway, and HTTP bridge to the server.
+    \item \textbf{Cloud Layer:} 1 $\times$ PC (FastAPI server), coordinating FedAvg aggregation and the analytics dashboard.
+\end{itemize}
+
+\section{Appendix B: System Files}
+\label{anx:archivos}
+
+\begin{table}[H]
+\centering
+\caption{Main HFL v7 system files.}
+\small
+\begin{tabular}{l l l}
+\toprule
+\textbf{File} & \textbf{Device} & \textbf{Function} \\
+\midrule
+\texttt{main\_edge\_node\_normal.cpp}    & ESP32-S3 & Normal traffic node \\
+\texttt{main\_edge\_node\_simulated.cpp} & ESP32-S3 & Mixed traffic node \\
+\texttt{ascon128.h}                      & ESP32-S3 & ASCON-128 encryption (C++) \\
+\texttt{gateway\_hfl.py}                 & Raspberry Pi 4 & Federated gateway \\
+\texttt{ascon128.py}                     & RPi / PC & ASCON-128 encryption (Python) \\
+\texttt{ascon\_metrics.py}               & RPi / PC & Encryption metrics \\
+\texttt{server\_hfl.py}                  & PC & Central FedAvg server \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Appendix C: Project Repository}
+\label{anx:repositorio}
+
+The complete source code, datasets, and training scripts are available in the project repository. The \texttt{main} branch contains the system with ASCON-128 encryption enabled, and the \texttt{hfl\_v7-no-ascon} branch contains the version without encryption for baseline measurement.
+
+\section{Appendix D: Classical ML Model Configuration}
+\label{anx:ml_classic}
+
+Table~\ref{tab:ml_config} details the hyperparameter configurations selected after optimization for each classical ML model.
+
+\begin{table}[H]
+\centering
+\caption{Optimized hyperparameters for classical ML models.}
+\small
+\begin{tabular}{l l}
+\toprule
+\textbf{Model} & \textbf{Optimized Hyperparameters} \\
+\midrule
+Decision Tree & \texttt{max\_depth=20, min\_samples\_split=5, criterion='gini'} \\
+              & \texttt{class\_weight='balanced'} \\
+\addlinespace
+Random Forest & \texttt{n\_estimators=200, max\_depth=30, max\_features='sqrt'} \\
+              & \texttt{class\_weight='balanced\_subsample'} \\
+\addlinespace
+Logistic Regr. & \texttt{C=1.0, penalty='l2', solver='lbfgs'} \\
+               & \texttt{class\_weight='balanced', max\_iter=1000} \\
+\addlinespace
+SVM (Linear)  & \texttt{C=1.0, kernel='linear'} \\
+              & \texttt{class\_weight='balanced'} \\
+\addlinespace
+SVM (RBF)     & \texttt{C=10, gamma='scale', kernel='rbf'} \\
+              & \texttt{class\_weight='balanced', subsample=25000/class} \\
+\bottomrule
+\end{tabular}
+\label{tab:ml_config}
+\end{table}
+
+\section{Appendix E: Feature Extraction Details}
+\label{anx:features}
+
+The 13 features extracted per network flow are computed in real time on the ESP32-S3 as each packet is captured. The implementation uses a sliding window approach where statistics (mean, standard deviation, min, max) are incrementally updated to avoid storing all individual packet data in memory:
+
+\begin{itemize}
+    \item \textbf{Packet count (\texttt{num\_pkts}):} Simple counter incremented per packet.
+    \item \textbf{IAT statistics (\texttt{mean\_iat}, \texttt{std\_iat}, \texttt{min\_iat}, \texttt{max\_iat}):} Computed using Welford's online algorithm for numerical stability.
+    \item \textbf{Packet length statistics:} Mean, standard deviation, min, and max computed incrementally.
+    \item \textbf{TCP flag counters (\texttt{num\_psh}, \texttt{num\_rst}, \texttt{num\_urg}):} Direct extraction from TCP header fields.
+    \item \textbf{Total bytes (\texttt{num\_bytes}):} Running sum of packet lengths.
+\end{itemize}
+
+All features are normalized using pre-computed StandardScaler parameters ($\mu_i$, $\sigma_i$) embedded as constants in the ESP32 firmware, computed from the training dataset.
+
+\end{appendix}

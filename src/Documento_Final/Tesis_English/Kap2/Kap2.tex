@@ -1,0 +1,161 @@
+\chapter{Theoretical Framework}
+\label{chap:theo}
+
+\section{Conceptual Framework}
+\label{sec:conceptos}
+
+This section defines the theoretical concepts underpinning the design and implementation of an Intrusion Detection System (IDS) at the edge, executable on a \textit{Raspberry Pi 5}, integrating \textit{TinyML}, \textit{federated learning} (FL), \textit{lightweight cryptography}, and \textit{NLP} applied to network logs, in accordance with the cybersecurity and governance approach described in the proposal and current reference frameworks \cite{NISTCSF2024}.
+
+\subsection{Internet of Things (IoT) and IoT/IIoT Networks}
+The \textbf{Internet of Things} (IoT) refers to ecosystems of connected devices (sensors, actuators, cameras, gateways, and embedded equipment) that generate, transmit, and consume data across heterogeneous networks. In industrial contexts (IIoT), these devices typically operate in environments with stricter availability, continuity, and security requirements, as they support critical processes and operational telemetry. Consequently, IoT/IIoT networks present a broad attack surface with high protocol diversity, traffic patterns, and resource limitations, increasing the complexity of timely threat detection.
+
+\newline
+\newline
+From a cybersecurity management perspective, these networks must be addressed as part of a socio-technical system with assets, risks, and controls. In this regard, frameworks such as the \textit{NIST Cybersecurity Framework (CSF) 2.0} organize risk management and security operations through functions and categories that facilitate alignment between technical objectives (e.g., detection and response) and governance/management (e.g., prioritization and metrics) \cite{NISTCSF2024}. This structure is relevant for justifying, evaluating, and reporting the value of the proposed IDS as a technical control within a broader security strategy.
+
+\subsection{Intrusion Detection Systems (IDS/NIDS) in IoT}
+An \textbf{Intrusion Detection System} (IDS) is a monitoring and analysis mechanism whose purpose is to identify malicious or anomalous activity in a computing environment. When its primary focus is the analysis of network traffic and events, it is commonly called a \textbf{Network IDS} (NIDS). In IoT, NIDS face additional challenges: noisy traffic, devices with variable behaviors, topology changes, and computing and energy constraints for instrumenting monitoring close to the source.
+
+\newline
+\newline
+Recent evidence shows approaches that seek to perform detection at the edge to reduce latency, avoid massive data transmission, and improve incident response. In particular, detection mechanisms based on lightweight models (e.g., \textit{TinyML}) have been proposed to operate with bounded memory and fast inference \cite{Amuthadevi2025,Alwaisi2024,Tekin2023}. Within this framework, IDS design must consider both accuracy metrics (e.g., \textit{precision}, \textit{recall}, \textit{F1}) and operational metrics (latency, CPU/memory usage, energy), especially on constrained devices \cite{Tekin2023}.
+
+\subsection{Traffic Capture and Representation: PCAP, Flows, and Logs}
+A \textbf{traffic capture} in \textbf{PCAP} format stores network packets (headers and, depending on the capture point, potentially payload), allowing reconstruction and detailed analysis. However, for automated detection tasks it is common to transform traffic into more compact and structured representations, such as \textbf{flows} (packet groupings by 5-tuple and time windows) and network event \textbf{logs}.
+
+\newline
+\newline
+Among representation alternatives, \textbf{Zeek logs} are widely used because they convert network observations into tabular/semi-structured records (e.g., connections, DNS, HTTP), with fields that capture operational context (source/destination, ports, duration, bytes, states) and facilitate subsequent analytics. This is especially useful for integrating two system routes: (i) classification based on numerical flow features and (ii) text/template-based analytics for \textit{NLP} on logs, as proposed in this work \cite{UNSWTonIoT,Neto2023CICIoT2023,Mehavilla2025}.
+
+\subsection{Edge Computing and Raspberry Pi 5 as a Security Node}
+\textbf{Edge computing} shifts processing and analytics toward nodes close to the data source, aiming to reduce latency, decrease connectivity dependence, and limit the volume of information sent to the cloud. In security, this enables deployments where the IDS detects and acts locally, and additionally coordinates learning and model updating in a distributed manner.
+
+\newline
+\newline
+In this project, the \textbf{Raspberry Pi 5} is considered a feasible edge node for combining general-purpose computing capacity and connectivity, enabling traffic capture/preprocessing, inference with compact models, and federated round coordination, in accordance with the proposed architecture. Additionally, its availability in memory variants (including 8\,GB) facilitates experimentation with lightweight \textit{NLP} components and resource consumption evaluation under realistic conditions \cite{RaspberryPi5Brief2026}.
+
+\subsection{TinyML for Detection on Constrained Devices}
+\textbf{TinyML} is an approach that seeks to execute machine learning models on hardware with limited resources (memory, CPU, energy), through compact models, optimizations (e.g., quantization), and designs oriented toward efficient inference. In IoT security, TinyML has been proposed for detecting anomalies or attacks close to the source, favoring rapid response and minimizing dependence on central infrastructure.
+
+\newline
+\newline
+Recent works show IDS designs based on TinyML and highlight a set of typical tensions: accuracy vs.\ model size, latency vs.\ complexity, and energy consumption vs.\ inference frequency \cite{Amuthadevi2025,Alwaisi2024,Tekin2023}. Consequently, the project's conceptual framework requires considering TinyML not merely as ``small models,'' but as a \textit{set of design decisions} (lightweight architectures, variable/attribute selection, compression) aligned with observable constraints on the Raspberry Pi and/or IoT nodes.
+
+\subsection{Federated Learning in Cybersecurity}
+\textbf{Federated learning} (FL) is a distributed training paradigm where multiple nodes train a model locally and share only updates (e.g., gradients or weights) with an aggregator, avoiding centralizing raw data. In IoT scenarios, FL has been studied as a mechanism to mitigate privacy risks and leverage distributed data (e.g., segmented networks or entities with sharing restrictions).
+
+\newline
+\newline
+Recent literature emphasizes that FL in IDS faces specific challenges: \textit{non-IID} data (different distributions per node), hardware and connectivity heterogeneity, and communication costs during aggregation rounds \cite{Alsghaier2025,Albanbay2025}. Therefore, the project's conceptual framework assumes that the ``quality'' of the federated approach depends not only on the aggregation algorithm but also on experimental design (partitions, balance, scenarios) and how stability/efficiency is measured in the presence of real constraints.
+
+\subsection{Lightweight Cryptography and Artifact Protection in FL}
+\textbf{Lightweight cryptography} groups cryptographic techniques designed for devices with memory, energy, and computing capacity limitations, maintaining confidentiality and integrity properties with controlled costs. Its relevance in this project is associated with protecting \textbf{security artifacts} exchanged or stored by the system (e.g., model parameters in FL, control messages, and persistent outputs/alerts), especially when nodes operate on potentially exposed networks.
+
+\newline
+\newline
+NIST standardized primitives for constrained contexts, including Ascon-based schemes for authenticated encryption, \textit{hash}, and extendable functions, providing a solid technical reference for selecting mechanisms compatible with the IoT scenario \cite{NISTSP8002322025}. Complementarily, recent reviews synthesize selection criteria and \textit{trade-offs} (security, implementation, computational cost) for IoT deployments, supporting the decision to ``encrypt what is shared'' even if training avoids moving raw data: in FL, updates remain a sensitive asset and their manipulation or leakage can affect privacy, model integrity, and operational trust \cite{Gusita2025}.
+
+\subsection{NLP Applied to Network Logs and Operational Analytics}
+\textbf{Natural Language Processing} (NLP) focuses on representing and modeling symbolic sequences (text) for tasks such as classification, entity extraction, summarization, or explanation. In cybersecurity, \textbf{logs} (including network and system logs) can be reinterpreted as ``textual'' sequences where each event contributes tokens/fields describing behavior, enabling models that learn temporal and contextual patterns.
+
+\newline
+\newline
+In this proposal, the NLP component is justified by its operational value: (i) transforming structured logs into learnable representations, (ii) supporting explainability (e.g., ``why an alert was triggered''), and (iii) prioritizing or summarizing events to facilitate response. Recent evidence reports the use of Transformers for log pattern learning (including federated approaches) \cite{Parra2022NDSS,Guo2021LogBERT} and comparative evaluations of LLM-type models as classifiers on flow/log-derived data (including Zeek) against ML/DL baselines \cite{Mehavilla2025}.
+
+\subsection{Transformers for Sequences and Representation-Based Detection}
+\textbf{Transformers} are architectures based on attention mechanisms that allow modeling dependencies in sequences without requiring explicit recurrence. In the security context, their contribution is observed in the ability to capture long-range patterns in event series (logs) or sequences constructed from flows/network, especially when anomalous behavior depends on temporally distributed combinations.
+
+\newline
+\newline
+Within this line, \textbf{LogBERT} proposes anomaly detection in logs through BERT-inspired representations, showing that the approach can learn contextual structure useful for distinguishing normal from anomalous behavior \cite{Guo2021LogBERT}. Likewise, federated and interpretable Transformers have been proposed for log learning in distributed scenarios, directly connecting with the FL+NLP integration proposed in this project \cite{Parra2022NDSS}. Together, these references support the hypothesis that a hybrid combination (TinyML for ``online'' detection and lightweight NLP for interpretation/explanation) can be feasible if computational cost is controlled and \textit{trade-offs} are evaluated against classical alternatives \cite{Mehavilla2025,Tekin2023}.
+
+
+\section{State of the Art}
+\label{sec:antecedentes}
+
+The growing adoption of IoT/IIoT devices in homes, cities, and industries has significantly expanded the attack surface due to protocol heterogeneity, uneven credential/update management, and continuous exposure of network services. In this context, \textit{Intrusion Detection Systems} (IDS) have gained relevance as detection and monitoring controls, especially when aligned with risk management frameworks and cybersecurity capabilities (e.g., identify, protect, detect, respond, and recover) \cite{NIST_CSF2_2024}. However, a clear trend in recent literature is that an IDS's effectiveness depends not only on the classification algorithm but on the complete \textit{pipeline}: traffic capture and representation, dataset quality/realism, edge deployment viability, and model update mechanisms under operational constraints.\\
+
+A first axis of the state of the art focuses on the availability of public \textbf{datasets} for reproducible IDS evaluation. UNSW-NB15 and Bot-IoT remain benchmarks for their widespread use as intrusion \textit{baselines} and for including network and IoT attack scenarios, respectively \cite{UNSW_UNSWNB15_Download, UNSW_BotIoT_Download}. TON\_IoT incorporates a more multimodal approach by including telemetry, logs, and network traffic, enabling experiments that integrate heterogeneous signals (e.g., numerical flows and semi-structured records) \cite{UNSW_TONIoT_Download, Moustafa2020_TONIoT}. In a complementary line, IoT-23 stands out for offering labeled scenarios based on PCAP captures, facilitating approaches that start from Wireshark/PCAP and then derive logs or flows for training \cite{Stratosphere_IoT23}. Edge-IIoTset was explicitly proposed for evaluating centralized and federated learning in IoT/IIoT, contributing realism for FL experiments from the dataset design \cite{Ferrag2022_EdgeIIoTset}. Finally, CICIoT2023 expands the scale and variety of attacks for conditions closer to real operation, establishing itself as a recent high-value \textit{benchmark} for model comparison \cite{Neto2023_CICIoT2023}.\\
+
+A second axis corresponds to \textbf{edge deployment} and the use of efficient models (\textbf{TinyML}) for detection close to the source. Recent TinyML reviews emphasize that the key contribution is not solely ``making the model small,'' but designing a coherent set of engineering decisions: variable selection, dimensionality reduction, compression/quantization, and a stable inference \textit{pipeline} under load \cite{DuttaBharali2021_TinyMLSurvey}. In particular, Tekin et al.\ show that in \textit{on-device} IDS, energy consumption and latency vary substantially depending on the model and input representation, so evaluation must report deployment metrics (energy, inference time, memory footprint) alongside classification metrics \cite{Tekin2023_OnDeviceEnergy}. This is especially relevant for a Raspberry Pi 5 as a security \textit{gateway}: even with greater capacity than microcontrollers, the IDS must be sustainable and not degrade node operation.\\
+
+The third axis addresses \textbf{federated learning} (FL) as an alternative for training IDS without centralizing raw data, a frequent need in IoT/IIoT environments due to privacy policies and transfer costs. Imteaj et al.\ synthesize fundamental FL challenges on constrained devices, highlighting hardware heterogeneity, intermittent connectivity, partial participation, and \textit{non-IID} data as main limitations \cite{Imteaj2022_FL_ResourceConstrainedSurvey}. In federated IDS, approaches have been proposed seeking efficiency and lightness through \textit{cross-layer} integration to reduce communication overhead while maintaining performance \cite{Hajj2023_CrossLayerFL_IDS}. Likewise, local personalization/adaptation strategies have been explored to improve performance in heterogeneous domains, where each node observes different traffic patterns \cite{Roy2023_FL_AdaptedModel}. In IIoT, designs employing deeper networks (e.g., residual network approaches) to capture complex patterns within a federated scheme have also been reported \cite{Chaurasia2024_FL_ResNet_IIoT}. Together, these contributions show that FL is promising but requires explicit decisions on data partitioning, round frequency, update compression, and tolerance for eventual connectivity.\\
+
+A fourth axis relates to \textbf{security and confidentiality} in the data and model lifecycle. Although FL reduces the need to centralize raw data, it does not eliminate risks regarding exchanged or stored artifacts (model updates, weights, derived records, or configurations). In this scenario, lightweight cryptography becomes relevant as a mechanism to protect information \textit{in transit} and \textit{at rest} under computing constraints. NIST standardized Ascon-based primitives for authenticated encryption and \textit{hash} functions targeting constrained devices \cite{NIST_SP800232_2025}. At a synthesis level, recent reviews discuss selection criteria and implementation of lightweight cryptography in IoT, highlighting trade-offs between security, performance, and implementation complexity \cite{Gusita2025_LWC_Survey}. This supports the inclusion of lightweight encryption as a viability requirement (not accessory) when the IDS is deployed at the edge and coordinates distributed learning/updating.\\
+
+The fifth axis of the state of the art corresponds to the use of \textbf{NLP and Transformers} for log and telemetry analysis. LogBERT formalizes the use of BERT-type models to represent log sequences and detect anomalies, showing that semi-structured records can be treated as ``language'' to capture temporal context \cite{LogBERT2021}. In a subsequent line, LTAnomaly proposes specialized Transformers to strengthen detection against variability and noise in records \cite{LTAnomaly2023}. In distributed scenarios, federated and interpretable Transformers have been proposed for log pattern learning without centralizing data, directly connecting with the FL+NLP combination proposed \cite{NDSS2022_FedTransLog}. Additionally, language models have been explored as classifiers on network-derived logs (e.g., Zeek), highlighting their potential for extracting semantic or sequential patterns from structured network events \cite{Yadav2023_LLM_Zeek}.\\
+
+From this review, a practical research gap is identified: although solid contributions exist separately in (i) TinyML/edge IDS, (ii) FL for IDS, (iii) lightweight cryptography, and (iv) NLP for logs, it is less common to find a \textbf{complete end-to-end integration evaluated} on a realistic edge node (such as Raspberry Pi) that uses PCAP captures (Wireshark) to derive flows/logs, performs efficient inference, updates models federally, and secures artifacts with lightweight encryption, simultaneously reporting accuracy metrics and operational metrics (latency, RAM/CPU, and energy where applicable). This thesis positions itself to address this gap, proposing a comprehensive experimental architecture that combines efficient learning at the edge with distributed training and NLP-based analytics to improve both detection and alert interpretability.\\
+
+
+\begin{longtable}{@{}p{0.15\textwidth} p{0.2\textwidth} p{0.26\textwidth} p{0.26\textwidth}@{}}
+\caption{State of the Art Summary for IoT/IIoT IDS with Edge/TinyML, FL, Lightweight Cryptography, and NLP.}
+\label{tab:state_of_art_ids}\\
+\toprule
+\textbf{Reference} & \textbf{Approach} & \textbf{Data / Scenario} & \textbf{Key Contribution} \\
+\midrule
+\endfirsthead
+\multicolumn{4}{c}%
+{{\bfseries \tablename\ \thetable{} -- continued from previous page}} \\
+\toprule
+\textbf{Reference} & \textbf{Approach} & \textbf{Data / Scenario} & \textbf{Key Contribution} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+
+\cite{UNSW_UNSWNB15_Download} & NIDS Dataset & Network intrusion (benchmark) & Classic baseline for IDS comparison \\
+\addlinespace
+
+\cite{UNSW_BotIoT_Download} & IoT Dataset & IoT traffic with botnet/attacks & Botnet-oriented IoT scenarios \\
+\addlinespace
+
+\cite{UNSW_TONIoT_Download, Moustafa2020_TONIoT} & Multimodal Dataset & Telemetry + logs + traffic & Supports multimodal IoT/IIoT evaluation \\
+\addlinespace
+
+\cite{Ferrag2022_EdgeIIoTset} & Dataset (central/FL) & IoT/IIoT for centralized and federated & Explicitly designed for FL and realism \\
+\addlinespace
+
+\cite{Stratosphere_IoT23} & PCAP Dataset & Benign/malware IoT scenarios (PCAP) & Facilitates Wireshark/PCAP pipelines \\
+\addlinespace
+
+\cite{Neto2023_CICIoT2023} & Benchmark Dataset & Large-scale IoT & Recent attack diversity and high volume \\
+\addlinespace
+
+\cite{DuttaBharali2021_TinyMLSurvey} & TinyML Survey & IoT review & Efficiency strategies (compression, quantization) \\
+\addlinespace
+
+\cite{Tekin2023_OnDeviceEnergy} & Edge IDS & \textit{On-device} evaluation & Energy/latency as critical IDS IoT metrics \\
+\addlinespace
+
+\cite{Imteaj2022_FL_ResourceConstrainedSurvey} & FL Survey & Constrained IoT & Challenges: \textit{non-IID}, connectivity, heterogeneity \\
+\addlinespace
+
+\cite{Hajj2023_CrossLayerFL_IDS} & FL + IDS & IoT (lightweight) & Efficient federated IDS (\textit{cross-layer}) \\
+\addlinespace
+
+\cite{Roy2023_FL_AdaptedModel} & FL + IDS & IoT (personalization) & Local model adaptation in heterogeneous environments \\
+\addlinespace
+
+\cite{Chaurasia2024_FL_ResNet_IIoT} & FL + IDS & IIoT (deep models) & Federated ResNets for complex patterns \\
+\addlinespace
+
+\cite{NIST_SP800232_2025} & Lightweight Crypto & NIST Standard & Ascon for authenticated encryption on constrained devices \\
+\addlinespace
+
+\cite{Gusita2025_LWC_Survey} & Lightweight Crypto Survey & IoT review & Selection criteria and efficient implementation \\
+\addlinespace
+
+\cite{LogBERT2021} & NLP on logs & Log sequences & BERT for anomaly detection in records \\
+\addlinespace
+
+\cite{LTAnomaly2023} & NLP on logs & Specialized Transformer & Improvements against variability and noise in logs \\
+\addlinespace
+
+\cite{NDSS2022_FedTransLog} & NLP + FL & Distributed logs & Federated interpretable Transformer for anomalies \\
+\addlinespace
+
+\cite{Yadav2023_LLM_Zeek} & NLP on network & Zeek logs & LLM evaluation as classifiers on network logs \\
+\end{longtable}
+
+\newpage

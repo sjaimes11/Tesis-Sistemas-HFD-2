@@ -1,0 +1,279 @@
+\chapter{Methodology}
+\label{chap:meth}
+
+This research follows an experimental and quantitative approach, structured in five phases corresponding to the specific objectives: (i) data pipeline construction, (ii) design and implementation of the hierarchical federated learning architecture, (iii) ASCON-128 lightweight encryption integration, (iv) training and comparison of classical ML models as a baseline, and (v) comprehensive system evaluation on real hardware.
+
+% ====================================================================
+\section{System Architecture}
+\label{sec:arquitectura}
+
+The proposed system is organized into three hierarchical layers reflecting the Edge--Fog--Cloud topology, each with differentiated processing, training, and coordination roles.
+
+\subsection{Edge Layer: ESP32-S3 Nodes}
+
+The edge nodes are implemented on \textbf{ESP32-S3} microcontrollers with 512\,KB of SRAM and native Wi-Fi connectivity. Each node fulfills three functions:
+\begin{enumerate}
+    \item \textbf{Traffic generation and capture:} simulates MQTT network flows with statistical patterns calibrated from the real datasets (Section~\ref{sec:dataset}).
+    \item \textbf{Feature extraction:} computes in real time a 13-feature vector per flow (Table~\ref{tab:features}).
+    \item \textbf{Local inference (TinyML):} executes a 4-layer MLP model directly in the microcontroller's SRAM, classifying each flow into three categories: \texttt{normal}, \texttt{mqtt\_bruteforce}, and \texttt{scan\_A}.
+\end{enumerate}
+
+Two differentiated nodes are deployed: a \emph{normal} node that generates exclusively benign traffic, and a \emph{simulated} node that generates a mix of 40\% normal, 30\% bruteforce, and 30\% scan\_A, reproducing the real statistical distributions from the datasets.
+
+\subsection{Fog Layer: Raspberry Pi 4 Gateway}
+
+The Raspberry Pi 4 (4\,GB RAM, ARM Cortex-A72 at 1.5\,GHz) acts as an \emph{Edge Gateway} and runs the \texttt{gateway\_hfl.py} script. Its responsibilities include:
+\begin{itemize}
+    \item Acting as an \textbf{MQTT broker} (Mosquitto) to receive features from the ESP32s.
+    \item Maintaining a \textbf{training buffer} of $N_s = 40$ heuristically labeled samples based on real dataset distributions.
+    \item \textbf{Locally training} a Keras/TensorFlow model identical to the ESP32's (5 epochs, Adam with $\eta=0.005$, batch=8).
+    \item \textbf{Transmitting the weights} of the last two layers ($W_3, b_3, W_4, b_4$) to the central server via HTTP.
+    \item \textbf{Distributing the global model} received from the server to ESP32s via MQTT.
+\end{itemize}
+
+\subsection{Cloud Layer: PC Server}
+
+A conventional PC runs \texttt{server\_hfl.py} (FastAPI + Uvicorn) and coordinates global federated learning:
+\begin{itemize}
+    \item Receives local weights from $K$ gateways (in this implementation, $K=2$).
+    \item Applies the \textbf{FedAvg} algorithm (Section~\ref{sec:fedavg}) weighted by number of samples.
+    \item Distributes the updated global model to all gateways.
+    \item Provides a real-time \textbf{analytics dashboard} with accuracy and loss graphs per round.
+\end{itemize}
+
+% ====================================================================
+\section{Dataset}
+\label{sec:dataset}
+
+Three public IoT network flow datasets are used, each representing a traffic class. These originate from processed PCAP captures converted to unidirectional flow representations (\emph{uniflow}):
+
+\begin{table}[H]
+\centering
+\caption{Network flow dataset composition.}
+\label{tab:dataset_comp}
+\begin{tabular}{l r r l}
+\toprule
+\textbf{Dataset} & \textbf{Flows} & \textbf{Label} & \textbf{Primary Protocol} \\
+\midrule
+\texttt{uniflow\_normal.csv}           & 171,837 & 0 (\texttt{normal})           & MQTT, TCP \\
+\texttt{uniflow\_mqtt\_bruteforce.csv} &  33,080 & 1 (\texttt{mqtt\_bruteforce}) & MQTT (login) \\
+\texttt{uniflow\_scan\_A.csv}          &  51,359 & 2 (\texttt{scan\_A})          & TCP SYN \\
+\midrule
+\textbf{Total}                         & 256,276 & 3 classes & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Each flow is represented by a vector of $d = 13$ numerical features, selected for real-time computability on a microcontroller:
+
+\begin{table}[H]
+\centering
+\caption{13-feature vector extracted per flow.}
+\label{tab:features}
+\small
+\begin{tabular}{c l l}
+\toprule
+\textbf{Index} & \textbf{Feature} & \textbf{Description} \\
+\midrule
+0  & \texttt{num\_pkts}      & Number of packets in the flow \\
+1  & \texttt{mean\_iat}      & Mean inter-arrival time (s) \\
+2  & \texttt{std\_iat}       & Standard deviation of IAT \\
+3  & \texttt{min\_iat}       & Minimum IAT \\
+4  & \texttt{max\_iat}       & Maximum IAT \\
+5  & \texttt{mean\_pkt\_len} & Mean packet length (bytes) \\
+6  & \texttt{num\_bytes}     & Total bytes in the flow \\
+7  & \texttt{num\_psh\_flags}& PSH flag count \\
+8  & \texttt{num\_rst\_flags}& RST flag count \\
+9  & \texttt{num\_urg\_flags}& URG flag count \\
+10 & \texttt{std\_pkt\_len}  & Standard deviation of packet length \\
+11 & \texttt{min\_pkt\_len}  & Minimum packet length \\
+12 & \texttt{max\_pkt\_len}  & Maximum packet length \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For preprocessing, a \texttt{StandardScaler} is applied to normalize each feature to zero mean and unit variance. The scaler parameters ($\mu_i, \sigma_i$) are exported as embedded constants in the ESP32 firmware, enabling on-device normalization without external library dependencies.
+
+% ====================================================================
+\section{Learning Model: Multiclass MLP}
+\label{sec:modelo_mlp}
+
+A compact Multi-Layer Perceptron (MLP) was designed for execution on memory-constrained microcontrollers:
+
+\begin{equation}
+\text{MLP}: \mathbb{R}^{13} \xrightarrow{W_1, b_1} \mathbb{R}^{32} \xrightarrow{W_2, b_2} \mathbb{R}^{16} \xrightarrow{W_3, b_3} \mathbb{R}^{8} \xrightarrow{W_4, b_4} \mathbb{R}^{3}
+\label{eq:mlp}
+\end{equation}
+
+The first three layers use ReLU activation and the output layer employs Softmax to obtain probabilities over the 3 classes. Table~\ref{tab:model_params} details the parameter distribution:
+
+\begin{table}[H]
+\centering
+\caption{MLP model parameter distribution.}
+\label{tab:model_params}
+\begin{tabular}{l c c r}
+\toprule
+\textbf{Layer} & \textbf{Input} & \textbf{Output} & \textbf{Parameters} \\
+\midrule
+Dense 1 (ReLU)    & 13 & 32 & $13 \times 32 + 32 = 448$ \\
+Dense 2 (ReLU)    & 32 & 16 & $32 \times 16 + 16 = 528$ \\
+Dense 3 (ReLU)    & 16 &  8 & $16 \times  8 +  8 = 136$ \\
+Dense 4 (Softmax) &  8 &  3 & $ 8 \times  3 +  3 =  27$ \\
+\midrule
+\textbf{Total}    &    &    & \textbf{1,139} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+With 1,139 parameters in 32-bit floating point, the complete model occupies $\approx 4.5$\,KB of memory, allowing direct execution in the ESP32-S3's SRAM without quantization.
+
+In the federated learning scheme, only the \textbf{last two layers} ($W_3, b_3, W_4, b_4$, 163 parameters) are exchanged between nodes, reducing communication cost to $\approx 652$\,bytes per update (without JSON serialization).
+
+% ====================================================================
+\section{Hierarchical Federated Learning Protocol}
+\label{sec:fedavg}
+
+A hierarchical federated learning (HFL) scheme is implemented with three aggregation levels:
+
+\begin{enumerate}
+    \item \textbf{Edge Level (ESP32 $\to$ RPi):} ESP32 nodes send feature vectors to the gateway every 5 seconds via MQTT (\texttt{fl/features}). The gateway accumulates $N_s = 40$ heuristically labeled samples.
+
+    \item \textbf{Fog Level (RPi $\to$ PC):} After filling the buffer, the gateway trains locally for $E = 5$ epochs and sends weights $\{W_3, b_3, W_4, b_4\}$ along with local accuracy and sample count to the central server via HTTP POST.
+
+    \item \textbf{Cloud Level (FedAvg Aggregation):} The server waits to receive updates from $K = 2$ gateways and applies sample-weighted FedAvg:
+\end{enumerate}
+
+\begin{equation}
+W_{\text{global}}^{(t+1)} = \frac{\sum_{k=1}^{K} n_k \cdot W_k^{(t)}}{\sum_{k=1}^{K} n_k}
+\label{eq:fedavg}
+\end{equation}
+
+where $n_k$ is the number of samples used for local training at gateway $k$ and $W_k^{(t)}$ its local weights at round $t$.
+
+The resulting global model is distributed back to gateways (HTTP POST to \texttt{/deploy-model}), which in turn publish it to ESP32s via MQTT (\texttt{fl/global\_model}). Thus, the complete bidirectional flow is:
+
+\begin{center}
+ESP32 $\xrightarrow{\text{features (MQTT)}}$ RPi $\xrightarrow{\text{weights (HTTP)}}$ PC $\xrightarrow{\text{global model (HTTP)}}$ RPi $\xrightarrow{\text{global model (MQTT)}}$ ESP32
+\end{center}
+
+Gateway labeling is performed through a \textbf{heuristic function} calibrated with real dataset statistical distributions:
+
+\begin{itemize}
+    \item If $\texttt{num\_pkts} \geq 50$ \textbf{and} $\texttt{num\_psh} \geq 10$: label $= 1$ (\texttt{bruteforce}).
+    \item If $\texttt{num\_pkts} \leq 5$ \textbf{and} $\texttt{mean\_pkt\_len} \leq 50$ \textbf{and} $\texttt{num\_psh} \leq 1$: label $= 2$ (\texttt{scan\_A}).
+    \item If $\texttt{num\_pkts} \leq 30$ \textbf{and} $\texttt{mean\_pkt\_len} \geq 50$: label $= 0$ (\texttt{normal}).
+    \item Otherwise, the sample is discarded ($-1$).
+\end{itemize}
+
+% ====================================================================
+\section{ASCON-128 Lightweight Encryption Integration}
+\label{sec:ascon}
+
+To protect federated learning artifacts in transit, \textbf{ASCON-128} \cite{NISTSP8002322025} is integrated, the NIST-selected lightweight cryptography standard for constrained devices. ASCON provides Authenticated Encryption with Associated Data (AEAD), simultaneously guaranteeing \emph{confidentiality} and \emph{integrity} of messages.
+
+\subsection{Cryptographic Parameters}
+
+\begin{itemize}
+    \item \textbf{Symmetric key:} 128 bits (16 bytes), pre-shared across all devices.
+    \item \textbf{Nonce:} 128 bits, generated from a 32-bit truncated timestamp and a monotonic counter.
+    \item \textbf{Authentication tag:} 128 bits (16 bytes).
+    \item \textbf{Rate:} 64 bits (8 bytes per block).
+    \item \textbf{Permutation:} $p^{12}$ for initialization/finalization, $p^6$ for block processing.
+\end{itemize}
+
+\subsection{Encrypted Channels}
+
+All \textbf{four communication channels} of the system are encrypted:
+
+\begin{table}[H]
+\centering
+\caption{Communication channels protected with ASCON-128.}
+\label{tab:canales_ascon}
+\begin{tabular}{l l l l}
+\toprule
+\textbf{Channel} & \textbf{Protocol} & \textbf{Content} & \textbf{Implementation} \\
+\midrule
+ESP32 $\to$ RPi & MQTT & Features (13 floats)    & C++ (\texttt{ascon128.h}) \\
+RPi $\to$ PC    & HTTP & Local weights + metrics  & Python (\texttt{ascon128.py}) \\
+PC $\to$ RPi    & HTTP & Global model             & Python (\texttt{ascon128.py}) \\
+RPi $\to$ ESP32 & MQTT & Global model             & Python $\to$ C++ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The encrypted payload is encapsulated in a JSON \emph{envelope} with three Base64-encoded fields:
+\begin{verbatim}
+{"ct": "<ciphertext_b64>", "tag": "<tag_b64>", "nonce": "<nonce_b64>"}
+\end{verbatim}
+
+\subsection{Overhead Metrics}
+
+To quantify ASCON overhead, all encryption and decryption operations are instrumented with high-resolution timers (\texttt{micros()} on ESP32, \texttt{time.perf\_counter()} in Python) and automatically logged to CSV files via the \texttt{ascon\_metrics.py} module, capturing:
+
+\begin{itemize}
+    \item Encryption/decryption time (ms).
+    \item Plaintext and encrypted envelope sizes (bytes).
+    \item Communication overhead (additional bytes and percentage).
+    \item Associated FL round.
+\end{itemize}
+
+Additionally, an \textbf{encryption-free branch} (\texttt{hfl\_v7-no-ascon}) of the repository is maintained with identical functionality but without ASCON, enabling direct communication time comparison as a baseline.
+
+% ====================================================================
+\section{Classical ML Models as Baseline}
+\label{sec:ml_classic}
+
+To answer whether TinyML can achieve accuracy comparable to traditional models, four supervised ML algorithms are trained and optimized on the same datasets:
+
+\begin{enumerate}
+    \item \textbf{Decision Tree:} Optimized with \texttt{GridSearchCV} over \texttt{max\_depth}, \texttt{min\_samples\_split}, \texttt{min\_samples\_leaf}, and \texttt{criterion}. Includes \texttt{class\_weight='balanced'} to handle class imbalance.
+
+    \item \textbf{Random Forest:} Optimized with \texttt{RandomizedSearchCV} ($n=80$ iterations) over \texttt{n\_estimators}, \texttt{max\_depth}, \texttt{max\_features}, and \texttt{class\_weight} variants.
+
+    \item \textbf{Logistic Regression:} Evaluated with L1, L2, and ElasticNet penalties, varying the regularization parameter $C$.
+
+    \item \textbf{Support Vector Machine (SVM):} Linear and RBF kernels are compared. For the RBF kernel, stratified subsampling (maximum 25,000 samples per class) is applied to avoid prohibitive training times.
+\end{enumerate}
+
+All models are evaluated with stratified cross-validation ($k=5$) using macro F1-Score as the selection metric. To estimate ESP32 deployment feasibility, the \texttt{m2cgen} library is used to export trained models to pure C code, and the following are measured:
+\begin{itemize}
+    \item Estimated memory footprint of the exported model.
+    \item Average inference time (100 iterations with warmup).
+    \item Metrics: Accuracy, F1 macro, F1 weighted, Precision, Recall, and MCC (Matthews Correlation Coefficient).
+\end{itemize}
+
+% ====================================================================
+\section{Experimental Protocol}
+\label{sec:protocolo}
+
+The evaluation is organized into two experimental scenarios:
+
+\subsection{Scenario 1: Complete HFL System with ASCON}
+
+The complete system is deployed on real hardware:
+\begin{itemize}
+    \item 2 $\times$ ESP32-S3 (normal node + simulated node).
+    \item 1 $\times$ Raspberry Pi 4 (gateway, MQTT broker, local training).
+    \item 1 $\times$ PC (federated server, dashboard).
+    \item Shared local Wi-Fi network.
+    \item ASCON-128 enabled on all channels.
+\end{itemize}
+
+$\geq 50$ federated learning rounds are executed, recording global accuracy, loss, encryption/decryption times, and message sizes.
+
+\subsection{Scenario 2: HFL System without ASCON (Baseline)}
+
+Identical to Scenario 1 but with ASCON disabled, using the \texttt{hfl\_v7-no-ascon} branch. Communication uses plain JSON. The same indicators are measured to calculate the overhead attributable exclusively to encryption.
+
+\subsection{Scenario 3: Centralized Classical Models}
+
+Classical models (Section~\ref{sec:ml_classic}) are trained centrally on the PC using the entire dataset with a stratified 80/20 split. This establishes a performance ceiling (\emph{upper bound}) against which to compare federated system accuracy.
+
+\subsection{Evaluation Metrics}
+
+\begin{itemize}
+    \item \textbf{Detection accuracy:} Accuracy, F1-Score (macro and weighted), Precision, Recall, MCC.
+    \item \textbf{Cryptographic overhead:} Encryption/decryption time (ms), size increase (bytes, \%), overhead as percentage of total FL cycle.
+    \item \textbf{Federated efficiency:} Number of rounds to convergence, accuracy per round, communication cost per round.
+    \item \textbf{Edge viability:} Model memory footprint (KB), ESP32 inference time ($\mu$s), SRAM consumption.
+\end{itemize}

@@ -1,0 +1,79 @@
+%\newpage
+%\setcounter{page}{1}
+\begin{center}
+\begin{figure}
+\centering%
+\epsfig{file=HojaTitulo/LogoUniandes,scale=0.45}%
+\end{figure}
+\thispagestyle{empty} \vspace*{1.0cm} \textbf{\Large
+Sistema de detección y respuesta temprana para redes IIoT en el borde (Edge) usando modelos livianos (TinyML), aprendizaje federado y cifrado ligero, desplegado en Raspberry Pi 5 }\\[4.0cm]
+\Large\textbf{Santiago Alejandro Jaimes Puerto}\\
+\Large\textbf{Nicolas Casas Ibarra}\\[5.0cm]
+\small Universidad de Los Andes\\
+Departamento de Ingeniería de sistemas y computación\\
+Bogotá, Colombia\\
+2026\\
+\end{center}
+
+\newpage{\pagestyle{empty}\cleardoublepage}
+
+\newpage
+\begin{center}
+\thispagestyle{empty} \vspace*{0cm} \textbf{\Large Sistema de detección y respuesta temprana para redes IIoT en el borde (Edge) usando modelos livianos (TinyML), aprendizaje federado y cifrado ligero, desplegado en Raspberry Pi 5. }\\[3.0cm]
+\Large\textbf{Santiago Alejandro Jaimes Puerto}\\
+\Large\textbf{Nicolas Casas Ibarra}\\[3.0cm]
+\small University de Los Andes\\
+\small Presentado en cumplimiento parcial de los requisitos para el grado de:\\
+\textbf{System and Computer engineer}\\[2.0cm]
+Director:\\
+Prof. Carlos Andrés Lozano Garzón, PhD\\
+
+Trabajo de grado defendido en:\\
+Mayo 24, 2026 - 12:00 pm \\[1.5cm]
+Universidad de Los Andes\\
+Departamento de Ingeniería de Sistemas y Computación\\
+Bogotá, Colombia\\
+2026\\
+\end{center}
+
+\newpage{\pagestyle{empty}\cleardoublepage}
+
+\newpage
+\thispagestyle{empty} \textbf{}\normalsize
+\\\\\\%
+\textbf{Agradecimientos}\\[4.0cm]
+
+
+
+        Quiero expresar mi más sincera gratitud a todas las personas que hicieron posible este logro.\\
+
+        A mi familia, quienes han sido mi ancla y mi inspiración en cada paso de este camino. Su amor incondicional y apoyo constante me han dado la fortaleza para superar cualquier desafío. \\
+        
+        Al profesor Paulo de Oliveria, mi asesor, quien no solo compartió generosamente su conocimiento y experiencia, sino que también fue un guía incansable durante este proyecto. Su paciencia, dedicación y constante disposición para resolver dudas fueron esenciales para enfrentar los retos que surgieron. Sus valiosos comentarios y orientaciones me permitieron aprender y crecer, tanto a nivel académico como personal. Este proyecto no habría sido lo mismo sin su acompañamiento e inspiración. \\
+
+        A la Universidad de los Andes, mi alma máter, por ser un espacio de excelencia académica que me permitió desarrollar mis habilidades y consolidar mi formación profesional. A sus profesores, administrativos y recursos de investigación, les agradezco por fomentar un ambiente de aprendizaje integral, colaboración y crecimiento personal. Haber formado parte de esta comunidad académica ha sido un privilegio invaluable que marcará para siempre mi trayectoria. \\
+        
+        Y, con un cariño especial, a mis amigos. Gracias por convertir este recorrido en una aventura inolvidable. A Sebastián Moya,  por su apoyo clave y su disposición.\\
+        
+        A todos ustedes, mi eterno agradecimiento. Este logro también es suyo.
+        
+
+
+
+\newpage{\pagestyle{empty}\cleardoublepage}
+
+
+
+
+\textbf{\LARGE Resumen}\\
+
+Este documento presenta el diseño, implementación y evaluación de un sistema de detección de intrusiones (IDS) para redes IoT/IIoT desplegado en una arquitectura jerárquica Edge--Fog--Cloud. El sistema combina modelos livianos de \textit{machine learning} (TinyML) ejecutados en microcontroladores ESP32-S3, aprendizaje federado jerárquico (HFL) coordinado desde una Raspberry Pi 4 y un servidor central, y cifrado ligero \textbf{ASCON-128} para proteger todas las comunicaciones del ciclo de aprendizaje. La investigación aborda tres preguntas clave: la viabilidad de TinyML para detección de ataques en dispositivos restringidos, el impacto del aprendizaje federado en la privacidad y precisión del IDS, y el overhead del cifrado ASCON en la comunicación de modelos federados.\\
+
+Se diseñó un perceptrón multicapa (MLP) compacto de 1\,139 parámetros ($\approx$4.5\,KB) con arquitectura $13 \to 32 \to 16 \to 8 \to 3$, capaz de clasificar flujos de red en tres categorías (\texttt{normal}, \texttt{mqtt\_bruteforce}, \texttt{scan\_A}) utilizando 13 características extraídas de flujos de red. El modelo fue entrenado de forma distribuida mediante FedAvg sobre un dataset de 256\,276 flujos, alcanzando $\sim$90\% de accuracy tras 20--30 rondas federadas compartiendo únicamente 163 parámetros por ronda.\\
+
+Como línea base, se entrenaron y compararon cuatro modelos clásicos de ML (Decision Tree, Random Forest, Logistic Regression, SVM) de forma centralizada, alcanzando hasta 99.94\% de accuracy (Random Forest), pero con requerimientos de memoria incompatibles con microcontroladores. La cuantificación del overhead de ASCON-128 sobre 182 operaciones criptográficas reveló un costo temporal despreciable ($\sim$14\,ms por operación, $<$0.1\% del ciclo federado) y un overhead de tamaño moderado ($\sim$36\% por mensaje), sin impacto observable en la convergencia del modelo.\\
+
+Los resultados validan que la combinación de TinyML, aprendizaje federado y cifrado ligero constituye una solución viable y segura para detección de intrusiones en el borde de redes IoT, ofreciendo un compromiso efectivo entre precisión, privacidad, seguridad y eficiencia computacional.\\
+
+
+{\small \textbf{Keywords}: Detección de Intrusiones, IoT, TinyML, Aprendizaje Federado, ASCON-128, Criptografía Ligera, Edge Computing, ESP32, Raspberry Pi, MLP, Seguridad de Redes.}

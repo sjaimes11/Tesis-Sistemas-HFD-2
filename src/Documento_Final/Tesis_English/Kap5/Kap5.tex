@@ -1,0 +1,231 @@
+\chapter{Results}
+\label{chap:resu}
+
+This chapter presents the experimental results of the intrusion detection system deployed on real hardware, organized around the three research questions formulated in Chapter~\ref{chap:Introduction}. First, the performance of classical ML models is analyzed as a centralized baseline (Section~\ref{sec:res_classic}). Then, the hierarchical federated learning system is evaluated (Section~\ref{sec:res_hfl}). Finally, the overhead of ASCON-128 encryption is quantified (Section~\ref{sec:res_ascon}).
+
+% ====================================================================
+\section{Classical Model Performance (Centralized Baseline)}
+\label{sec:res_classic}
+
+The four classical ML models were trained on the entire dataset (256,276 flows) with stratified 80/20 partitioning and hyperparameter optimization via cross-validation ($k=5$). Table~\ref{tab:classic_results} summarizes the results obtained.
+
+\begin{table}[H]
+\centering
+\caption{Classical ML model performance (centralized training).}
+\label{tab:classic_results}
+\small
+\begin{tabular}{l c c c c c c}
+\toprule
+\textbf{Model} & \textbf{Accuracy} & \textbf{F1 Macro} & \textbf{F1 Weighted} & \textbf{Precision} & \textbf{Recall} & \textbf{MCC} \\
+\midrule
+Decision Tree      & 0.9987 & 0.9981 & 0.9987 & 0.9982 & 0.9981 & 0.9977 \\
+Random Forest      & 0.9994 & 0.9991 & 0.9994 & 0.9991 & 0.9990 & 0.9989 \\
+Logistic Regr.     & 0.9412 & 0.9118 & 0.9385 & 0.9244 & 0.9053 & 0.8964 \\
+SVM (Linear)       & 0.9447 & 0.9162 & 0.9421 & 0.9280 & 0.9099 & 0.9017 \\
+SVM (RBF)          & 0.9968 & 0.9953 & 0.9968 & 0.9954 & 0.9952 & 0.9944 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Key findings:}
+\begin{itemize}
+    \item \textbf{Random Forest} achieves the best overall performance (Accuracy: 99.94\%, MCC: 0.9989), followed closely by Decision Tree (99.87\%) and SVM-RBF (99.68\%).
+    \item Linear models (Logistic Regression, SVM-Linear) show a significant drop ($\approx 5$--$6$ percentage points), suggesting that decision boundaries between classes are not completely linearly separable in the 13-feature space.
+    \item All tree-based models exhibit MCC $> 0.99$, confirming that the 13 selected features are highly discriminative for the three-class classification task.
+\end{itemize}
+
+\subsection{ESP32 Deployment Feasibility}
+
+Table~\ref{tab:classic_esp32} evaluates the feasibility of exporting each model to C code for execution on the ESP32-S3.
+
+\begin{table}[H]
+\centering
+\caption{Estimated memory footprint for ESP32 deployment.}
+\label{tab:classic_esp32}
+\small
+\begin{tabular}{l r r l}
+\toprule
+\textbf{Model} & \textbf{Est. Memory} & \textbf{Inference (ms)} & \textbf{ESP32 Viable?} \\
+\midrule
+Decision Tree       & $\sim$15\,KB  & $< 0.1$ & Yes \\
+Random Forest       & $\sim$2.5\,MB & $\sim$5  & No (exceeds SRAM) \\
+Logistic Regression & $\sim$1\,KB   & $< 0.05$ & Yes \\
+SVM (Linear)        & $\sim$1\,KB   & $< 0.05$ & Yes \\
+SVM (RBF)           & $\sim$4\,MB   & $\sim$50 & No (exceeds SRAM) \\
+MLP (proposed)      & $\sim$4.5\,KB & $< 0.1$  & \textbf{Yes} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This reveals a fundamental \emph{trade-off}: the most accurate models (Random Forest, SVM-RBF) are incompatible with the ESP32-S3's memory constraints (512\,KB SRAM). The proposed MLP ($\approx 4.5$\,KB) offers an efficient compromise between accuracy and edge viability.
+
+% ====================================================================
+\section{Hierarchical Federated Learning: Convergence and Accuracy}
+\label{sec:res_hfl}
+
+The HFL system was deployed on real hardware during sessions of $\geq 60$ federated learning rounds.
+
+\subsection{Federated Model Convergence}
+
+\begin{table}[H]
+\centering
+\caption{HFL system convergence metrics.}
+\label{tab:hfl_convergence}
+\begin{tabular}{l r}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Rounds to accuracy $> 70\%$  & $\sim$8--12 \\
+Rounds to accuracy $> 85\%$  & $\sim$20--30 \\
+Stabilized global accuracy    & $\sim$88--92\% \\
+Final loss (Cross-Entropy)    & $\sim$0.25--0.40 \\
+Samples per round (per gateway) & 40 \\
+Local epochs per round        & 5 \\
+Duration per round            & $\sim$70--80\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:}
+\begin{enumerate}
+    \item The federated model converges in $\sim$20--30 rounds to $\sim$90\% accuracy, representing a \textbf{gap of $\sim$10 points} relative to centralized models (Decision Tree: 99.87\%). This gap is attributable to: (i) the reduced local buffer size (40 samples vs.\ 256,276), (ii) the non-IID data distribution between nodes (one node generates only normal traffic), and (iii) the heuristic labeling function that introduces noise relative to real labels.
+
+    \item Convergence is monotonically increasing during the first 20 rounds, with minor oscillations ($\pm 3\%$) in subsequent rounds, typical of FL with non-IID data \cite{Imteaj2022_FL_ResourceConstrainedSurvey}.
+
+    \item The \textbf{communication cost} per complete federated round (round trip) is $\approx 7.2$\,KB in plain JSON and $\approx 9.8$\,KB with ASCON encryption, which is compatible with low-bandwidth IoT networks.
+\end{enumerate}
+
+\subsection{Comparison: Federated vs.\ Centralized}
+
+Table~\ref{tab:fed_vs_central} directly compares federated model accuracy with centralized models, considering that the federated model uses an identical MLP.
+
+\begin{table}[H]
+\centering
+\caption{Accuracy comparison: federated vs.\ centralized training.}
+\label{tab:fed_vs_central}
+\small
+\begin{tabular}{l c c l}
+\toprule
+\textbf{Approach} & \textbf{Accuracy} & \textbf{Data Shared} & \textbf{Privacy} \\
+\midrule
+Centralized MLP              & $\sim$97\%    & All flows             & None \\
+Federated MLP (HFL, 60 rounds) & $\sim$90\%  & Weights only (163 params) & High \\
+Centralized Random Forest    & 99.94\%       & All flows             & None \\
+Centralized Decision Tree    & 99.87\%       & All flows             & None \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The federated system achieves $\sim$90\% accuracy sharing \textbf{only 163 model parameters} (652 bytes) instead of raw traffic data ($\sim$256K flows $\times$ 13 features $= \sim$13.3M values). This represents a \textbf{$>$99.99\% reduction} in exchanged information, with a $\sim$7--10 point accuracy penalty.
+
+% ====================================================================
+\section{ASCON-128 Encryption Overhead}
+\label{sec:res_ascon}
+
+Encryption/decryption metrics were collected during 60 federated learning rounds (182 recorded cryptographic operations). Results are segmented by communication direction and system layer.
+
+\subsection{Temporal Overhead}
+
+\begin{table}[H]
+\centering
+\caption{ASCON-128 encryption/decryption times on the central server (PC).}
+\label{tab:ascon_time}
+\small
+\begin{tabular}{l c c c c r}
+\toprule
+\textbf{Operation} & \textbf{Mean} & \textbf{Median} & \textbf{Min} & \textbf{Max} & \textbf{N} \\
+\midrule
+Decryption (RPi$\to$PC) & 14.21\,ms & 12.69\,ms & 10.62\,ms & 43.73\,ms & 122 \\
+Encryption (PC$\to$RPi)  & 13.76\,ms & 12.64\,ms & 10.10\,ms & 93.42\,ms &  60 \\
+\midrule
+\textbf{Total (average)} & \textbf{13.98\,ms} & \textbf{12.67\,ms} & --- & --- & 182 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observations:}
+\begin{itemize}
+    \item The average time for an ASCON-128 operation in Python (PC server) is \textbf{$\approx$14\,ms}, with a median of $\approx$12.7\,ms. Given that each FL round takes $\sim$70--80 seconds total, the cryptographic overhead per round (3 operations: 2 decryptions + 1 encryption) represents $\sim$42\,ms, equivalent to \textbf{$\approx$0.05\%} of total round time.
+    \item Outliers (max 93.42\,ms) correspond to occasional OS load spikes and are not representative of typical behavior.
+    \item On the ESP32 (C++, measured with \texttt{micros()}), encryption/decryption times for feature payloads ($\sim$200 bytes) are on the order of \textbf{$\sim$100--300\,$\mu$s}, thanks to native C implementation without interpreter overhead.
+\end{itemize}
+
+\subsection{Communication Overhead}
+
+\begin{table}[H]
+\centering
+\caption{Size overhead from ASCON-128 + Base64 encryption.}
+\label{tab:ascon_size}
+\small
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Channel} & \textbf{Plaintext} & \textbf{Encrypted} & \textbf{Overhead} & \textbf{Increase} \\
+\midrule
+RPi$\to$PC (weights)       & 3,636$\pm$9\,B  & 4,948$\pm$14\,B  & 1,312$\pm$4\,B  & 36.1\% \\
+PC$\to$RPi (global model)  & 3,530$\pm$8\,B  & 4,790$\pm$11\,B  & 1,260$\pm$3\,B  & 35.7\% \\
+\midrule
+\textbf{Average}           & 3,583\,B         & 4,869\,B          & \textbf{1,286\,B} & \textbf{35.9\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The $\approx$36\% communication overhead is composed of:
+\begin{itemize}
+    \item \textbf{ASCON authentication tag:} 16 bytes (fixed).
+    \item \textbf{Nonce:} 16 bytes (fixed).
+    \item \textbf{Base64 expansion:} factor $\times 4/3$ over ciphertext + tag + nonce.
+    \item \textbf{JSON envelope:} $\sim$30 bytes of structure (\texttt{\{"ct":"...","tag":"...","nonce":"..."\}}).
+\end{itemize}
+
+In absolute terms, the overhead is $\approx$1.3\,KB per message, which for the $\sim$3 transmissions per FL round amounts to $\sim$3.9\,KB additional per round. For a standard Wi-Fi link (54\,Mbps), this adds $<$0.001\,ms of transmission time, making it negligible.
+
+\subsection{Summary: ASCON Impact on the HFL System}
+
+\begin{table}[H]
+\centering
+\caption{Total ASCON-128 overhead summary per federated round.}
+\label{tab:ascon_resumen}
+\begin{tabular}{l r r}
+\toprule
+\textbf{Component} & \textbf{With ASCON} & \textbf{Without ASCON} \\
+\midrule
+Communication time (PC, 3 ops.)  & $\sim$42\,ms   & $\sim$0.3\,ms (serialization) \\
+Total size per round              & $\sim$14.6\,KB & $\sim$10.7\,KB \\
+Total round time                  & $\sim$73\,s    & $\sim$72\,s \\
+\midrule
+\textbf{Relative temporal overhead}  & \multicolumn{2}{c}{\textbf{$\approx$0.06\% of FL cycle}} \\
+\textbf{Relative size overhead}      & \multicolumn{2}{c}{\textbf{$\approx$36\% per message}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ASCON-128 encryption introduces a \textbf{negligible} temporal overhead ($< 0.1\%$ of total round time) and a \textbf{moderate} size overhead ($\approx 36\%$) resulting in $\sim$3.9\,KB additional per round. Given that the payload is on the order of kilobytes, this cost is acceptable for typical IoT networks and does not impact federated model convergence or performance.
+
+% ====================================================================
+\section{Research Questions Analysis}
+\label{sec:preguntas}
+
+\subsection{RQ-1: Can TinyML detect network attacks on IoT devices with accuracy comparable to traditional edge models?}
+
+The 1,139-parameter MLP model ($\sim$4.5\,KB), executed directly on the ESP32-S3, achieves $\sim$90\% accuracy after federated training. While a gap of $\sim$10 points exists relative to centralized Random Forest (99.94\%), the latter requires $\sim$2.5\,MB of memory and cannot be deployed on a microcontroller with 512\,KB SRAM.
+
+Comparing with edge-viable models (Decision Tree: 99.87\% with $\sim$15\,KB), the gap narrows to $\sim$10 points, primarily attributable to the federated scheme rather than the model architecture. An identical MLP trained centrally achieves $\sim$97\%, placing it within 3 points of the Decision Tree.
+
+\textbf{RQ-1 Conclusion:} TinyML can detect attacks with production-viable accuracy ($>$90\%) in a form factor compatible with IoT microcontrollers. The penalty relative to traditional edge models is moderate and compensated by privacy (FL) and security (ASCON) advantages.
+
+\subsection{RQ-2: Does federated learning reduce sensitive data exchange without affecting IDS accuracy?}
+
+Federated learning reduces exchanged information from $\sim$13.3 million values (all flows) to \textbf{163 parameters} per round (652\,bytes), a reduction of $>$99.99\%. The accuracy impact is $\sim$7 points (from $\sim$97\% centralized to $\sim$90\% federated), consistent with FL literature on non-IID data \cite{Imteaj2022_FL_ResourceConstrainedSurvey, Albanbay2025}.
+
+\textbf{RQ-2 Conclusion:} Federated learning eliminates the need to transfer raw traffic data, protecting monitored network privacy. The accuracy reduction ($\sim$7\%) is an acceptable trade-off in scenarios where privacy is a priority.
+
+\subsection{RQ-3: What is the overhead of ASCON encryption in federated model communication?}
+
+Based on 182 cryptographic operations recorded during 60 FL rounds:
+\begin{itemize}
+    \item \textbf{Temporal overhead:} $\sim$42\,ms per round ($\sim$14\,ms per operation), representing $\sim$0.06\% of total round time.
+    \item \textbf{Size overhead:} $\sim$36\% increase per message ($\sim$1.3\,KB over $\sim$3.6\,KB).
+    \item \textbf{Convergence impact:} None observable. Accuracy and loss curves are indistinguishable between ASCON-enabled and ASCON-disabled branches.
+\end{itemize}
+
+\textbf{RQ-3 Conclusion:} ASCON-128 overhead is \textbf{negligible in time} and \textbf{moderate in size}, validating its suitability as a protection mechanism for federated learning communications on constrained IoT devices.

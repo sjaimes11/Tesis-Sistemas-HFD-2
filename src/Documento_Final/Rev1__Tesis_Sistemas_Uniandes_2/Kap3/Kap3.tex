@@ -1,0 +1,48 @@
+\chapter{Market equilibrium in power systems with network and storage constraints}
+\label{chap:meth}
+
+
+\section{Network Model and Constraints}
+
+The formulation stated at \ref{net_model} will be implemented in MATLAB in order to create a network model that can be solved using \textit{fmincon}. Additional to the network constraints given by the $Y_{bus}$ matrix and the power flow equations, the following will be included:
+
+\begin{itemize}
+    \item \textbf{Simulation time:} Number of hours to simulate, leaving this as a parameter may help to generalize the study case in the future.
+    \item \textbf{Minimum and maximum voltage:} Security constraints of voltage that every node in the system must fulfill. If the voltage in the nodes is too far away from the slack node, the system could become unstable and suffer a voltage collapse.
+    \item \textbf{Battery capacity:} Maximum energy that the energy storage device can accumulate.
+    \item \textbf{Battery maximum usage:} Percentage of the total battery capacity that the aggregator can use to buy and sell energy and make profit from it.
+    \item \textbf{Minimum and maximum power:} Physical limitations of the batteries ripple and the wind production. A limit to the reactive power will also be set since the machines can not operate outside an specific power factor.
+    \item \textbf{Line limits:} Since there are limits in the current that can flow through a grid line, it is necessary to include constraints in the maximum power that can flow. Changing those limits will allow us to include and analysis of the effect from line limits in the congestion fee.
+\end{itemize}
+
+
+\section{Optimal Power Flow Problem}
+
+Each of the scenarios that we will study requires a different OPF formulation. In this section we will define the optimization problems assuming that the constraints denoted as \textit{System Model} are the ones written in section \ref{net_model}.
+
+\subsection{Minimum Losses Dispatch}
+
+This scenario will be assumed as the base case, since it provide the Independent System Operator point of view for the economical dispatch. For this OPF an inelastic demand will be used and the prices will be calculated as the incremental value of the losses for each node, using the slack spot price. Based on the results from this OPF, the demand curve for the elastic cases will be calculated. Since the demand is assumed as inelastic using an arbitrary demand curve for the 24 hours, the social welfare result is not comparable with the other two cases. The mathematical formulation is shown below.
+
+\begin{align}
+    \min{P_L} &= \frac{1}{2}\sum_{i=1}^3\sum_{k=1}^3 G_{ij}[(V^t_i)^2+(V^t_k)^2-2V^t_iV^t_k\cos(\theta^t_i-\theta^t_k)]\\
+   \mbox{s.t.}\\
+    &V_i^{min}\le  V_i^t \le V_i^{max} \quad \forall t\in \mathbf{T}\\
+    &-Q_i^m\le  Q_i^t \le Q_i^m \quad \forall t\in \mathbf{T}\\
+    &-P_i^m\le  P_i^t \le P_i^m \quad \forall t\in \mathbf{T}\\
+    &\rho C_i \le  E_i^t \le C_i \quad \forall t\in \mathbf{T}\\
+    &S^t_{ij} \le S_{ij}^{max}
+\end{align}
+
+Where:\\
+$G_{ij}$ is the ij component of the conductance matrix.\\
+$V^t_i$ is the nodal voltage magnitude of i at time t.\\
+$\theta^t_i$ is the nodal voltage angle of i at time t.\\
+$E_i^t$ is the energy stored in the i battery for time t.\\
+$\rho$ is the minimum battery level for all T.\\
+$S_{ij}^t$ is the maximum power flowing through line ij.\\
+
+Node 1 is the slack bus.
+
+
+

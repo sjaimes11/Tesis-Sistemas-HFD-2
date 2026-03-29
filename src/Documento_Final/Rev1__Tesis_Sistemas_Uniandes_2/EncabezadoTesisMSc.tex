@@ -1,0 +1,137 @@
+\documentclass[12pt,english,openany,letterpaper,pagesize]{scrbook}
+
+\usepackage[utf8]{inputenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage[spanish]{babel}
+%\usepackage[spanish]{algorithm2e}
+\usepackage{fancyhdr}
+\usepackage{epsfig}
+\usepackage{epic}
+\usepackage{eepic}
+\usepackage{amsmath}
+\usepackage{threeparttable}
+\usepackage{amscd}
+\usepackage{here}
+
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{lscape}
+\usepackage{tabularx}
+\usepackage{subfigure}
+\usepackage{longtable}
+\usepackage{nameref}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+%\usepackage{svg}
+\usepackage{cleveref}
+\usepackage{siunitx}
+\usepackage{gensymb}
+\usepackage{eurosym}
+\usepackage{multirow}
+\usepackage{multicol}
+\usepackage{rotating} %Para rotar texto, objetos y tablas seite. No se ve en DVI solo en PS. Seite 328 Hundebuch
+                        %se usa junto con \rotate, \sidewidestable ....
+\usepackage{graphicx}
+\usepackage{siunitx}
+ %\usepackage{hyperref} % CAJAS ROJAS
+%\usepackage{xcolor}
+\usepackage{subfig}
+
+% \usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
+% \usepackage{graphicx}     % Para \includegraphics
+\usepackage{subcaption}   % Para \begin{subfigure}
+\usepackage{caption}
+\captionsetup{font=small}
+\captionsetup[sub]{font=small,skip=2pt}
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{amsmath} % Para símbolos matemáticos
+
+% \usepackage{booktabs}     % Para \toprule, \midrule, \bottomrule
+% \usepackage{amsmath}      % Para símbolos matemáticos (como \approx)
+
+
+\usepackage{longtable} % Paquete para tablas que pueden extenderse en múltiples páginas
+\usepackage{caption}   % Para personalizar captions si se desea
+
+\usepackage{subcaption}
+\usepackage{booktabs}
+
+\renewcommand{\theequation}{\thechapter-\arabic{equation}}
+\renewcommand{\thefigure}{\textbf{\thechapter-\arabic{figure}}}
+\renewcommand{\thetable}{\textbf{\thechapter-\arabic{table}}}
+
+
+\pagestyle{fancyplain}%\addtolength{\headwidth}{\marginparwidth}
+\textheight22.5cm \topmargin0cm \textwidth16.5cm
+\oddsidemargin0cm \evensidemargin-0cm%
+\renewcommand{\chaptermark}[1]{\markboth{\thechapter\; #1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\; #1}}
+\lhead[\fancyplain{}{\thepage}]{\fancyplain{}{\rightmark}}
+\rhead[\fancyplain{}{\leftmark}]{\fancyplain{}{\thepage}}
+\fancyfoot{}
+\thispagestyle{fancy}%
+
+
+\addtolength{\headwidth}{0cm}
+\unitlength1mm %Define la unidad LE para Figuras
+%\mathindent0cm %Define la distancia de las formulas al texto,  fleqn las descentra
+\marginparwidth0cm
+\parindent0cm %Define la distancia de la primera linea de un parrafo a la margen
+
+%Para tablas,  redefine el backschlash en tablas donde se define la posici\'{o}n del texto en las
+%casillas (con \centering \raggedright o \raggedleft)
+\newcommand{\PreserveBackslash}[1]{\let\temp=\\#1\let\\=\temp}
+\let\PBS=\PreserveBackslash
+
+%Espacio entre lineas
+\renewcommand{\baselinestretch}{1.1}
+
+%Neuer Befehl f\"{u}r die Tabelle Eigenschaften der Aktivkohlen
+\newcommand{\arr}[1]{\raisebox{1.5ex}[0cm][0cm]{#1}}
+
+%Neue Kommandos
+\usepackage{Befehle}
+%Inicio del documento. Tener en cuenta que hay archivos auxiliares
+
+\begin{document}
+\pagenumbering{roman}
+\input{HojaTitulo/HojaTituloMSc}
+\renewcommand{\tablename}{\textbf{Table}}
+\renewcommand{\figurename}{\textbf{Figure}}
+\renewcommand{\listtablename}{Lista de Tablas}
+\renewcommand{\listfigurename}{Lista of Figuras}
+\renewcommand{\contentsname}{Tabla de Contenido}
+
+
+%\newcommand{\clearemptydoublepage}{\newpage{\pagestyle{empty}\cleardoublepage}}
+\tableofcontents
+
+\clearpage
+
+\addcontentsline{toc}{chapter}{List of Figures} % para que aparezca en el indice de contenidos
+\listoffigures % indice de figuras
+
+\clearpage
+\addcontentsline{toc}{chapter}{List of Tables} % para que aparezca en el indice de contenidos
+\listoftables % indice de tablas
+
+\clearpage
+%\input{Tab_Simbolos/TabSimbolosMSc}
+%\input{Resumen}%\newcommand{\clearemptydoublepage}{\newpage{\pagestyle{empty}\cleardoublepage}}
+\pagenumbering{arabic}
+\input{Kap1/Kap1}
+\input{Kap2/Kap2}
+\input{Kap3b/Kap3b}
+%\input{Kap3/Kap3}
+%\input{Kap4/Kap4}
+\input{Kap5/Kap5}
+\input{Kap6/Kap6}
+\renewcommand\bibname{Bibliografía}
+\addcontentsline{toc}{chapter}{\numberline{}Bibliografía}
+\bibliographystyle{IEEEtran}
+\bibliography{BibliMSc}
+\input{Anexos/Anexos}
+\end{document}

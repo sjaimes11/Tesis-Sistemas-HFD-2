@@ -1,0 +1,300 @@
+\chapter{Marco Teórico}
+\label{chap:theo}
+
+\section{Marco Conceptual}
+\label{sec:conceptos}
+
+
+En esta sección se definen los conceptos teóricos que sustentan el diseño e implementación de un sistema de detección de intrusiones (IDS) en el borde, ejecutable en una \textit{Raspberry Pi 5}, que integra \textit{TinyML}, \textit{aprendizaje federado} (FL), \textit{cifrado ligero} y \textit{NLP} aplicado a logs de red, conforme al enfoque de ciberseguridad y gobernanza descrito en la propuesta y en marcos de referencia vigentes \cite{NISTCSF2024}.
+
+\subsection{Internet de las Cosas (IoT) y Redes IoT/IIoT}
+El \textbf{Internet de las Cosas} (IoT) se refiere a ecosistemas de dispositivos conectados (sensores, actuadores, cámaras, gateways y equipos embebidos) que generan, transmiten y consumen datos a través de redes heterogéneas. En contextos industriales (IIoT), estos dispositivos suelen operar en ambientes con requisitos de disponibilidad, continuidad y seguridad más estrictos, al soportar procesos críticos y telemetría operativa. En consecuencia, las redes IoT/IIoT presentan una superficie de ataque amplia, con una alta diversidad de protocolos, patrones de tráfico y limitaciones de recursos, lo que incrementa la complejidad de la detección oportuna de amenazas.
+
+\newline
+\newline
+Desde la perspectiva de gestión de ciberseguridad, estas redes deben abordarse como parte de un sistema socio-técnico con activos, riesgos y controles. En ese sentido, marcos como el \textit{NIST Cybersecurity Framework (CSF) 2.0} organizan la gestión del riesgo y la operación de seguridad mediante funciones y categorías que facilitan la alineación entre objetivos técnicos (p.\,ej., detección y respuesta) y gobierno/gestión (p.\,ej., priorización y métricas) \cite{NISTCSF2024}. Esta estructura es relevante para justificar, evaluar y reportar el valor del IDS propuesto como un control técnico dentro de una estrategia de seguridad más amplia.
+
+\subsection{Sistemas de Detección de Intrusiones (IDS/NIDS) en IoT}
+Un \textbf{Sistema de Detección de Intrusiones} (IDS) es un mecanismo de monitoreo y análisis cuyo propósito es identificar actividad maliciosa o anómala en un entorno computacional. Cuando su foco principal es el análisis del tráfico y los eventos de red, se suele denominar \textbf{IDS de red} (NIDS). En IoT, los NIDS se enfrentan a retos adicionales: tráfico ruidoso, dispositivos con comportamientos variables, cambios de topología, y restricciones de cómputo y energía para instrumentar monitoreo cercano a la fuente.
+
+\newline
+\newline
+La evidencia reciente muestra enfoques que buscan ejecutar detección en el borde para reducir latencia, evitar el envío masivo de datos y mejorar la reacción ante incidentes. En particular, se han propuesto mecanismos de detección basados en modelos ligeros (p.\,ej., \textit{TinyML}) para operar con memoria acotada e inferencia rápida \cite{Amuthadevi2025,Alwaisi2024,Tekin2023}. En este marco, el diseño de un IDS debe considerar tanto métricas de precisión (p.\,ej., \textit{precision}, \textit{recall}, \textit{F1}) como métricas operativas (latencia, uso de CPU/memoria, energía), especialmente en dispositivos restringidos \cite{Tekin2023}.
+
+\subsection{Captura de tráfico y representación: PCAP, flujos y logs}
+Una \textbf{captura de tráfico} en formato \textbf{PCAP} almacena paquetes de red (cabeceras y, dependiendo del punto de captura, potencialmente carga útil), permitiendo reconstrucción y análisis detallado. Sin embargo, para tareas de detección automatizada es común transformar el tráfico a representaciones más compactas y estructuradas, como \textbf{flujos} (agrupaciones de paquetes por 5-tupla y ventanas temporales) y \textbf{logs} de eventos de red.
+
+\newline
+\newline
+Entre las alternativas de representación, los \textbf{logs de Zeek} son ampliamente usados porque convierten observaciones de red en registros tabulares/semiestructurados (p.\,ej., conexiones, DNS, HTTP), con campos que capturan contexto operacional (origen/destino, puertos, duración, bytes, estados) y facilitan analítica posterior. Esto resulta especialmente útil para integrar dos rutas del sistema: (i) clasificación basada en características numéricas de flujos y (ii) analítica basada en texto/plantillas para \textit{NLP} sobre logs, como se plantea en la propuesta \cite{UNSWTonIoT,Neto2023CICIoT2023,Mehavilla2025}.
+
+\subsection{Computación en el borde y Raspberry Pi 5 como nodo de seguridad}
+La \textbf{computación en el borde} (\textit{edge computing}) desplaza procesamiento y analítica hacia nodos cercanos a la fuente de datos, con el objetivo de disminuir latencia, reducir dependencia de conectividad y limitar el volumen de información enviado a la nube. En seguridad, esto habilita despliegues donde el IDS detecta y actúa localmente, y además coordina aprendizaje y actualización de modelos de manera distribuida.
+
+\newline
+\newline
+En este proyecto, la \textbf{Raspberry Pi 5} se considera un nodo factible para el borde por combinar capacidad de cómputo de propósito general y conectividad, permitiendo captura/preprocesamiento de tráfico, inferencia con modelos compactos y coordinación de rondas federadas, de acuerdo con la arquitectura planteada en la propuesta. Adicionalmente, su disponibilidad en variantes de memoria (incluida 8\,GB) facilita experimentación con componentes ligeros de \textit{NLP} y evaluación de consumo de recursos en condiciones realistas \cite{RaspberryPi5Brief2026}.
+
+\subsection{TinyML para detección en dispositivos restringidos}
+\textbf{TinyML} es un enfoque que busca ejecutar modelos de \textit{machine learning} en hardware con recursos limitados (memoria, CPU, energía), mediante modelos compactos, optimizaciones (p.\,ej., cuantización) y diseños orientados a inferencia eficiente. En seguridad IoT, TinyML se ha propuesto para detectar anomalías o ataques cerca del origen, favoreciendo respuesta rápida y minimizando dependencia de infraestructura central.
+
+\newline
+\newline
+Trabajos recientes muestran diseños de IDS basados en TinyML y resaltan un conjunto de tensiones típicas: precisión vs. tamaño del modelo, latencia vs. complejidad, y consumo energético vs. frecuencia de inferencia \cite{Amuthadevi2025,Alwaisi2024,Tekin2023}. En consecuencia, el marco conceptual del proyecto requiere considerar TinyML no solo como “modelos pequeños”, sino como un \textit{conjunto de decisiones de diseño} (arquitecturas ligeras, selección de variables/atributos, compresión) alineadas con restricciones observables en la Raspberry Pi y/o nodos IoT.
+
+\subsection{Aprendizaje federado (Federated Learning) en ciberseguridad}
+El \textbf{aprendizaje federado} (FL) es un paradigma de entrenamiento distribuido donde múltiples nodos entrenan localmente un modelo y comparten únicamente actualizaciones (p.\,ej., gradientes o pesos) con un agregador, evitando centralizar los datos crudos. En escenarios IoT, FL se ha estudiado como mecanismo para mitigar riesgos de privacidad y para aprovechar datos distribuidos (por ejemplo, redes segmentadas o entidades con restricciones de compartición).
+
+\newline
+\newline
+La literatura reciente enfatiza que FL en IDS enfrenta desafíos específicos: datos \textit{no IID} (distribuciones distintas por nodo), heterogeneidad de hardware y conectividad, y costos de comunicación durante las rondas de agregación \cite{Alsghaier2025,Albanbay2025}. Por ello, el marco conceptual del proyecto asume que la “calidad” del enfoque federado no depende únicamente del algoritmo de agregación, sino también del diseño experimental (particiones, balance, escenarios) y de cómo se mide estabilidad/eficiencia en presencia de restricciones reales.
+
+\subsection{Cifrado ligero y protección de artefactos en FL}
+El \textbf{cifrado ligero} (\textit{lightweight cryptography}) agrupa técnicas criptográficas diseñadas para dispositivos con limitaciones de memoria, energía y capacidad de cómputo, manteniendo propiedades de confidencialidad e integridad con costos controlados. Su relevancia en este proyecto está asociada a proteger \textbf{artefactos de seguridad} intercambiados o almacenados por el sistema (por ejemplo, parámetros del modelo en FL, mensajes de control, y salidas/alertas persistentes), especialmente cuando los nodos operan en redes potencialmente expuestas.
+
+\newline
+\newline
+NIST estandarizó primitivas para contextos restringidos, incluyendo esquemas basados en Ascon para cifrado autenticado, \textit{hash} y funciones extensibles, lo que proporciona una referencia técnica sólida para seleccionar mecanismos compatibles con el escenario IoT \cite{NISTSP8002322025}. Complementariamente, revisiones recientes sintetizan criterios de selección y \textit{trade-offs} (seguridad, implementación, costo computacional) para despliegues IoT, lo cual soporta la decisión de “cifrar lo que se comparte” incluso si el entrenamiento evita mover datos crudos: en FL, las actualizaciones siguen siendo un activo sensible y su manipulación o filtración puede afectar privacidad, integridad del modelo y confianza operativa \cite{Gusita2025}.
+
+\subsection{NLP aplicado a logs de red y analítica operacional}
+El \textbf{procesamiento de lenguaje natural} (NLP) se centra en representar y modelar secuencias simbólicas (texto) para tareas como clasificación, extracción de entidades, resumen o explicación. En ciberseguridad, los \textbf{logs} (incluidos logs de red y de sistemas) pueden reinterpretarse como secuencias “textuales” donde cada evento aporta tokens/campos que describen comportamiento, habilitando modelos que aprenden patrones temporales y contextuales.
+
+\newline
+\newline
+En la propuesta, el componente de NLP se justifica por su valor operativo: (i) transformar logs estructurados en representaciones aprendibles, (ii) apoyar explicabilidad (p.\,ej., “por qué se disparó una alerta”), y (iii) priorizar o resumir eventos para facilitar la respuesta. Evidencia reciente reporta el uso de Transformers para aprendizaje de patrones en logs (incluyendo enfoques federados) \cite{Parra2022NDSS,Guo2021LogBERT} y evaluaciones comparativas de modelos tipo LLM como clasificadores sobre datos derivados de flujos/logs (incluyendo Zeek) frente a baselines de ML/DL \cite{Mehavilla2025}.
+
+\subsection{Transformers para secuencias y detección basada en representación}
+Los \textbf{Transformers} son arquitecturas basadas en mecanismos de atención que permiten modelar dependencias en secuencias sin requerir recurrencia explícita. En el contexto de seguridad, su aporte se observa en la capacidad de capturar patrones de largo alcance en series de eventos (logs) o en secuencias construidas a partir de flujos/red, especialmente cuando el comportamiento anómalo depende de combinaciones distribuidas en el tiempo.
+
+\newline
+\newline
+Dentro de esta línea, \textbf{LogBERT} plantea la detección de anomalías en logs mediante representaciones inspiradas en BERT, evidenciando que el enfoque puede aprender estructura contextual útil para distinguir comportamiento normal de anómalo \cite{Guo2021LogBERT}. Asimismo, se han propuesto Transformers federados e interpretables para aprendizaje de logs en escenarios distribuidos, lo que conecta directamente con la integración FL+NLP planteada en el proyecto \cite{Parra2022NDSS}. En conjunto, estas referencias soportan la hipótesis de que una combinación híbrida (TinyML para detección “en línea” y NLP ligero para interpretación/explicación) puede ser factible si se controla el costo computacional y se evalúan \textit{trade-offs} frente a alternativas clásicas \cite{Mehavilla2025,Tekin2023}.
+
+% Sugerencia de inclusión en el documento principal:
+% \bibliographystyle{IEEEtran}
+% \bibliography{references}
+
+
+\section{Estado del Arte}
+\label{sec:antecedentes}
+
+La creciente adopción de dispositivos IoT/IIoT en hogares, ciudades e industrias ha ampliado de forma significativa la superficie de ataque, debido a la heterogeneidad de protocolos, la gestión desigual de credenciales/actualizaciones y la exposición continua de servicios en red. En este contexto, los \textit{Intrusion Detection Systems} (IDS) han cobrado relevancia como controles de detección y monitoreo, especialmente cuando se alinean con marcos de gestión del riesgo y capacidades de ciberseguridad (p.\ ej., identificación, protección, detección, respuesta y recuperación) \cite{NIST_CSF2_2024}. Sin embargo, una tendencia clara en la literatura reciente es que la efectividad de un IDS no depende únicamente del algoritmo de clasificación, sino del \textit{pipeline} completo: captura y representación de tráfico, calidad/realismo del dataset, viabilidad de despliegue en el borde y mecanismos de actualización del modelo bajo restricciones operativas.\\
+
+Un primer eje del estado del arte se centra en la disponibilidad de \textbf{datasets} públicos para evaluación reproducible de IDS. UNSW-NB15 y Bot-IoT se mantienen como referentes por su uso extendido como \textit{baseline} de intrusión y por incluir escenarios asociados a ataques en red e IoT, respectivamente \cite{UNSW_UNSWNB15_Download, UNSW_BotIoT_Download}. TON\_IoT incorpora un enfoque más multimodal al incluir telemetría, logs y tráfico de red, lo cual habilita experimentos que integran señales heterogéneas (p.\ ej., flujos numéricos y registros semiestructurados) \cite{UNSW_TONIoT_Download, Moustafa2020_TONIoT}. En una línea complementaria, IoT-23 destaca por ofrecer escenarios etiquetados basados en capturas tipo PCAP, lo que facilita enfoques que parten de Wireshark/PCAP y luego derivan logs o flujos para entrenamiento \cite{Stratosphere_IoT23}. Por su parte, Edge-IIoTset fue propuesto explícitamente para evaluar aprendizaje centralizado y federado en IoT/IIoT, aportando realismo para experimentos FL desde el diseño del dataset \cite{Ferrag2022_EdgeIIoTset}. Finalmente, CICIoT2023 amplía la escala y variedad de ataques para condiciones más cercanas a operación real, consolidándose como \textit{benchmark} reciente de alto valor para comparar modelos \cite{Neto2023_CICIoT2023}.\\
+
+Un segundo eje corresponde al \textbf{despliegue en el borde} y el uso de modelos eficientes (\textbf{TinyML}) para detección cercana a la fuente. Las revisiones recientes sobre TinyML enfatizan que la contribución clave no es únicamente “hacer el modelo pequeño”, sino diseñar un conjunto coherente de decisiones de ingeniería: selección de variables, reducción de dimensionalidad, compresión/cuantización y un \textit{pipeline} de inferencia estable bajo carga \cite{DuttaBharali2021_TinyMLSurvey}. En particular, Tekin et al.\ evidencian que, en IDS \textit{on-device}, el consumo energético y la latencia varían sustancialmente según el modelo y la representación de entrada, por lo que la evaluación debe reportar métricas de despliegue (energía, tiempo de inferencia, huella de memoria) junto con métricas de clasificación \cite{Tekin2023_OnDeviceEnergy}. Esto es especialmente relevante para una Raspberry Pi 5 como \textit{gateway} de seguridad: aun con mayor capacidad que microcontroladores, el IDS debe ser sostenible y no degradar la operación del nodo.\\
+
+El tercer eje del estado del arte aborda el \textbf{aprendizaje federado} (FL) como alternativa para entrenar IDS sin centralizar datos crudos, una necesidad frecuente en entornos IoT/IIoT por políticas de privacidad y costos de transferencia. Imteaj et al.\ sintetizan retos fundamentales del FL en dispositivos restringidos, destacando la heterogeneidad de hardware, conectividad intermitente, participación parcial y datos \textit{non-IID} como limitantes principales \cite{Imteaj2022_FL_ResourceConstrainedSurvey}. En IDS federados, se han propuesto enfoques que buscan eficiencia y ligereza mediante integración \textit{cross-layer} para reducir sobrecarga de comunicación y mantener desempeño \cite{Hajj2023_CrossLayerFL_IDS}. Asimismo, se han explorado estrategias de personalización/adaptación local para mejorar el desempeño en dominios heterogéneos, donde cada nodo observa patrones de tráfico distintos \cite{Roy2023_FL_AdaptedModel}. En IIoT, también se reportan diseños que emplean redes más profundas (p.\ ej., enfoques con redes residuales) para capturar patrones complejos dentro de un esquema federado \cite{Chaurasia2024_FL_ResNet_IIoT}. En conjunto, estas contribuciones muestran que FL es prometedor, pero exige decisiones explícitas sobre particionamiento de datos, frecuencia de rondas, compresión de actualizaciones y tolerancia a conectividad eventual.\\
+
+Un cuarto eje se relaciona con la \textbf{seguridad y confidencialidad} en el ciclo de vida de datos y modelos. Aunque FL disminuye la necesidad de centralizar datos crudos, no elimina riesgos sobre artefactos intercambiados o almacenados (actualizaciones de modelo, pesos, registros derivados o configuraciones). En este escenario, la criptografía ligera adquiere relevancia como mecanismo para proteger información \textit{en tránsito} y \textit{en reposo} bajo restricciones de cómputo. NIST estandarizó primitivas basadas en Ascon para cifrado autenticado y funciones \textit{hash} orientadas a dispositivos restringidos \cite{NIST_SP800232_2025}. A nivel de síntesis, revisiones recientes discuten criterios de selección e implementación de criptografía ligera en IoT, resaltando los compromisos entre seguridad, rendimiento y complejidad de implementación \cite{Gusita2025_LWC_Survey}. Esto soporta la inclusión de cifrado ligero como requisito de viabilidad (no accesorio) cuando el IDS se despliega en el borde y coordina aprendizaje/actualización distribuida.\\
+
+El quinto eje del estado del arte corresponde al uso de \textbf{NLP y Transformers} para análisis de logs y telemetría. LogBERT formaliza el uso de modelos tipo BERT para representar secuencias de logs y detectar anomalías, mostrando que los registros semiestructurados pueden tratarse como ``lenguaje'' para capturar contexto temporal \cite{LogBERT2021}. En una línea posterior, LTAnomaly propone Transformers especializados para robustecer la detección frente a variabilidad y ruido en registros \cite{LTAnomaly2023}. En escenarios distribuidos, se han planteado Transformers federados e interpretables para aprendizaje de patrones de logs sin centralizar datos, conectando directamente con la combinación FL+NLP propuesta \cite{NDSS2022_FedTransLog}. Adicionalmente, se han explorado modelos de lenguaje como clasificadores sobre logs derivados de red (p.\ ej., Zeek), resaltando su potencial para extraer patrones semánticos o secuenciales a partir de eventos de red estructurados \cite{Yadav2023_LLM_Zeek}.\\
+
+A partir de esta revisión, se identifica una brecha de investigación práctica: aunque existen aportes sólidos por separado en (i) TinyML/edge IDS, (ii) FL para IDS, (iii) criptografía ligera y (iv) NLP para logs, es menos frecuente encontrar una \textbf{integración completa y evaluada end-to-end} en un nodo de borde realista (como Raspberry Pi) que utilice capturas PCAP (Wireshark) para derivar flujos/logs, ejecute inferencia eficiente, actualice modelos de forma federada y asegure artefactos con cifrado ligero, reportando simultáneamente métricas de precisión y métricas operativas (latencia, RAM/CPU y, cuando aplique, energía). Esta tesis se posiciona para cubrir dicha brecha, proponiendo una arquitectura experimental integral que combine aprendizaje eficiente en el borde con entrenamiento distribuido y analítica basada en NLP para mejorar tanto la detección como la interpretabilidad de alertas.\\
+
+
+\begin{longtable}{@{}p{0.15\textwidth} p{0.2\textwidth} p{0.26\textwidth} p{0.26\textwidth}@{}}
+\caption{Resumen del Estado del Arte en IDS para IoT/IIoT con Edge/TinyML, FL, criptografía ligera y NLP.}
+\label{tab:state_of_art_ids}\\
+\toprule
+\textbf{Referencia} & \textbf{Enfoque} & \textbf{Datos / Escenario} & \textbf{Aporte clave} \\
+\midrule
+\endfirsthead
+\multicolumn{4}{c}%
+{{\bfseries \tablename\ \thetable{} -- continuación de la página anterior}} \\
+\toprule
+\textbf{Referencia} & \textbf{Enfoque} & \textbf{Datos / Escenario} & \textbf{Aporte clave} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+
+\cite{UNSW_UNSWNB15_Download} & Dataset NIDS & Intrusión en red (benchmark) & Baseline clásico para comparación de IDS \\
+\addlinespace
+
+\cite{UNSW_BotIoT_Download} & Dataset IoT & Tráfico IoT con botnet/ataques & Escenarios orientados a botnets en IoT \\
+\addlinespace
+
+\cite{UNSW_TONIoT_Download, Moustafa2020_TONIoT} & Dataset multimodal & Telemetría + logs + tráfico & Soporta evaluación multimodal IoT/IIoT \\
+\addlinespace
+
+\cite{Ferrag2022_EdgeIIoTset} & Dataset (central/FL) & IoT/IIoT para centralizado y federado & Diseñado explícitamente para FL y realismo \\
+\addlinespace
+
+\cite{Stratosphere_IoT23} & Dataset PCAP & Escenarios IoT benigno/malware (PCAP) & Facilita pipelines desde Wireshark/PCAP \\
+\addlinespace
+
+\cite{Neto2023_CICIoT2023} & Dataset benchmark & IoT a gran escala & Diversidad de ataques recientes y volumen alto \\
+\addlinespace
+
+\cite{DuttaBharali2021_TinyMLSurvey} & TinyML Survey & Revisión en IoT & Estrategias de eficiencia (compresión, cuantización) \\
+\addlinespace
+
+\cite{Tekin2023_OnDeviceEnergy} & Edge IDS & Evaluación \textit{on-device} & Energía/latencia como métricas críticas en IDS IoT \\
+\addlinespace
+
+\cite{Imteaj2022_FL_ResourceConstrainedSurvey} & FL Survey & IoT restringido & Retos: \textit{non-IID}, conectividad, heterogeneidad \\
+\addlinespace
+
+\cite{Hajj2023_CrossLayerFL_IDS} & FL + IDS & IoT (ligero) & IDS federado eficiente (\textit{cross-layer}) \\
+\addlinespace
+
+\cite{Roy2023_FL_AdaptedModel} & FL + IDS & IoT (personalización) & Adaptación local del modelo en entornos heterogéneos \\
+\addlinespace
+
+\cite{Chaurasia2024_FL_ResNet_IIoT} & FL + IDS & IIoT (modelos profundos) & ResNets federados para patrones complejos \\
+\addlinespace
+
+\cite{NIST_SP800232_2025} & Cripto ligera & Estándar NIST & Ascon para cifrado autenticado en restringidos \\
+\addlinespace
+
+\cite{Gusita2025_LWC_Survey} & Cripto ligera Survey & Revisión IoT & Criterios de selección e implementación eficiente \\
+\addlinespace
+
+\cite{LogBERT2021} & NLP en logs & Secuencias de logs & BERT para detección de anomalías en registros \\
+\addlinespace
+
+\cite{LTAnomaly2023} & NLP en logs & Transformer especializado & Mejoras ante variabilidad y ruido en logs \\
+\addlinespace
+
+\cite{NDSS2022_FedTransLog} & NLP + FL & Logs distribuidos & Transformer federado e interpretable para anomalías \\
+\addlinespace
+
+\cite{Yadav2023_LLM_Zeek} & NLP en red & Zeek logs & Evaluación de LLMs como clasificadores en logs de red \\
+\end{longtable}
+
+
+
+% \section{Marco Conceptual}
+% \label{sec:conceptos}
+
+% En esta sección se definen los conceptos teóricos fundamentales que sustentan esta investigación. Se abordan las definiciones de nanocompuestos poliméricos, el fenómeno de apantallamiento de interferencia electromagnética (EMI), y los principios de las tecnologías de inteligencia artificial, como el aprendizaje automático, la visión por computadora y las arquitecturas de redes neuronales específicas empleadas en este trabajo.
+
+% \subsection{Nanocompuestos Poliméricos}
+% Los \textbf{nanocompuestos poliméricos} (PNCs, por sus siglas en inglés) son materiales multifásicos constituidos por una matriz polimérica (la fase continua) y cargas o agentes de refuerzo donde al menos una de sus dimensiones se encuentra en la escala nanométrica (1-100 nm) \cite{Champa-Bujaico2022, Kornmann2022}. La introducción de estas nanopartículas en la matriz polimérica da como resultado materiales con propiedades físicas, mecánicas, térmicas y eléctricas notablemente mejoradas en comparación con los polímeros puros o los compuestos tradicionales \cite{Zizumbo2020, Sahoo2010}.
+
+% La clave de esta mejora radica en la inmensa área superficial interfacial por unidad de volumen que ofrecen las nanopartículas, lo que maximiza la interacción entre la carga y la matriz polimérica \cite{Sokolov2017}. A diferencia de los compuestos convencionales, donde las mejoras de propiedades requieren altas concentraciones de relleno, los nanocompuestos pueden exhibir mejoras significativas con cargas muy bajas, típicamente inferiores al 5\% en peso \cite{Kamarudin2021}. El control sobre la dispersión y distribución de estas nanopartículas dentro de la matriz es un factor crucial para evitar la aglomeración y desbloquear el máximo potencial del material \cite{Zizumbo2020}.
+
+% \subsection{Apantallamiento de Interferencia Electromagnética (EMI)}
+% La \textbf{interferencia electromagnética} (EMI, por sus siglas en inglés) se define como la perturbación que afecta a un dispositivo electrónico debido a un campo electromagnético externo, comúnmente conocido como 'ruido' electromagnético \cite{Celozzi2024}. Esta radiación, omnipresente en el entorno moderno debido a la proliferación de dispositivos electrónicos y de telecomunicaciones, puede degradar el rendimiento, causar fallos en los equipos y plantear riesgos para la seguridad \cite{Shi2022, Idumah2023}.
+
+% El \textbf{apantallamiento electromagnético} es la técnica utilizada para mitigar la EMI, que consiste en el uso de una barrera material para bloquear o atenuar las ondas electromagnéticas \cite{Idumah2023, Shukla2019}. La capacidad de un material para apantallar estas ondas se cuantifica mediante la \textbf{Efectividad del Apantallamiento} (SE, por sus siglas en inglés), que se mide en decibelios (dB). La SE se define como el logaritmo de la relación entre la potencia de la onda incidente ($P_i$) y la potencia de la onda transmitida ($P_t$) a través del material \cite{Sultana2024, Idumah2023}.
+
+% \begin{equation}
+% SE_{T} (dB) = 10 \log_{10}\left(\frac{P_i}{P_t}\right)
+% \end{equation}
+
+% Un valor de SE de 20 dB, que corresponde a un bloqueo del 99\% de la potencia de la onda incidente, se considera generalmente el requisito mínimo para aplicaciones comerciales \cite{Castaneda2020a}.
+
+% \subsection{Tecnica de segundo armonico EFM-2 $\omega_e$ CONCEPTO POR AGREGAR }
+
+% \subsection{Tipo de imagen que se sacaron $\omega_e$ CONCEPTO POR AGREGAR }
+
+% \subsection{Aprendizaje Automático (Machine Learning)}
+% El \textbf{aprendizaje automático} (ML, por sus siglas en inglés) es un campo de la inteligencia artificial que se ocupa del desarrollo y estudio de algoritmos estadísticos que permiten a los sistemas informáticos aprender de los datos y generalizar a datos no vistos, realizando así tareas sin necesidad de instrucciones explícitas \cite{WikipediaML2024}. Una definición formal y ampliamente citada fue proporcionada por Tom M. Mitchell: "Se dice que un programa de computadora aprende de la experiencia E con respecto a alguna clase de tareas T y una medida de rendimiento P, si su rendimiento en las tareas de T, medido por P, mejora con la experiencia E" \cite{Mitchell1997}.
+
+% En lugar de ser programados con una lógica explícita, los modelos de ML identifican patrones, tendencias y relaciones matemáticas directamente a partir de un conjunto de datos de entrenamiento. El objetivo fundamental del ML es la \textbf{generalización}: la capacidad de un modelo entrenado para hacer predicciones o inferencias precisas sobre datos nuevos que no formaban parte de su entrenamiento \cite{Peng2025}. Este paradigma es especialmente poderoso para modelar relaciones complejas y no lineales, como las que existen entre la estructura de un material y sus propiedades funcionales \cite{Champa-Bujaico2022}.
+
+% \subsection{Visión por Computadora (Computer Vision)}
+% La \textbf{visión por computadora} es un campo interdisciplinario de la inteligencia artificial que tiene como objetivo permitir que las computadoras y los sistemas deriven información significativa a partir de imágenes digitales, videos y otras entradas visuales \cite{Forsyth2011, IBM_CV2024}. Busca automatizar tareas que el sistema visual humano puede realizar, como el reconocimiento de objetos, la clasificación de imágenes y la interpretación de escenas \cite{WikipediaCV2024}.
+
+% Para lograrlo, la visión por computadora emplea algoritmos, a menudo basados en aprendizaje automático y redes neuronales profundas, para procesar, analizar y comprender el contenido visual \cite{Szeliski2010}. En lugar de seguir reglas preprogramadas, estos sistemas "aprenden" a reconocer patrones visuales (como bordes, formas, colores y texturas) a partir de grandes conjuntos de datos de imágenes etiquetadas \cite{Goodfellow2016}. En el contexto de la ciencia de materiales, la visión por computadora permite el análisis cuantitativo de micrografías, tratando las imágenes como una fuente de datos rica y de alta dimensión para correlacionar la microestructura con las propiedades macroscópicas \cite{Hajilounezhad2021}.
+
+% \subsection{Redes Neuronales Artificiales (ANN)}
+% Una \textbf{Red Neuronal Artificial} (ANN, por sus siglas en inglés) es un modelo computacional inspirado en la estructura y función de las redes neuronales biológicas del cerebro \cite{Basheer2000, WikipediaANN2024}. Consiste en un conjunto de unidades de procesamiento interconectadas, llamadas \textbf{neuronas artificiales} o nodos, que están organizadas en capas \cite{daSilva2017}.
+
+% La arquitectura típica de una ANN incluye:
+% \begin{itemize}
+%     \item \textbf{Capa de Entrada (Input Layer):} Recibe los datos iniciales o las características del problema.
+%     \item \textbf{Capas Ocultas (Hidden Layers):} Una o más capas intermedias donde se realizan la mayoría de los cálculos. Cada neurona en una capa oculta recibe entradas de la capa anterior, las procesa aplicando una ponderación y una función de activación no lineal, y envía su salida a la siguiente capa.
+%     \item \textbf{Capa de Salida (Output Layer):} Produce el resultado final del modelo, como una clasificación o una predicción de valor.
+% \end{itemize}
+% Las ANN "aprenden" de los datos a través de un proceso de entrenamiento, donde los pesos de las conexiones entre neuronas se ajustan iterativamente para minimizar el error entre las predicciones del modelo y los resultados reales. Esta capacidad de modelar relaciones no lineales complejas las convierte en la base de los modelos de aprendizaje profundo (\textit{deep learning}) \cite{daSilva2017, Lee2024_IBM}.
+
+% \subsection{Arquitecturas Transformer para Visión}
+% \subsubsection{Vision Transformer (ViT)}
+% El \textbf{Vision Transformer} (ViT) es una arquitectura de modelo que aplica el mecanismo de \textbf{auto-atención} de los Transformers, originalmente desarrollado para el procesamiento del lenguaje natural (NLP), a tareas de visión por computadora \cite{Dosovitskiy2020}. A diferencia de las Redes Neuronales Convolucionales (CNNs) que procesan la información localmente a través de filtros, el ViT aborda una imagen desde una perspectiva global \cite{Trivedi2024, Khan2022_ViT}.
+
+% El funcionamiento del ViT se basa en los siguientes pasos:
+% \begin{enumerate}
+%     \item \textbf{División en Parches (Image Patching):} La imagen de entrada se divide en una cuadrícula de parches cuadrados de tamaño fijo (ej. 16x16 píxeles).
+%     \item \textbf{Aplanamiento y Proyección Lineal:} Cada parche se aplana en un vector unidimensional y se proyecta en un espacio de características de dimensión fija, creando una secuencia de "tokens" visuales, análogos a las palabras en una oración \cite{V7Labs2023, Marqo2024}.
+%     \item \textbf{Incrustaciones de Posición (Positional Embeddings):} Dado que el mecanismo de atención no tiene una noción inherente del orden, se añaden vectores de posición a los tokens para que el modelo conserve la información espacial sobre la ubicación original de cada parche \cite{Marqo2024}.
+%     \item \textbf{Codificador Transformer:} La secuencia de tokens se procesa a través de un codificador Transformer estándar. Su componente clave, el mecanismo de \textbf{atención multi-cabeza}, permite a cada parche ponderar la importancia de todos los demás parches en la imagen para actualizar su propia representación. Esto permite al modelo capturar dependencias de largo alcance y relaciones contextuales a través de toda la imagen desde las primeras capas \cite{V7Labs2023, Dosovitskiy2020}.
+% \end{enumerate}
+% Finalmente, la representación de un token especial de clasificación (\texttt{}) se utiliza para la tarea final, como la clasificación de la imagen \cite{H2O_CLS2024}.
+
+% \subsubsection{Swin Transformer}
+% El \textbf{Swin Transformer} es una evolución de la arquitectura ViT diseñada para ser más eficiente y servir como una red troncal de propósito general para diversas tareas de visión por computadora, incluyendo la predicción densa como la segmentación \cite{Liu2021_Swin}. Sus innovaciones clave son:
+% \begin{itemize}
+%     \item \textbf{Arquitectura Jerárquica:} A diferencia del ViT, que mantiene una resolución constante, el Swin Transformer construye mapas de características jerárquicos. Comienza con parches pequeños y fusiona grupos de parches a medida que la red se profundiza, reduciendo la resolución espacial y creando una representación piramidal multi-escala, similar a las CNNs \cite{Liu2021_Swin}.
+%     \item \textbf{Auto-Atención en Ventanas Desplazadas (Shifted Window Self-Attention):} Para reducir la complejidad computacional cuadrática de la auto-atención global del ViT, el Swin Transformer calcula la auto-atención dentro de \textbf{ventanas locales} no superpuestas. Para permitir la comunicación entre estas ventanas, la partición de las ventanas se desplaza cíclicamente en bloques de capas consecutivas. Este mecanismo de ventanas desplazadas permite que la información fluya a través de toda la imagen, restableciendo un contexto global de manera eficiente y con una complejidad computacional lineal con respecto al tamaño de la imagen \cite{Liu2021_Swin, Akdemir2023}.
+% \end{itemize}
+% Esta arquitectura combina la eficiencia del procesamiento local con la capacidad de modelar dependencias de largo alcance, haciéndola especialmente adecuada para el análisis de microestructuras que contienen características a diferentes escalas \cite{Zhang2024_Swin, Liu2023_SwinRock}.
+
+
+% % \section{Marco Conceptual}
+% % \label{sec:conceptos}
+
+% % En esta sección se definen los conceptos teóricos fundamentales que sustentan esta investigación. Se abordan las definiciones de nanocompuestos poliméricos, el fenómeno de apantallamiento de interferencia electromagnética (EMI), y los principios de las tecnologías de inteligencia artificial, como el aprendizaje automático, la visión por computadora y las arquitecturas de redes neuronales específicas empleadas en este trabajo.
+
+% % \subsection{Nanocompuestos Poliméricos}
+% % Los \textbf{nanocompuestos poliméricos} (PNCs, por sus siglas en inglés) son materiales multifásicos constituidos por una matriz polimérica (la fase continua) y cargas o agentes de refuerzo donde al menos una de sus dimensiones se encuentra en la escala nanométrica (1-100 nm) \cite{Champa-Bujaico2022, [1]}. La introducción de estas nanopartículas en la matriz polimérica da como resultado materiales con propiedades físicas, mecánicas, térmicas y eléctricas notablemente mejoradas en comparación con los polímeros puros o los compuestos tradicionales \cite{[2, 3]}.
+
+% % La clave de esta mejora radica en la inmensa área superficial interfacial por unidad de volumen que ofrecen las nanopartículas, lo que maximiza la interacción entre la carga y la matriz polimérica \cite{[4]}. A diferencia de los compuestos convencionales, donde las mejoras de propiedades requieren altas concentraciones de relleno, los nanocompuestos pueden exhibir mejoras significativas con cargas muy bajas, típicamente inferiores al 5% en peso \cite{[5]}. El control sobre la dispersión y distribución de estas nanopartículas dentro de la matriz es un factor crucial para evitar la aglomeración y desbloquear el máximo potencial del material \cite{[2]}.
+
+% % \subsection{Apantallamiento de Interferencia Electromagnética (EMI)}
+% % La \textbf{interferencia electromagnética} (EMI, por sus siglas en inglés) se define como la perturbación que afecta a un dispositivo electrónico debido a un campo electromagnético externo, comúnmente conocido como "ruido" electromagnético \cite{[6]}. Esta radiación, omnipresente en el entorno moderno debido a la proliferación de dispositivos electrónicos y de telecomunicaciones, puede degradar el rendimiento, causar fallos en los equipos y plantear riesgos para la seguridad \cite{Shi2022, Idumah2023}.
+
+% % El \textbf{apantallamiento electromagnético} es la técnica utilizada para mitigar la EMI, que consiste en el uso de una barrera material para bloquear o atenuar las ondas electromagnéticas \cite{[7, 8]}. La capacidad de un material para apantallar estas ondas se cuantifica mediante la \textbf{Efectividad del Apantallamiento} (SE, por sus siglas en inglés), que se mide en decibelios (dB). La SE se define como el logaritmo de la relación entre la potencia de la onda incidente ($P_i$) y la potencia de la onda transmitida ($P_t$) a través del material \cite{[9], Idumah2023}.
+
+% % \begin{equation}
+% % SE_{T} (dB) = 10 \log_{10}\left(\frac{P_i}{P_t}\right)
+% % \end{equation}
+
+% % Un valor de SE de 20 dB, que corresponde a un bloqueo del 99% de la potencia de la onda incidente, se considera generalmente el requisito mínimo para aplicaciones comerciales \cite{Castaneda2020a}.
+
+% % \subsection{Aprendizaje Automático (Machine Learning)}
+% % El \textbf{aprendizaje automático} (ML, por sus siglas en inglés) es un campo de la inteligencia artificial que se ocupa del desarrollo y estudio de algoritmos estadísticos que permiten a los sistemas informáticos aprender de los datos y generalizar a datos no vistos, realizando así tareas sin necesidad de instrucciones explícitas \cite{[10]}. Una definición formal y ampliamente citada fue proporcionada por Tom M. Mitchell: "Se dice que un programa de computadora aprende de la experiencia E con respecto a alguna clase de tareas T y una medida de rendimiento P, si su rendimiento en las tareas de T, medido por P, mejora con la experiencia E" \cite{Mitchell1997}.
+
+% % En lugar de ser programados con una lógica explícita, los modelos de ML identifican patrones, tendencias y relaciones matemáticas directamente a partir de un conjunto de datos de entrenamiento. El objetivo fundamental del ML es la \textbf{generalización}: la capacidad de un modelo entrenado para hacer predicciones o inferencias precisas sobre datos nuevos que no formaban parte de su entrenamiento \cite{[11]}. Este paradigma es especialmente poderoso para modelar relaciones complejas y no lineales, como las que existen entre la estructura de un material y sus propiedades funcionales \cite{Champa-Bujaico2022}.
+
+% % \subsection{Visión por Computadora (Computer Vision)}
+% % La \textbf{visión por computadora} es un campo interdisciplinario de la inteligencia artificial que tiene como objetivo permitir que las computadoras y los sistemas deriven información significativa a partir de imágenes digitales, videos y otras entradas visuales \cite{[12, 13]}. Busca automatizar tareas que el sistema visual humano puede realizar, como el reconocimiento de objetos, la clasificación de imágenes y la interpretación de escenas \cite{[14]}.
+
+% % Para lograrlo, la visión por computadora emplea algoritmos, a menudo basados en aprendizaje automático y redes neuronales profundas, para procesar, analizar y comprender el contenido visual \cite{[15]}. En lugar de seguir reglas preprogramadas, estos sistemas "aprenden" a reconocer patrones visuales (como bordes, formas, colores y texturas) a partir de grandes conjuntos de datos de imágenes etiquetadas \cite{[16]}. En el contexto de la ciencia de materiales, la visión por computadora permite el análisis cuantitativo de micrografías, tratando las imágenes como una fuente de datos rica y de alta dimensión para correlacionar la microestructura con las propiedades macroscópicas \cite{Hajilounezhad2021}.
+
+% % \subsection{Redes Neuronales Artificiales (ANN)}
+% % Una \textbf{Red Neuronal Artificial} (ANN, por sus siglas en inglés) es un modelo computacional inspirado en la estructura y función de las redes neuronales biológicas del cerebro \cite{[17, 18]}. Consiste en un conjunto de unidades de procesamiento interconectadas, llamadas \textbf{neuronas artificiales} o nodos, que están organizadas en capas \cite{[19]}.
+
+% % La arquitectura típica de una ANN incluye:
+% % \begin{itemize}
+% %     \item \textbf{Capa de Entrada (Input Layer):} Recibe los datos iniciales o las características del problema.
+% %     \item \textbf{Capas Ocultas (Hidden Layers):} Una o más capas intermedias donde se realizan la mayoría de los cálculos. Cada neurona en una capa oculta recibe entradas de la capa anterior, las procesa aplicando una ponderación y una función de activación no lineal, y envía su salida a la siguiente capa.
+% %     \item \textbf{Capa de Salida (Output Layer):} Produce el resultado final del modelo, como una clasificación o una predicción de valor.
+% % \end{itemize}
+% % Las ANN "aprenden" de los datos a través de un proceso de entrenamiento, donde los pesos de las conexiones entre neuronas se ajustan iterativamente para minimizar el error entre las predicciones del modelo y los resultados reales. Esta capacidad de modelar relaciones no lineales complejas las convierte en la base de los modelos de aprendizaje profundo (\textit{deep learning}) \cite{[19, 20]}.
+
+% % \subsection{Arquitecturas Transformer para Visión}
+% % \subsubsection{Vision Transformer (ViT)}
+% % El \textbf{Vision Transformer} (ViT) es una arquitectura de modelo que aplica el mecanismo de \textbf{auto-atención} de los Transformers, originalmente desarrollado para el procesamiento del lenguaje natural (NLP), a tareas de visión por computadora \cite{Dosovitskiy2020}. A diferencia de las Redes Neuronales Convolucionales (CNNs) que procesan la información localmente a través de filtros, el ViT aborda una imagen desde una perspectiva global \cite{[21, 22]}.
+
+% % El funcionamiento del ViT se basa en los siguientes pasos:
+% % \begin{enumerate}
+% %     \item \textbf{División en Parches (Image Patching):} La imagen de entrada se divide en una cuadrícula de parches cuadrados de tamaño fijo (ej. 16x16 píxeles).
+% %     \item \textbf{Aplanamiento y Proyección Lineal:} Cada parche se aplana en un vector unidimensional y se proyecta en un espacio de características de dimensión fija, creando una secuencia de "tokens" visuales, análogos a las palabras en una oración \cite{[23, 24]}.
+% %     \item \textbf{Incrustaciones de Posición (Positional Embeddings):} Dado que el mecanismo de atención no tiene una noción inherente del orden, se añaden vectores de posición a los tokens para que el modelo conserve la información espacial sobre la ubicación original de cada parche \cite{[24]}.
+% %     \item \textbf{Codificador Transformer:} La secuencia de tokens se procesa a través de un codificador Transformer estándar. Su componente clave, el mecanismo de \textbf{atención multi-cabeza}, permite a cada parche ponderar la importancia de todos los demás parches en la imagen para actualizar su propia representación. Esto permite al modelo capturar dependencias de largo alcance y relaciones contextuales a través de toda la imagen desde las primeras capas \cite{[23, 25]}.
+% % \end{enumerate}
+% % Finalmente, la representación de un token especial de clasificación (``) se utiliza para la tarea final, como la clasificación de la imagen \cite{[26]}.
+
+% % \subsubsection{Swin Transformer}
+% % El \textbf{Swin Transformer} es una evolución de la arquitectura ViT diseñada para ser más eficiente y servir como una red troncal de propósito general para diversas tareas de visión por computadora, incluyendo la predicción densa como la segmentación \cite{Liu2021_Swin}. Sus innovaciones clave son:
+% % \begin{itemize}
+% %     \item \textbf{Arquitectura Jerárquica:} A diferencia del ViT, que mantiene una resolución constante, el Swin Transformer construye mapas de características jerárquicos. Comienza con parches pequeños y fusiona grupos de parches a medida que la red se profundiza, reduciendo la resolución espacial y creando una representación piramidal multi-escala, similar a las CNNs \cite{[27]}.
+% %     \item \textbf{Auto-Atención en Ventanas Desplazadas (Shifted Window Self-Attention):} Para reducir la complejidad computacional cuadrática de la auto-atención global del ViT, el Swin Transformer calcula la auto-atención dentro de \textbf{ventanas locales} no superpuestas. Para permitir la comunicación entre estas ventanas, la partición de las ventanas se desplaza cíclicamente en bloques de capas consecutivas. Este mecanismo de ventanas desplazadas permite que la información fluya a través de toda la imagen, restableciendo un contexto global de manera eficiente y con una complejidad computacional lineal con respecto al tamaño de la imagen \cite{[27, 28]}.
+% % \end{itemize}
+% % Esta arquitectura combina la eficiencia del procesamiento local con la capacidad de modelar dependencias de largo alcance, haciéndola especialmente adecuada para el análisis de microestructuras que contienen características a diferentes escalas \cite{[29, 30]}.
+
+\newpage
+

@@ -1,0 +1,58 @@
+\chapter{Introducción}
+\label{chap:Introduction}
+
+\section{Contexto}
+
+La adopción acelerada de soluciones \textit{Internet of Things} (IoT) y \textit{Industrial IoT} (IIoT) en manufactura, energía, logística, salud y ciudades inteligentes ha incrementado de forma sustancial la superficie de ataque de las redes, al incorporar dispositivos heterogéneos, protocolos diversos y nodos con capacidades limitadas de cómputo y seguridad. En la práctica, esta expansión convive con retos operacionales frecuentes: configuraciones débiles, ciclos de actualización irregulares y conectividad intermitente, lo cual incrementa la probabilidad de intrusiones y tráfico malicioso persistente. En este escenario, la ciberseguridad debe entenderse como un conjunto de capacidades de gestión del riesgo y de operación continua, alineadas con marcos como el \textit{NIST Cybersecurity Framework} (CSF), donde la detección y el monitoreo oportuno son funciones esenciales para reducir impacto y tiempo de respuesta \cite{NIST_CSF2_2024}.\\
+\newline
+Una medida clave para fortalecer la función de detección en redes IoT/IIoT es el uso de \textit{Intrusion Detection Systems} (IDS) orientados a tráfico, capaces de identificar patrones de ataques conocidos y anomalías emergentes. Sin embargo, el despliegue de IDS en estos entornos no se limita a maximizar métricas de clasificación; también exige viabilidad técnica en \textit{edge gateways} y dispositivos restringidos, donde el consumo de recursos, la latencia de inferencia y la estabilidad bajo carga resultan determinantes \cite{Tekin2023_OnDeviceEnergy}. En particular, el uso de plataformas de borde como Raspberry Pi habilita procesar tráfico cerca de la fuente, reduciendo latencias y dependencia de conectividad, pero obliga a seleccionar modelos y \textit{pipelines} compatibles con restricciones reales. En este punto, enfoques de \textit{TinyML} y ML eficiente aportan herramientas para desplegar modelos livianos con tamaños reducidos y tiempos de inferencia acotados \cite{DuttaBharali2021_TinyMLSurvey}.\\
+\newline
+Paralelamente, las necesidades de privacidad y las limitaciones para centralizar datos crudos (p.\ ej., capturas PCAP) hacen pertinente considerar esquemas de entrenamiento distribuido como el aprendizaje federado (FL), donde se comparten actualizaciones de modelos en lugar de datos \cite{Imteaj2022_FL_ResourceConstrainedSurvey}. Además, la riqueza semántica y secuencial de los logs derivados del tráfico (por ejemplo, eventos tipo Zeek) abre la posibilidad de incorporar NLP para capturar patrones temporales y contextuales que pueden perderse en representaciones agregadas \cite{Yadav2023_LLM_Zeek, LogBERT2021}. En conjunto, estos elementos motivan un IDS integral para IoT/IIoT que sea (i) eficiente en el borde, (ii) actualizable de manera distribuida y (iii) robusto al analizar tanto características numéricas como secuencias de eventos.
+
+\section{Problemática}
+
+A pesar de los avances en detección basada en ML/DL, persisten brechas relevantes al intentar llevar un IDS desde el laboratorio hacia un escenario IoT/IIoT operativo. En primer lugar, muchas aproximaciones asumen procesamiento centralizado: capturar tráfico, transferirlo a servidores con recursos amplios y entrenar o inferir en la nube. En redes IIoT, esta suposición puede ser inviable por restricciones de ancho de banda, políticas de privacidad o latencias operacionales, especialmente cuando se consideran capturas PCAP o grandes volúmenes de telemetría \cite{Tekin2023_OnDeviceEnergy}.\\
+\newline
+En segundo lugar, incluso cuando se decide procesar en el borde, emerge un desafío de \textbf{viabilidad computacional}. Un IDS en un \textit{gateway} debe sostener operación continua con inferencias frecuentes, sin degradar el funcionamiento del dispositivo ni introducir cuellos de botella. Esto obliga a elegir modelos livianos, estrategias de selección de características y, en algunos casos, compresión o cuantización \cite{DuttaBharali2021_TinyMLSurvey}.\\
+\newline
+En tercer lugar, el comportamiento del tráfico en IoT/IIoT es altamente heterogéneo y puede variar por sitio, tiempo y tipo de dispositivo. Esto produce distribuciones de datos \textit{non-IID} y deriva en \textit{concept drift}, reduciendo la generalización de modelos entrenados de forma estática. El aprendizaje federado se plantea como una alternativa para actualización distribuida, pero introduce retos operacionales: comunicación costosa, participación parcial, conectividad eventual y heterogeneidad de hardware \cite{Imteaj2022_FL_ResourceConstrainedSurvey, Hajj2023_CrossLayerFL_IDS}.\\
+\newline
+Finalmente, aunque el tráfico capturado (PCAP) ofrece detalle a nivel de paquete, transformar dicho tráfico en representaciones útiles para ML no es trivial. Las características de flujo (\textit{flow features}) facilitan modelos compactos, pero pueden perder contexto temporal y secuencial importante. En contraste, los logs semiestructurados derivados del tráfico permiten analizar secuencias de eventos, abriendo la puerta al uso de NLP y Transformers para detección de anomalías, pero estos enfoques suelen ser más costosos computacionalmente y requieren diseño cuidadoso para ser compatibles con edge \cite{LogBERT2021, LTAnomaly2023}.\\
+\newline
+A estas brechas se suma un requisito transversal: \textbf{proteger los artefactos y comunicaciones} involucrados en captura, almacenamiento y actualización de modelos. En escenarios con aprendizaje distribuido, las actualizaciones intercambiadas y los modelos almacenados localmente se convierten en activos críticos, lo que justifica considerar mecanismos de protección de bajo costo computacional, como criptografía ligera estandarizada para dispositivos restringidos \cite{NIST_SP800232_2025}.
+
+\section{Justificación}
+
+Esta tesis se justifica por la necesidad de proponer y evaluar una solución integral y factible para detección de intrusiones en IoT/IIoT, que no se limite a reportar métricas de clasificación, sino que valide su ejecución en un nodo \textit{edge} realista (Raspberry Pi 5) bajo restricciones de CPU/RAM y latencia. La literatura reciente respalda que, para IDS \textit{on-device}, el costo operacional (latencia, energía y memoria) es tan determinante como la precisión, por lo que una evaluación completa debe incluir métricas de despliegue \cite{Tekin2023_OnDeviceEnergy}. En este sentido, \textit{TinyML} y ML eficiente ofrecen herramientas para construir modelos livianos y sostenibles en hardware limitado \cite{DuttaBharali2021_TinyMLSurvey}.\\
+\newline
+Adicionalmente, se propone incorporar aprendizaje federado como estrategia de actualización colaborativa, reduciendo la necesidad de centralizar datos crudos y atendiendo restricciones de privacidad y conectividad. Dado que FL en IoT enfrenta retos de heterogeneidad y datos \textit{non-IID}, esta tesis lo evalúa en un escenario controlado (simulación con particiones) midiendo su costo de comunicación y desempeño frente a entrenamiento centralizado \cite{Imteaj2022_FL_ResourceConstrainedSurvey, Roy2023_FL_AdaptedModel}.\\
+\newline
+Como aporte complementario, se integra NLP sobre logs derivados del tráfico (por ejemplo, secuencias tipo Zeek), para capturar patrones temporales y contextuales asociados a ataques que no necesariamente emergen en agregaciones numéricas. Los enfoques basados en Transformers para logs han mostrado potencial para detección de anomalías, motivando su exploración en combinación con un pipeline de borde \cite{LogBERT2021, LTAnomaly2023, Yadav2023_LLM_Zeek}.\\
+\newline
+Finalmente, la tesis incorpora protección de bajo costo computacional para artefactos y mensajes de actualización (cuando aplique), apoyándose en lineamientos y estándares de criptografía ligera para dispositivos restringidos, con el fin de aumentar la aplicabilidad de la solución en escenarios reales \cite{NIST_SP800232_2025}.\\
+\newline
+
+El documento está estructurado de la siguiente manera: \textbf{\ref{chap:Introduction})} \nameref{chap:Introduction}, \textbf{\ref{chap:theo})} \nameref{chap:theo} el cual a su vez está dividido en \textbf{\ref{sec:conceptos})} \nameref{sec:conceptos} y \textbf{\ref{sec:antecedentes})} \nameref{sec:antecedentes}, \textbf{\ref{chap:meth})} \nameref{chap:meth}, \textbf{\ref{chap:resu})} \nameref{chap:resu}, \textbf{\ref{chap:conc})} \nameref{chap:conc}, \textbf{\ref{chap:ann1})} \nameref{chap:ann1}. Adicionalmente, si desea consultar los scripts de las rutinas en Python implementadas en este trabajo, así como el modelo del sistema IEEE de 8 barras utilizado en \textit{DigSilent PowerFactory}, puede acceder a ellos a través del siguiente enlace: \href{https://github.com/pmdeoliveiradejesus}{Repositorio del proyecto}.
+\newline
+\newline
+
+\section{Objetivos}
+
+\subsection{Objetivo General}
+Diseñar e implementar un prototipo de detección de intrusiones para redes IoT/IIoT en un nodo \textit{edge} (Raspberry Pi 5), combinando modelos livianos, análisis de logs con NLP y una evaluación de aprendizaje federado, incorporando mecanismos de protección de comunicaciones de bajo costo computacional.
+
+\subsection{Objetivos Específicos}
+\begin{enumerate}
+    \item Construir el \textit{pipeline} de datos a partir de capturas/representaciones del tráfico (PCAP y/o derivados), incluyendo preprocesamiento, extracción de características de flujo y generación de logs/eventos para análisis secuencial, definiendo esquemas de etiquetas (binario y/o multiclase) sobre uno o más datasets públicos de IoT/IIoT.
+
+    \item Entrenar y comparar modelos livianos para detección/clasificación de ataques, aplicando estrategias de eficiencia (selección de características, compresión y/o cuantización cuando aplique) para asegurar viabilidad en Raspberry Pi 5 \cite{DuttaBharali2021_TinyMLSurvey}.
+
+    \item Diseñar un componente basado en NLP para análisis de logs derivados del tráfico, evaluando representaciones y modelos secuenciales (p.\ ej., enfoques tipo Transformer/BERT para anomalías o clasificación) y estudiando su complementariedad con modelos basados en \textit{flow features} \cite{LogBERT2021, LTAnomaly2023, Yadav2023_LLM_Zeek}.
+
+    \item Desplegar el IDS en Raspberry Pi 5 y medir desempeño en ambiente \textit{edge} (latencia de inferencia, consumo CPU/RAM, estabilidad bajo carga y calidad de detección), comparando configuraciones con y sin componente NLP.
+
+    \item Implementar y evaluar un esquema federado (al menos en simulación con particiones y/o múltiples nodos) y cuantificar su impacto frente a entrenamiento centralizado (calidad, rondas, costo de comunicación), incorporando protección básica de mensajes/artefactos mediante criptografía ligera cuando corresponda \cite{Imteaj2022_FL_ResourceConstrainedSurvey, NIST_SP800232_2025}.
+\end{enumerate}
+
+\subsection{Pregunta de investigación}
+¿Qué tan efectivo y eficiente es un IDS liviano desplegado en Raspberry Pi 5 para redes IoT/IIoT al combinar modelos de clasificación compactos con análisis de logs mediante NLP, y cuánto mejora su aplicabilidad cuando la actualización del modelo se realiza de forma federada y sus comunicaciones/artefactos se protegen con criptografía ligera?

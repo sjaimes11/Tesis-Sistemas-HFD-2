@@ -1,0 +1,42 @@
+\begin{appendix}
+\chapter{Anexos}\label{chap:ann1}
+
+\section{Anexo A: Arquitectura del Sistema HFL}
+\label{anx:arquitectura}
+
+La arquitectura desplegada consta de tres capas:
+
+\begin{itemize}
+    \item \textbf{Capa Edge:} 2 $\times$ ESP32-S3 (nodo normal + nodo simulado), ejecutando inferencia TinyML y comunicación MQTT cifrada con ASCON-128.
+    \item \textbf{Capa Fog:} 1 $\times$ Raspberry Pi 4 (4\,GB RAM), actuando como broker MQTT, gateway de entrenamiento local y puente HTTP hacia el servidor.
+    \item \textbf{Capa Cloud:} 1 $\times$ PC (servidor FastAPI), coordinando la agregación FedAvg y el dashboard analítico.
+\end{itemize}
+
+\section{Anexo B: Archivos del Sistema}
+\label{anx:archivos}
+
+\begin{table}[H]
+\centering
+\caption{Archivos principales del sistema HFL v7.}
+\small
+\begin{tabular}{l l l}
+\toprule
+\textbf{Archivo} & \textbf{Dispositivo} & \textbf{Función} \\
+\midrule
+\texttt{main\_edge\_node\_normal.cpp}    & ESP32-S3 & Nodo de tráfico normal \\
+\texttt{main\_edge\_node\_simulated.cpp} & ESP32-S3 & Nodo de tráfico mixto \\
+\texttt{ascon128.h}                      & ESP32-S3 & Cifrado ASCON-128 (C++) \\
+\texttt{gateway\_hfl.py}                 & Raspberry Pi 4 & Gateway federado \\
+\texttt{ascon128.py}                     & RPi / PC & Cifrado ASCON-128 (Python) \\
+\texttt{ascon\_metrics.py}               & RPi / PC & Métricas de cifrado \\
+\texttt{server\_hfl.py}                  & PC & Servidor central FedAvg \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Anexo C: Repositorio del Proyecto}
+\label{anx:repositorio}
+
+El código fuente completo, datasets y scripts de entrenamiento están disponibles en el repositorio del proyecto. La rama \texttt{main} contiene el sistema con cifrado ASCON-128 habilitado, y la rama \texttt{hfl\_v7-no-ascon} contiene la versión sin cifrado para medición de baseline.
+
+\end{appendix}

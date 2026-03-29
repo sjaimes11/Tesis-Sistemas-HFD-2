@@ -1,0 +1,65 @@
+\chapter{Conclusiones y Trabajos Futuros}
+\label{chap:conc}
+
+\section{Conclusiones}
+
+Esta investigación diseñó, implementó y evaluó un prototipo funcional de Sistema de Detección de Intrusiones (IDS) para redes IoT, desplegado en una arquitectura jerárquica Edge--Fog--Cloud compuesta por microcontroladores ESP32-S3, una Raspberry Pi 4 y un servidor PC. El sistema integra aprendizaje federado jerárquico (HFL) con cifrado ligero ASCON-128 y modelos TinyML, validando su viabilidad sobre hardware real. A continuación se detallan las conclusiones principales, organizadas según los objetivos específicos planteados.
+
+\subsection{Sobre la viabilidad de TinyML para IDS en IoT}
+
+Se demostró que un modelo MLP compacto de 1\,139 parámetros ($\approx$4.5\,KB) es capaz de ejecutarse en la SRAM de un ESP32-S3 y clasificar tráfico de red IoT en tres categorías (\texttt{normal}, \texttt{mqtt\_bruteforce}, \texttt{scan\_A}) con una accuracy de $\sim$90\% tras el entrenamiento federado. Esta cifra sitúa al modelo a $\sim$10 puntos del techo teórico establecido por los modelos centralizados (Decision Tree: 99.87\%, Random Forest: 99.94\%), pero dentro de un rango operativo viable para sistemas de alerta temprana.
+
+El análisis comparativo con modelos clásicos reveló que los algoritmos más precisos (Random Forest, SVM-RBF) requieren del orden de megabytes de memoria y son incompatibles con microcontroladores. El MLP propuesto ofrece el mejor compromiso entre precisión, tamaño y viabilidad de despliegue, validando que TinyML es una alternativa factible para detección de intrusiones en el borde.
+
+\subsection{Sobre el aprendizaje federado y la privacidad}
+
+El esquema de aprendizaje federado jerárquico (HFL) logró entrenar el modelo de forma distribuida compartiendo \textbf{únicamente 163 parámetros} por ronda (652 bytes), en contraste con el enfoque centralizado que requeriría transferir los $\sim$256\,276 flujos de datos. Esto representa una reducción del $>$99.99\% en la información intercambiada, eliminando la necesidad de centralizar capturas PCAP o flujos de red sensibles.
+
+La penalización en accuracy del enfoque federado respecto al centralizado fue de $\sim$7 puntos porcentuales ($\sim$90\% vs.\ $\sim$97\% para el mismo modelo MLP). Esta brecha es consistente con los resultados reportados en la literatura para FL con datos non-IID \cite{Imteaj2022_FL_ResourceConstrainedSurvey, Albanbay2025} y se atribuye a la heterogeneidad de distribución entre nodos (el nodo normal genera solo tráfico benigno) y al etiquetado heurístico en el gateway.
+
+Se concluye que el aprendizaje federado es un mecanismo efectivo para actualizar modelos de IDS IoT preservando la privacidad de los datos de red, con una penalización de accuracy moderada y aceptable para entornos donde la confidencialidad de los datos es prioritaria.
+
+\subsection{Sobre el overhead del cifrado ASCON-128}
+
+La cuantificación exhaustiva del overhead de ASCON-128 sobre 182 operaciones criptográficas y 60 rondas de FL arrojó resultados contundentes:
+
+\begin{itemize}
+    \item El \textbf{overhead temporal} es de $\sim$14\,ms por operación ($\sim$42\,ms por ronda), lo que representa apenas el $\sim$0.06\% del tiempo total de una ronda federada ($\sim$73\,s). Este costo es prácticamente imperceptible en la operación del sistema.
+    \item El \textbf{overhead de comunicación} es de $\sim$36\% por mensaje ($\sim$1.3\,KB adicionales sobre un payload de $\sim$3.6\,KB), atribuible al tag de autenticación de 16 bytes, el nonce de 16 bytes, la codificación Base64 ($\times 4/3$) y la estructura del envelope JSON. En términos absolutos, esto representa $\sim$3.9\,KB adicionales por ronda.
+    \item No se observó \textbf{degradación en la convergencia} ni en la accuracy del modelo federado al habilitar ASCON; las métricas son indistinguibles entre las ramas con y sin cifrado.
+\end{itemize}
+
+Estos resultados validan que ASCON-128 es un mecanismo criptográfico idóneo para proteger las comunicaciones de aprendizaje federado en dispositivos IoT restringidos, con un costo operacional despreciable que no justifica prescindir de la protección.
+
+\subsection{Sobre la arquitectura integrada}
+
+A nivel sistémico, la arquitectura Edge--Fog--Cloud propuesta demostró ser funcional y escalable:
+\begin{itemize}
+    \item La \textbf{separación de capas} permite que cada componente opere dentro de sus restricciones: los ESP32 manejan la inferencia local ($< 0.1$\,ms, $\sim$4.5\,KB), la Raspberry Pi gestiona el entrenamiento local y la coordinación MQTT, y el PC agrega y distribuye el modelo global.
+    \item La \textbf{comunicación bidireccional completa} (ESP32 $\leftrightarrow$ RPi $\leftrightarrow$ PC) fue validada con cifrado ASCON end-to-end en los cuatro canales, sin puntos ciegos de seguridad.
+    \item El \textbf{ciclo completo} de una ronda federada (recolección de features, entrenamiento local, envío de pesos, agregación FedAvg, distribución del modelo global) se completa en $\sim$70--80\,s, lo que permite $\sim$50 rondas por hora en condiciones operativas.
+\end{itemize}
+
+% ====================================================================
+\section{Trabajos Futuros}
+\label{sec:future}
+
+A partir de las limitaciones identificadas y las oportunidades emergentes, se proponen las siguientes líneas de investigación:
+
+\begin{enumerate}
+    \item \textbf{Mejora de la precisión federada con técnicas avanzadas de FL:} Explorar algoritmos de agregación más robustos ante datos non-IID, tales como FedProx \cite{Li2020FedProx}, SCAFFOLD o personalized FL, para reducir el gap de accuracy entre el enfoque federado y el centralizado.
+
+    \item \textbf{Datos de tráfico real:} Sustituir la simulación de tráfico en los ESP32 por captura y análisis de tráfico MQTT real en un entorno IoT operativo, validando el sistema con distribuciones de tráfico genuinas y eliminando la dependencia de la función heurística de etiquetado.
+
+    \item \textbf{Integración de NLP para análisis de logs:} Desarrollar el componente de NLP planteado en los objetivos originales, utilizando modelos tipo LogBERT \cite{Guo2021LogBERT} o Transformers ligeros para analizar secuencias de eventos derivadas del tráfico. Evaluar su complementariedad con el MLP basado en features numéricas y su viabilidad de ejecución en la Raspberry Pi.
+
+    \item \textbf{Evaluación energética y de larga duración:} Medir el consumo energético de los nodos ESP32 durante la inferencia continua y la comunicación cifrada, y ejecutar el sistema durante períodos prolongados (semanas) para evaluar la estabilidad y la deriva del modelo (\emph{concept drift}).
+
+    \item \textbf{Escalabilidad multi-gateway:} Extender el despliegue a múltiples Raspberry Pi actuando como gateways independientes con datasets locales distintos, evaluando el impacto de una topología HFL más realista con mayor heterogeneidad.
+
+    \item \textbf{Cuantización del modelo:} Aplicar cuantización post-entrenamiento (INT8) al MLP para reducir aún más la huella de memoria y evaluar el impacto en accuracy. Esto habilitaría el despliegue en microcontroladores aún más restringidos (e.g., ESP32-C3 con 400\,KB de SRAM).
+
+    \item \textbf{Comparación con ASCON-128a y otras variantes:} Evaluar ASCON-128a (rate de 128 bits vs.\ 64 bits en ASCON-128) para determinar si la mayor tasa de procesamiento reduce el overhead temporal, y comparar con otros esquemas de criptografía ligera estandarizados.
+
+    \item \textbf{Detección de concept drift y reentrenamiento adaptativo:} Implementar mecanismos de detección de cambio en la distribución de los datos (ADWIN, Page-Hinkley) que disparen automáticamente nuevas rondas de aprendizaje federado cuando la precisión del modelo cae por debajo de un umbral configurable.
+\end{enumerate}

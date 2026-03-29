@@ -1,0 +1,53 @@
+\chapter{Conclusions and Future Work}
+\label{chap:conc}
+
+\section{Conclusions}
+
+This research designed, implemented, and evaluated a functional prototype of an Intrusion Detection System (IDS) for IoT networks, deployed on a hierarchical Edge--Fog--Cloud architecture composed of ESP32-S3 microcontrollers, a Raspberry Pi 4, and a PC server. The system integrates Hierarchical Federated Learning (HFL) with ASCON-128 lightweight encryption and TinyML models, validating its viability on real hardware. The following are the main conclusions, organized according to the proposed specific objectives.
+
+\subsection{On the Viability of TinyML for Intrusion Detection (Objective 2)}
+
+The compact MLP model with 1,139 parameters ($\approx$4.5\,KB) demonstrated that it is feasible to execute multiclass intrusion detection (3 categories) directly on an ESP32-S3 microcontroller with 512\,KB of SRAM. When trained centrally, the model achieves $\sim$97\% accuracy, placing it within 3 points of the best Decision Tree. In the federated scheme, accuracy stabilizes at $\sim$90\% after 20--30 rounds, a gap attributable primarily to limited sample availability (40 per round) and non-IID data distributions, rather than to the model architecture itself.
+
+The comparative analysis with classical models (Random Forest: 99.94\%, SVM-RBF: 99.68\%) confirms that the highest-performing algorithms require memory footprints ($>$2\,MB) incompatible with microcontrollers, while the MLP offers an effective \emph{trade-off} between accuracy and edge viability.
+
+\subsection{On Federated Learning for Privacy (Objective 5)}
+
+The implemented HFL system reduces exchanged information from $\sim$13.3 million values (full raw flows) to \textbf{163 model parameters} (652 bytes) per federated round, achieving a data exchange reduction of $>$99.99\%. The accuracy impact ($\sim$7 points versus centralized MLP training) is consistent with FL literature on non-IID scenarios and constitutes an acceptable \emph{trade-off} in contexts where privacy is a priority. The complete bidirectional protocol (ESP32 $\to$ RPi $\to$ PC $\to$ RPi $\to$ ESP32) was validated on real hardware with stable convergence over 60+ rounds.
+
+\subsection{On ASCON-128 Encryption Overhead (Objective 5)}
+
+Quantification of ASCON-128 over 182 cryptographic operations demonstrated:
+\begin{itemize}
+    \item A \textbf{negligible temporal overhead:} $\sim$14\,ms per operation ($\sim$42\,ms per round), representing $< 0.1$\% of total FL cycle time.
+    \item A \textbf{moderate size overhead:} $\sim$36\% per message ($\sim$1.3\,KB additional), composed of the authentication tag, nonce, and Base64 expansion.
+    \item \textbf{No observable convergence impact:} accuracy and loss curves are indistinguishable between ASCON-enabled and ASCON-disabled configurations.
+\end{itemize}
+
+These results validate that ASCON-128, the NIST standard for lightweight cryptography, is suitable for protecting federated learning communications on constrained IoT devices without performance degradation.
+
+\subsection{On the Integrated Architecture}
+
+The successful deployment of the complete system (2 ESP32s + Raspberry Pi + PC server) on a real local network demonstrates that the Edge--Fog--Cloud architecture is viable for practical IoT IDS. The system sustains continuous operation with 40-sample collection cycles, local training (5 epochs), global aggregation (FedAvg), and encrypted model distribution in $\sim$73 seconds per round. The analytics dashboard provides real-time convergence visibility, facilitating operational monitoring.
+
+\section{Future Work}
+
+Based on the results obtained and the limitations identified, the following lines of future work are proposed:
+
+\begin{enumerate}
+    \item \textbf{Scaling to multiple fog gateways:} Evaluate the system with $K > 2$ gateways deployed across physically separate subnets to validate HFL behavior in multi-site topologies with real network heterogeneity.
+
+    \item \textbf{Real traffic capture integration:} Replace traffic simulation on ESP32 nodes with actual network flow capture using \textit{pcap} libraries, evaluating IDS performance on live operational traffic.
+
+    \item \textbf{Expanding the attack taxonomy:} Incorporate additional attack categories (DDoS, ransomware, data exfiltration) using extended datasets such as CICIoT2023 or Edge-IIoTset to evaluate model robustness against a broader threat spectrum.
+
+    \item \textbf{Model compression and quantization:} Apply INT8 quantization and pruning techniques to the MLP model to further reduce memory footprint and evaluate the impact on accuracy and inference time on the ESP32.
+
+    \item \textbf{Alternative aggregation algorithms:} Evaluate FedProx \cite{Li2020FedProx} and other algorithms robust to non-IID data to reduce the accuracy gap between federated and centralized training.
+
+    \item \textbf{NLP component for log analysis:} Implement and evaluate a lightweight NLP component on the Raspberry Pi for semantic analysis of MQTT/network logs, exploring complementarity with numerical feature classification.
+
+    \item \textbf{Energy consumption evaluation:} Measure energy consumption (mAh, mW) on the ESP32 during inference and MQTT/ASCON communication cycles to validate sustainability in battery-powered deployments.
+
+    \item \textbf{ASCON-128 hardware acceleration:} Explore ESP32-S3 hardware cryptographic module utilization for ASCON-128 acceleration and evaluate its impact on temporal overhead and energy consumption.
+\end{enumerate}

@@ -1,0 +1,58 @@
+\chapter{Introduction}
+\label{chap:Introduction}
+
+\section{Context}
+
+The accelerated adoption of \textit{Internet of Things} (IoT) and \textit{Industrial IoT} (IIoT) solutions in manufacturing, energy, logistics, healthcare, and smart cities has substantially increased the attack surface of networks by incorporating heterogeneous devices, diverse protocols, and nodes with limited computing and security capabilities. In practice, this expansion coexists with frequent operational challenges: weak configurations, irregular update cycles, and intermittent connectivity, which increase the likelihood of intrusions and persistent malicious traffic. In this scenario, cybersecurity must be understood as a set of risk management and continuous operation capabilities, aligned with frameworks such as the \textit{NIST Cybersecurity Framework} (CSF), where timely detection and monitoring are essential functions for reducing impact and response time \cite{NIST_CSF2_2024}.\\
+\newline
+A key measure to strengthen the detection function in IoT/IIoT networks is the use of traffic-oriented \textit{Intrusion Detection Systems} (IDS), capable of identifying known attack patterns and emerging anomalies. However, deploying IDS in these environments is not limited to maximizing classification metrics; it also demands technical viability on \textit{edge gateways} and constrained devices, where resource consumption, inference latency, and stability under load are determining factors \cite{Tekin2023_OnDeviceEnergy}. In particular, the use of edge platforms such as Raspberry Pi enables traffic processing close to the source, reducing latencies and connectivity dependence, but requires selecting models and \textit{pipelines} compatible with real constraints. At this point, \textit{TinyML} and efficient ML approaches provide tools for deploying lightweight models with reduced sizes and bounded inference times \cite{DuttaBharali2021_TinyMLSurvey}.\\
+\newline
+In parallel, privacy requirements and limitations on centralizing raw data (e.g., PCAP captures) make it pertinent to consider distributed training schemes such as federated learning (FL), where model updates are shared instead of data \cite{Imteaj2022_FL_ResourceConstrainedSurvey}. Furthermore, the semantic and sequential richness of traffic-derived logs (e.g., Zeek-type events) opens the possibility of incorporating NLP to capture temporal and contextual patterns that may be lost in aggregated representations \cite{Yadav2023_LLM_Zeek, LogBERT2021}. Together, these elements motivate a comprehensive IDS for IoT/IIoT that is (i) efficient at the edge, (ii) updatable in a distributed manner, and (iii) robust in analyzing both numerical features and event sequences.
+
+\section{Problem Statement}
+
+Despite advances in ML/DL-based detection, relevant gaps persist when attempting to move an IDS from the laboratory to an operational IoT/IIoT scenario. First, many approaches assume centralized processing: capturing traffic, transferring it to servers with ample resources, and training or inferring in the cloud. In IIoT networks, this assumption may be infeasible due to bandwidth constraints, privacy policies, or operational latencies, especially when considering PCAP captures or large volumes of telemetry \cite{Tekin2023_OnDeviceEnergy}.\\
+\newline
+Second, even when edge processing is chosen, a \textbf{computational viability} challenge emerges. An IDS on a \textit{gateway} must sustain continuous operation with frequent inferences without degrading device performance or introducing bottlenecks. This requires choosing lightweight models, feature selection strategies, and in some cases, compression or quantization \cite{DuttaBharali2021_TinyMLSurvey}.\\
+\newline
+Third, traffic behavior in IoT/IIoT is highly heterogeneous and may vary by site, time, and device type. This produces \textit{non-IID} data distributions and leads to \textit{concept drift}, reducing the generalization of statically trained models. Federated learning is proposed as an alternative for distributed updating, but introduces operational challenges: costly communication, partial participation, eventual connectivity, and hardware heterogeneity \cite{Imteaj2022_FL_ResourceConstrainedSurvey, Hajj2023_CrossLayerFL_IDS}.\\
+\newline
+Finally, although captured traffic (PCAP) offers packet-level detail, transforming such traffic into useful representations for ML is non-trivial. Flow features facilitate compact models but may lose important temporal and sequential context. In contrast, semi-structured logs derived from traffic allow analyzing event sequences, opening the door to NLP and Transformers for anomaly detection, but these approaches tend to be more computationally expensive and require careful design for edge compatibility \cite{LogBERT2021, LTAnomaly2023}.\\
+\newline
+Added to these gaps is a cross-cutting requirement: \textbf{protecting artifacts and communications} involved in capture, storage, and model updating. In distributed learning scenarios, exchanged updates and locally stored models become critical assets, justifying the consideration of low-cost computational protection mechanisms such as standardized lightweight cryptography for constrained devices \cite{NIST_SP800232_2025}.
+
+\section{Justification}
+
+This thesis is justified by the need to propose and evaluate a comprehensive and feasible solution for intrusion detection in IoT/IIoT that is not limited to reporting classification metrics but validates its execution on a realistic \textit{edge} node (Raspberry Pi 5) under CPU/RAM and latency constraints. Recent literature supports that, for \textit{on-device} IDS, operational cost (latency, energy, and memory) is as determinant as accuracy, so a complete evaluation must include deployment metrics \cite{Tekin2023_OnDeviceEnergy}. In this regard, \textit{TinyML} and efficient ML offer tools for building lightweight and sustainable models on limited hardware \cite{DuttaBharali2021_TinyMLSurvey}.\\
+\newline
+Additionally, federated learning is proposed as a collaborative update strategy, reducing the need to centralize raw data and addressing privacy and connectivity constraints. Given that FL in IoT faces heterogeneity and \textit{non-IID} data challenges, this thesis evaluates it in a controlled scenario (simulation with partitions) measuring its communication cost and performance versus centralized training \cite{Imteaj2022_FL_ResourceConstrainedSurvey, Roy2023_FL_AdaptedModel}.\\
+\newline
+As a complementary contribution, NLP is integrated over traffic-derived logs (e.g., Zeek-type sequences) to capture temporal and contextual patterns associated with attacks that do not necessarily emerge in numerical aggregations. Transformer-based approaches for logs have shown potential for anomaly detection, motivating their exploration in combination with an edge pipeline \cite{LogBERT2021, LTAnomaly2023, Yadav2023_LLM_Zeek}.\\
+\newline
+Finally, the thesis incorporates low-cost computational protection for update artifacts and messages (where applicable), relying on lightweight cryptography standards and guidelines for constrained devices to increase the solution's applicability in real scenarios \cite{NIST_SP800232_2025}.\\
+\newline
+
+The document is structured as follows: \textbf{\ref{chap:Introduction})} \nameref{chap:Introduction}, \textbf{\ref{chap:theo})} \nameref{chap:theo} which is further divided into \textbf{\ref{sec:conceptos})} \nameref{sec:conceptos} and \textbf{\ref{sec:antecedentes})} \nameref{sec:antecedentes}, \textbf{\ref{chap:meth})} \nameref{chap:meth}, \textbf{\ref{chap:resu})} \nameref{chap:resu}, \textbf{\ref{chap:conc})} \nameref{chap:conc}, \textbf{\ref{chap:ann1})} \nameref{chap:ann1}. Additionally, if you wish to consult the Python scripts implemented in this work, you may access them through the following link: \href{https://github.com/}{Project Repository}.
+\newline
+\newline
+
+\section{Objectives}
+
+\subsection{General Objective}
+Design and implement an intrusion detection prototype for IoT/IIoT networks on an \textit{edge} node (Raspberry Pi 5), combining lightweight models, log analysis with NLP, and a federated learning evaluation, incorporating low-cost computational communication protection mechanisms.
+
+\subsection{Specific Objectives}
+\begin{enumerate}
+    \item Build the data \textit{pipeline} from traffic captures/representations (PCAP and/or derivatives), including preprocessing, flow feature extraction, and log/event generation for sequential analysis, defining labeling schemes (binary and/or multiclass) over one or more public IoT/IIoT datasets.
+
+    \item Train and compare lightweight models for attack detection/classification, applying efficiency strategies (feature selection, compression, and/or quantization where applicable) to ensure viability on Raspberry Pi 5 \cite{DuttaBharali2021_TinyMLSurvey}.
+
+    \item Design an NLP-based component for traffic-derived log analysis, evaluating representations and sequential models (e.g., Transformer/BERT-type approaches for anomalies or classification) and studying their complementarity with \textit{flow feature}-based models \cite{LogBERT2021, LTAnomaly2023, Yadav2023_LLM_Zeek}.
+
+    \item Deploy the IDS on Raspberry Pi 5 and measure performance in an \textit{edge} environment (inference latency, CPU/RAM consumption, stability under load, and detection quality), comparing configurations with and without the NLP component.
+
+    \item Implement and evaluate a federated scheme (at least in simulation with partitions and/or multiple nodes) and quantify its impact versus centralized training (quality, rounds, communication cost), incorporating basic message/artifact protection through lightweight cryptography where applicable \cite{Imteaj2022_FL_ResourceConstrainedSurvey, NIST_SP800232_2025}.
+\end{enumerate}
+
+\subsection{Research Questions}
+How effective and efficient is a lightweight IDS deployed on Raspberry Pi 5 for IoT/IIoT networks when combining compact classification models with NLP-based log analysis, and how much does its applicability improve when model updating is performed federally and its communications/artifacts are protected with lightweight cryptography?

@@ -1,0 +1,278 @@
+\chapter{Metodología}
+\label{chap:meth}
+
+La presente investigación sigue un enfoque experimental y cuantitativo, estructurado en cinco fases que se corresponden con los objetivos específicos: (i) construcción del pipeline de datos, (ii) diseño e implementación de la arquitectura jerárquica de aprendizaje federado, (iii) integración de cifrado ligero ASCON-128, (iv) entrenamiento y comparación de modelos clásicos de ML como línea base, y (v) evaluación integral del sistema en hardware real. 
+% ====================================================================
+\section{Arquitectura del Sistema}
+\label{sec:arquitectura}
+
+El sistema propuesto se organiza en tres capas jerárquicas que reflejan la topología Edge--Fog--Cloud, cada una con roles diferenciados de procesamiento, entrenamiento y coordinación.
+
+\subsection{Capa Edge: Nodos ESP32-S3}
+
+Los nodos de borde se implementan sobre microcontroladores \textbf{ESP32-S3} con 512\,KB de SRAM y conectividad Wi-Fi nativa. Cada nodo cumple tres funciones:
+\begin{enumerate}
+    \item \textbf{Generación y captura de tráfico:} simula flujos de red MQTT con patrones estadísticos calibrados a partir de los datasets reales (Sección~\ref{sec:dataset}).
+    \item \textbf{Extracción de características:} computa en tiempo real un vector de 13 features por flujo (Tabla~\ref{tab:features}).
+    \item \textbf{Inferencia local (TinyML):} ejecuta un modelo MLP de 4 capas directamente en la SRAM del microcontrolador, clasificando cada flujo en tres categorías: \texttt{normal}, \texttt{mqtt\_bruteforce} y \texttt{scan\_A}.
+\end{enumerate}
+
+Se despliegan dos nodos diferenciados: un nodo \emph{normal} que genera exclusivamente tráfico benigno, y un nodo \emph{simulado} que genera una mezcla de 40\% normal, 30\% bruteforce y 30\% scan\_A, reproduciendo las distribuciones estadísticas reales de los datasets.
+
+\subsection{Capa Fog: Gateway Raspberry Pi 4}
+
+La Raspberry Pi 4 (4\,GB RAM, ARM Cortex-A72 a 1.5\,GHz) actúa como \emph{Edge Gateway} y ejecuta el script \texttt{gateway\_hfl.py}. Sus responsabilidades incluyen:
+\begin{itemize}
+    \item Actuar como \textbf{broker MQTT} (Mosquitto) para recibir las features de los ESP32.
+    \item Mantener un \textbf{buffer de entrenamiento} de $N_s = 40$ muestras etiquetadas mediante una función heurística basada en las distribuciones reales del dataset.
+    \item \textbf{Entrenar localmente} un modelo Keras/TensorFlow idéntico al del ESP32 (5 épocas, Adam con $\eta=0.005$, batch=8).
+    \item \textbf{Transmitir los pesos} de las dos últimas capas ($W_3, b_3, W_4, b_4$) al servidor central vía HTTP.
+    \item \textbf{Distribuir el modelo global} recibido del servidor a los ESP32 vía MQTT.
+\end{itemize}
+
+\subsection{Capa Cloud: Servidor PC}
+
+Un PC convencional ejecuta \texttt{server\_hfl.py} (FastAPI + Uvicorn) y coordina el aprendizaje federado global:
+\begin{itemize}
+    \item Recibe los pesos locales de $K$ gateways (en esta implementación, $K=2$).
+    \item Aplica el algoritmo \textbf{FedAvg} (Sección~\ref{sec:fedavg}) ponderado por número de muestras.
+    \item Distribuye el modelo global actualizado a todos los gateways.
+    \item Proporciona un \textbf{dashboard analítico} en tiempo real con gráficas de accuracy y loss por ronda.
+\end{itemize}
+
+% ====================================================================
+\section{Conjunto de Datos}
+\label{sec:dataset}
+
+Se utilizan tres datasets públicos de flujos de red IoT, cada uno representando una clase de tráfico. Estos provienen de capturas PCAP procesadas y convertidas a representaciones de flujo unidireccional (\emph{uniflow}):
+
+\begin{table}[H]
+\centering
+\caption{Composición del dataset de flujos de red.}
+\label{tab:dataset_comp}
+\begin{tabular}{l r r l}
+\toprule
+\textbf{Dataset} & \textbf{Flujos} & \textbf{Etiqueta} & \textbf{Protocolo principal} \\
+\midrule
+\texttt{uniflow\_normal.csv}           & 171\,837 & 0 (\texttt{normal})           & MQTT, TCP \\
+\texttt{uniflow\_mqtt\_bruteforce.csv} &  33\,080 & 1 (\texttt{mqtt\_bruteforce}) & MQTT (login) \\
+\texttt{uniflow\_scan\_A.csv}          &  51\,359 & 2 (\texttt{scan\_A})          & TCP SYN \\
+\midrule
+\textbf{Total}                         & 256\,276 & 3 clases & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Cada flujo se representa mediante un vector de $d = 13$ características numéricas, seleccionadas para ser computables en tiempo real por un microcontrolador:
+
+\begin{table}[H]
+\centering
+\caption{Vector de 13 features extraídas por flujo.}
+\label{tab:features}
+\small
+\begin{tabular}{c l l}
+\toprule
+\textbf{Índice} & \textbf{Feature} & \textbf{Descripción} \\
+\midrule
+0  & \texttt{num\_pkts}      & Número de paquetes del flujo \\
+1  & \texttt{mean\_iat}      & Inter-arrival time promedio (s) \\
+2  & \texttt{std\_iat}       & Desviación estándar del IAT \\
+3  & \texttt{min\_iat}       & IAT mínimo \\
+4  & \texttt{max\_iat}       & IAT máximo \\
+5  & \texttt{mean\_pkt\_len} & Longitud promedio de paquete (bytes) \\
+6  & \texttt{num\_bytes}     & Total de bytes del flujo \\
+7  & \texttt{num\_psh\_flags}& Conteo de flags PSH \\
+8  & \texttt{num\_rst\_flags}& Conteo de flags RST \\
+9  & \texttt{num\_urg\_flags}& Conteo de flags URG \\
+10 & \texttt{std\_pkt\_len}  & Desviación estándar de longitud de paquete \\
+11 & \texttt{min\_pkt\_len}  & Longitud mínima de paquete \\
+12 & \texttt{max\_pkt\_len}  & Longitud máxima de paquete \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Para el preprocesamiento, se aplica un \texttt{StandardScaler} que normaliza cada feature a media cero y varianza unitaria. Los parámetros del scaler ($\mu_i, \sigma_i$) se exportan como constantes embebidas en el firmware del ESP32, permitiendo la normalización en el dispositivo sin dependencia de bibliotecas externas.
+
+% ====================================================================
+\section{Modelo de Aprendizaje: MLP Multiclase}
+\label{sec:modelo_mlp}
+
+Se diseñó un perceptrón multicapa (MLP) compacto orientado a la ejecución en microcontroladores con restricciones de memoria:
+
+\begin{equation}
+\text{MLP}: \mathbb{R}^{13} \xrightarrow{W_1, b_1} \mathbb{R}^{32} \xrightarrow{W_2, b_2} \mathbb{R}^{16} \xrightarrow{W_3, b_3} \mathbb{R}^{8} \xrightarrow{W_4, b_4} \mathbb{R}^{3}
+\label{eq:mlp}
+\end{equation}
+
+Las primeras tres capas utilizan activación ReLU y la capa de salida emplea Softmax para obtener probabilidades sobre las 3 clases. La Tabla~\ref{tab:model_params} detalla la distribución de parámetros:
+
+\begin{table}[H]
+\centering
+\caption{Distribución de parámetros del modelo MLP.}
+\label{tab:model_params}
+\begin{tabular}{l c c r}
+\toprule
+\textbf{Capa} & \textbf{Entrada} & \textbf{Salida} & \textbf{Parámetros} \\
+\midrule
+Dense 1 (ReLU)    & 13 & 32 & $13 \times 32 + 32 = 448$ \\
+Dense 2 (ReLU)    & 32 & 16 & $32 \times 16 + 16 = 528$ \\
+Dense 3 (ReLU)    & 16 &  8 & $16 \times  8 +  8 = 136$ \\
+Dense 4 (Softmax) &  8 &  3 & $ 8 \times  3 +  3 =  27$ \\
+\midrule
+\textbf{Total}    &    &    & \textbf{1\,139} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Con 1\,139 parámetros en punto flotante de 32 bits, el modelo completo ocupa $\approx 4.5$\,KB de memoria, lo que permite su ejecución directa en la SRAM del ESP32-S3 sin necesidad de cuantización.
+
+En el esquema de aprendizaje federado, solo las \textbf{dos últimas capas} ($W_3, b_3, W_4, b_4$, 163 parámetros) son intercambiadas entre nodos, reduciendo el costo de comunicación a $\approx 652$\,bytes por actualización (sin serialización JSON).
+
+% ====================================================================
+\section{Protocolo de Aprendizaje Federado Jerárquico}
+\label{sec:fedavg}
+
+Se implementa un esquema de aprendizaje federado jerárquico (HFL) con tres niveles de agregación:
+
+\begin{enumerate}
+    \item \textbf{Nivel Edge (ESP32 $\to$ RPi):} Los nodos ESP32 envían vectores de features al gateway cada 5 segundos vía MQTT (\texttt{fl/features}). El gateway acumula $N_s = 40$ muestras etiquetadas heurísticamente.
+
+    \item \textbf{Nivel Fog (RPi $\to$ PC):} Tras llenar el buffer, el gateway entrena localmente durante $E = 5$ épocas y envía los pesos $\{W_3, b_3, W_4, b_4\}$ junto con la accuracy local y el número de muestras al servidor central vía HTTP POST.
+
+    \item \textbf{Nivel Cloud (Agregación FedAvg):} El servidor espera recibir actualizaciones de $K = 2$ gateways y aplica FedAvg ponderado por número de muestras:
+\end{enumerate}
+
+\begin{equation}
+W_{\text{global}}^{(t+1)} = \frac{\sum_{k=1}^{K} n_k \cdot W_k^{(t)}}{\sum_{k=1}^{K} n_k}
+\label{eq:fedavg}
+\end{equation}
+
+donde $n_k$ es el número de muestras usadas para el entrenamiento local del gateway $k$ y $W_k^{(t)}$ sus pesos locales en la ronda $t$.
+
+El modelo global resultante es distribuido de vuelta a los gateways (HTTP POST a \texttt{/deploy-model}), quienes a su vez lo publican a los ESP32 por MQTT (\texttt{fl/global\_model}). De esta forma, el flujo bidireccional completo es:
+
+\begin{center}
+ESP32 $\xrightarrow{\text{features (MQTT)}}$ RPi $\xrightarrow{\text{pesos (HTTP)}}$ PC $\xrightarrow{\text{modelo global (HTTP)}}$ RPi $\xrightarrow{\text{modelo global (MQTT)}}$ ESP32
+\end{center}
+
+El etiquetado en el gateway se realiza mediante una \textbf{función heurística} calibrada con las distribuciones estadísticas reales de los datasets:
+
+\begin{itemize}
+    \item Si $\texttt{num\_pkts} \geq 50$ \textbf{y} $\texttt{num\_psh} \geq 10$: etiqueta $= 1$ (\texttt{bruteforce}).
+    \item Si $\texttt{num\_pkts} \leq 5$ \textbf{y} $\texttt{mean\_pkt\_len} \leq 50$ \textbf{y} $\texttt{num\_psh} \leq 1$: etiqueta $= 2$ (\texttt{scan\_A}).
+    \item Si $\texttt{num\_pkts} \leq 30$ \textbf{y} $\texttt{mean\_pkt\_len} \geq 50$: etiqueta $= 0$ (\texttt{normal}).
+    \item En otro caso, la muestra se descarta ($-1$).
+\end{itemize}
+
+% ====================================================================
+\section{Integración de Cifrado Ligero ASCON-128}
+\label{sec:ascon}
+
+Para proteger los artefactos de aprendizaje federado en tránsito, se integra \textbf{ASCON-128} \cite{NISTSP8002322025}, el estándar de criptografía ligera seleccionado por NIST para dispositivos restringidos. ASCON provee cifrado autenticado con datos asociados (AEAD), garantizando simultáneamente \emph{confidencialidad} e \emph{integridad} de los mensajes.
+
+\subsection{Parámetros Criptográficos}
+
+\begin{itemize}
+    \item \textbf{Clave simétrica:} 128 bits (16 bytes), pre-compartida entre todos los dispositivos.
+    \item \textbf{Nonce:} 128 bits, generado a partir de timestamp truncado a 32 bits y un contador monotónico.
+    \item \textbf{Tag de autenticación:} 128 bits (16 bytes).
+    \item \textbf{Tasa (rate):} 64 bits (8 bytes por bloque).
+    \item \textbf{Permutación:} $p^{12}$ para inicialización/finalización, $p^6$ para procesamiento de bloques.
+\end{itemize}
+
+\subsection{Canales Cifrados}
+
+Se cifran los \textbf{cuatro canales de comunicación} del sistema:
+
+\begin{table}[H]
+\centering
+\caption{Canales de comunicación protegidos con ASCON-128.}
+\label{tab:canales_ascon}
+\begin{tabular}{l l l l}
+\toprule
+\textbf{Canal} & \textbf{Protocolo} & \textbf{Contenido} & \textbf{Implementación} \\
+\midrule
+ESP32 $\to$ RPi & MQTT & Features (13 floats)    & C++ (\texttt{ascon128.h}) \\
+RPi $\to$ PC    & HTTP & Pesos locales + métricas & Python (\texttt{ascon128.py}) \\
+PC $\to$ RPi    & HTTP & Modelo global            & Python (\texttt{ascon128.py}) \\
+RPi $\to$ ESP32 & MQTT & Modelo global            & Python $\to$ C++ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El payload cifrado se encapsula en un \emph{envelope} JSON con tres campos codificados en Base64:
+\begin{verbatim}
+{"ct": "<ciphertext_b64>", "tag": "<tag_b64>", "nonce": "<nonce_b64>"}
+\end{verbatim}
+
+\subsection{Métricas de Overhead}
+
+Para cuantificar el overhead de ASCON, se instrumentan todas las operaciones de cifrado y descifrado con temporizadores de alta resolución (\texttt{micros()} en ESP32, \texttt{time.perf\_counter()} en Python) y se registran automáticamente en archivos CSV mediante el módulo \texttt{ascon\_metrics.py}, capturando:
+
+\begin{itemize}
+    \item Tiempo de cifrado/descifrado (ms).
+    \item Tamaño del plaintext y del envelope cifrado (bytes).
+    \item Overhead de comunicación (bytes adicionales y porcentaje).
+    \item Ronda de FL asociada.
+\end{itemize}
+
+Adicionalmente, se mantiene una \textbf{rama sin cifrado} (\texttt{hfl\_v7-no-ascon}) del repositorio con idéntica funcionalidad pero sin ASCON, permitiendo la comparación directa de tiempos de comunicación como línea base.
+
+% ====================================================================
+\section{Modelos Clásicos de ML como Línea Base}
+\label{sec:ml_classic}
+
+Para responder a la pregunta de si TinyML puede alcanzar precisión comparable a modelos tradicionales, se entrenan y optimizan cuatro algoritmos de ML supervisado sobre los mismos datasets:
+
+\begin{enumerate}
+    \item \textbf{Decision Tree:} Optimizado con \texttt{GridSearchCV} sobre \texttt{max\_depth}, \texttt{min\_samples\_split}, \texttt{min\_samples\_leaf} y \texttt{criterion}. Incluye \texttt{class\_weight='balanced'} para manejar el desbalance de clases.
+
+    \item \textbf{Random Forest:} Optimizado con \texttt{RandomizedSearchCV} ($n=80$ iteraciones) sobre \texttt{n\_estimators}, \texttt{max\_depth}, \texttt{max\_features} y variantes de \texttt{class\_weight}.
+
+    \item \textbf{Logistic Regression:} Evaluada con penalizaciones L1, L2 y ElasticNet, variando el parámetro de regularización $C$.
+
+    \item \textbf{Support Vector Machine (SVM):} Se comparan kernel lineal y RBF. Para el kernel RBF, se aplica submuestreo estratificado (máximo 25\,000 muestras por clase) para evitar tiempos de entrenamiento prohibitivos.
+\end{enumerate}
+
+Todos los modelos se evalúan con validación cruzada estratificada ($k=5$) usando F1-Score macro como métrica de selección. Para estimar la viabilidad de despliegue en ESP32, se utiliza la biblioteca \texttt{m2cgen} para exportar los modelos entrenados a código C puro, y se mide:
+\begin{itemize}
+    \item Tamaño estimado en memoria del modelo exportado.
+    \item Tiempo de inferencia promedio (100 iteraciones con warmup).
+    \item Métricas: Accuracy, F1 macro, F1 weighted, Precision, Recall y MCC (Matthews Correlation Coefficient).
+\end{itemize}
+
+% ====================================================================
+\section{Protocolo Experimental}
+\label{sec:protocolo}
+
+La evaluación se organiza en dos escenarios experimentales:
+
+\subsection{Escenario 1: Sistema HFL Completo con ASCON}
+
+Se despliega el sistema completo en hardware real:
+\begin{itemize}
+    \item 2 × ESP32-S3 (nodo normal + nodo simulado).
+    \item 1 × Raspberry Pi 4 (gateway, broker MQTT, entrenamiento local).
+    \item 1 × PC (servidor federado, dashboard).
+    \item Red Wi-Fi local compartida.
+    \item ASCON-128 habilitado en todos los canales.
+\end{itemize}
+
+Se ejecutan $\geq 50$ rondas de aprendizaje federado, registrando accuracy global, loss, tiempos de cifrado/descifrado y tamaños de mensajes.
+
+\subsection{Escenario 2: Sistema HFL sin ASCON (Baseline)}
+
+Idéntico al Escenario 1 pero con ASCON deshabilitado, utilizando la rama \texttt{hfl\_v7-no-ascon}. La comunicación se realiza en JSON plano. Se miden los mismos indicadores para calcular el overhead atribuible exclusivamente al cifrado.
+
+\subsection{Escenario 3: Modelos Clásicos Centralizados}
+
+Los modelos clásicos (Sección~\ref{sec:ml_classic}) se entrenan de forma centralizada en el PC usando la totalidad del dataset, con partición 80/20 estratificada. Esto establece un techo de rendimiento (\emph{upper bound}) contra el cual comparar la precisión del sistema federado.
+
+\subsection{Métricas de Evaluación}
+
+\begin{itemize}
+    \item \textbf{Precisión de detección:} Accuracy, F1-Score (macro y weighted), Precision, Recall, MCC.
+    \item \textbf{Overhead criptográfico:} Tiempo de cifrado/descifrado (ms), incremento de tamaño (bytes, \%), overhead como porcentaje del ciclo total de FL.
+    \item \textbf{Eficiencia federada:} Número de rondas hasta convergencia, accuracy por ronda, costo de comunicación por ronda.
+    \item \textbf{Viabilidad edge:} Huella de memoria del modelo (KB), tiempo de inferencia en ESP32 ($\mu$s), consumo de SRAM.
+\end{itemize}
