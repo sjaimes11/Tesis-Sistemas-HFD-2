@@ -140,36 +140,97 @@ void brokerExtractFeatures(float out[FEATURE_COUNT]) {
 // ==========================================
 // SIMULACIÓN DE TRÁFICO INTERNO
 // ==========================================
+// Distribuciones basadas en estadísticas reales de los CSVs:
+//
+// NORMAL   (uniflow_normal.csv):       pkts~5, IAT~0.4ms, pkt~63B, PSH~2
+// BRUTE    (uniflow_mqtt_bruteforce):  pkts~345, IAT~3.38s, pkt~60B, PSH~69
+// SCAN_A   (uniflow_scan_A.csv):       pkts~1, IAT~0, pkt~44B, PSH=0
+//
+// Bruteforce y Scan_A no se pueden simular con delays reales (tomaría 20min
+// para un solo flujo brute). Se construyen features directamente desde las
+// distribuciones del dataset real.
+
+void generateNormalFeatures(float out[FEATURE_COUNT]) {
+    int pkts = random(4, 9);
+    Serial.print("\n--- [SIM] Trafico MQTT Normal ("); Serial.print(pkts); Serial.println(" pkts) ---");
+
+    for (int i = 0; i < pkts; i++) {
+        uint16_t pkt_len;
+        bool psh;
+        if (i == 0 || (random(100) < 40)) {
+            pkt_len = 52;
+            psh = false;
+        } else {
+            pkt_len = random(58, 112);
+            psh = (random(100) < 60);
+        }
+        brokerTrackEvent(pkt_len, psh);
+        delayMicroseconds(random(35, 680));
+    }
+    brokerExtractFeatures(out);
+    resetBrokerFlow();
+}
+
+void generateBruteforceFeatures(float out[FEATURE_COUNT]) {
+    float pkts = (float)random(200, 500);
+    float meanIat = random(100, 700) / 100.0f;
+    float stdIat = random(400, 1500) / 100.0f;
+    float meanPkt = random(545, 650) / 10.0f;
+    float psh = pkts * (random(15, 25) / 100.0f);
+
+    out[0]  = pkts;
+    out[1]  = meanIat;
+    out[2]  = stdIat;
+    out[3]  = random(0, 100) / 100000.0f;
+    out[4]  = random(4000, 12000) / 100.0f;
+    out[5]  = meanPkt;
+    out[6]  = pkts * meanPkt;
+    out[7]  = psh;
+    out[8]  = 0;
+    out[9]  = 0;
+    out[10] = random(20, 70) / 10.0f;
+    out[11] = 52.0f;
+    out[12] = (float)random(60, 90);
+
+    Serial.print("\n>>> [SIM] MQTT Bruteforce (pkts="); Serial.print((int)pkts);
+    Serial.print(", IAT="); Serial.print(meanIat, 2); Serial.println("s) <<<");
+}
+
+void generateScanAFeatures(float out[FEATURE_COUNT]) {
+    int pkts = random(1, 4);
+    float pktLen = (float)random(40, 48);
+
+    out[0]  = (float)pkts;
+    out[1]  = (pkts > 1) ? random(0, 50) / 100000.0f : 0.0f;
+    out[2]  = (pkts > 1) ? random(0, 30) / 100000.0f : 0.0f;
+    out[3]  = (pkts > 1) ? random(0, 10) / 100000.0f : 0.0f;
+    out[4]  = (pkts > 1) ? random(0, 80) / 100000.0f : 0.0f;
+    out[5]  = pktLen;
+    out[6]  = pktLen * pkts;
+    out[7]  = 0;
+    out[8]  = (random(100) < 40) ? 1.0f : 0.0f;
+    out[9]  = 0;
+    out[10] = (pkts > 1) ? random(0, 30) / 10.0f : 0.0f;
+    out[11] = (float)random(40, 46);
+    out[12] = (float)random(40, 52);
+
+    Serial.print("\n$$$ [SIM] TCP Scan_A (pkts="); Serial.print(pkts);
+    Serial.print(", pktLen="); Serial.print(pktLen, 0); Serial.println(") $$$");
+}
+
 void simulateSelfTraffic() {
     int r = random(100);
-    int pkts = 0;
-    
-    if (r < 40) {
-        // NORMAL (40% de las veces): 12-16 pkts, IAT ~150ms, con PSH
-        pkts = random(12, 16);
-        Serial.print("\n--- [SIM] Llegando Tráfico Benigno ("); Serial.print(pkts); Serial.println(" payloads) ---");
-        for(int i=0; i<pkts; i++){ brokerTrackEvent(90, true); delay(150); }
-    } else if (r < 70) {
-        // BRUTEFORCE (30%): 100-150 pkts, IAT ~2ms, con PSH
-        pkts = random(100, 150);
-        Serial.print("\n>>> [SIM] INTRUSIÓN MQTT Bruteforce detectada! ("); Serial.print(pkts); Serial.println(" payloads) <<<");
-        for(int i=0; i<pkts; i++){ brokerTrackEvent(70, true); delay(2); }
-    } else {
-        // SCAN A (30%): 120-180 pkts, IAT ~3ms, SIN PSH (Puro TCP SYN crudo)
-        pkts = random(120, 180);
-        Serial.print("\n$$$ [SIM] ESCANEO TCP Scan_A detectado! ("); Serial.print(pkts); Serial.println(" raw sockets) $$$");
-        for(int i=0; i<pkts; i++){ brokerTrackEvent(40, false); delay(3); }
-    }
-    
-    // Al terminar de generar el "Flujo", procesamos inmediatamente las features.
     float features[FEATURE_COUNT];
-    brokerExtractFeatures(features);
-    bool ruleTriggered = (brokerGlobalPkts >= RULE_PKTS_ALERT);
-    
-    if (brokerGlobalPkts >= MIN_PKTS_FOR_ML || ruleTriggered) {
-        analyzeAndAlert(features, ruleTriggered);
+
+    if (r < 40) {
+        generateNormalFeatures(features);
+    } else if (r < 70) {
+        generateBruteforceFeatures(features);
+    } else {
+        generateScanAFeatures(features);
     }
-    resetBrokerFlow();
+
+    analyzeAndAlert(features, features[0] >= RULE_PKTS_ALERT);
 }
 
 // ==========================================

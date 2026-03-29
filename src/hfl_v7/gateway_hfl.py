@@ -47,12 +47,12 @@ msg_counter = 0
 # ====================== DATASET LOCAL ======================
 FEATURE_COUNT = 13
 CLASS_NAMES = ["normal", "mqtt_bruteforce", "scan_A"]
-MIN_PKTS_FOR_ML = 10
-RULE_PKTS_ALERT = 200
+MIN_PKTS_FOR_ML = 1
+RULE_PKTS_ALERT = 100
 
 X_train_buffer = []
 Y_train_buffer = []
-SAMPLES_PER_UPDATE = 25  # Con 2 nodos enviando c/5s, buffer se llena en ~1 min
+SAMPLES_PER_UPDATE = 40  # Con 2 nodos enviando c/5s, buffer se llena en ~1.5 min
 
 current_round = 0
 
@@ -83,7 +83,7 @@ def print_node_summary():
 print("[GATEWAY] Cargando modelo base ids_3class.keras...")
 try:
     model = tf.keras.models.load_model("ids_3class.keras")
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001), 
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005), 
                   loss='sparse_categorical_crossentropy', 
                   metrics=['accuracy'])
     print("[GATEWAY] Modelo cargado exitosamente.")
@@ -96,7 +96,7 @@ except Exception as e:
         tf.keras.layers.Dense(8, activation='relu'),  # W3, b3 (index 2)
         tf.keras.layers.Dense(3, activation='softmax') # W4, b4 (index 3)
     ])
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001), 
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005), 
                   loss='sparse_categorical_crossentropy', 
                   metrics=['accuracy'])
 
@@ -189,16 +189,28 @@ def broadcast_model_to_esp32s(W3, b3, W4, b4):
 
 
 # ====================== HEURÍSTICA Y ENTRENAMIENTO ======================
+# Basada en estadísticas reales de los datasets:
+#   Normal:     pkts~5,   IAT~0.0004s, pktLen~63, PSH~2,  RST=0
+#   Bruteforce: pkts~345, IAT~3.38s,   pktLen~60, PSH~69, RST=0
+#   Scan_A:     pkts~1,   IAT~0,       pktLen~44, PSH=0,  RST~0.4
 def heuristicLabel(features):
     pkts = int(features[0])
     meanIat = features[1]
+    meanPktLen = features[5]
     numPsh = features[7]
-    
-    if pkts >= RULE_PKTS_ALERT or pkts >= 100:
-        if numPsh > 5.0: return 1  # mqtt_bruteforce
+
+    # Bruteforce: muchos paquetes + muchos PSH (MQTT login attempts)
+    if pkts >= 50 and numPsh >= 10:
+        return 1  # mqtt_bruteforce
+
+    # Scan_A: pocos paquetes + paquetes pequeños + sin PSH
+    if pkts <= 5 and meanPktLen <= 50 and numPsh <= 1:
         return 2  # scan_A
-    if pkts <= 30 and meanIat >= 0.1: return 0  # normal
-    if meanIat > 0 and meanIat <= 0.01 and pkts > MIN_PKTS_FOR_ML: return 2
+
+    # Normal: pocos paquetes + paquetes medianos + algo de PSH
+    if pkts <= 30 and meanPktLen >= 50:
+        return 0  # normal
+
     return -1
 
 def train_local_model():
@@ -212,7 +224,7 @@ def train_local_model():
     
     print(f"\n[ENTRENAMIENTO LOCAL] Iniciando fit sobre {len(X)} muestras...")
     
-    hist = model.fit(X, Y, epochs=2, batch_size=8, verbose=1)
+    hist = model.fit(X, Y, epochs=5, batch_size=8, verbose=1)
     final_acc = float(hist.history.get('accuracy', [0.0])[-1])
     final_loss = float(hist.history.get('loss', [0.0])[-1])
     

@@ -140,20 +140,33 @@ void brokerExtractFeatures(float out[FEATURE_COUNT]) {
 // ==========================================
 // SIMULACIÓN DE TRÁFICO INTERNO (100% NORMAL)
 // ==========================================
+// Basado en estadísticas reales de uniflow_normal.csv:
+//   num_pkts:  median=5, mean=6.1  (rango típico 4-8)
+//   mean_iat:  median=0.0004s      (sub-milisegundo)
+//   pkt_len:   52 (ACK) a 101 (data), median=63
+//   psh_flags: median=1, mean=1.9  (solo en paquetes de datos)
 void simulateSelfTraffic() {
-    // NORMAL (100% de las veces): 12-16 pkts, IAT ~150ms, con PSH
-    int pkts = random(12, 16);
-    Serial.print("\n--- [SIM] Llegando Tráfico Benigno ("); Serial.print(pkts); Serial.println(" payloads) ---");
-    for(int i=0; i<pkts; i++){ brokerTrackEvent(90, true); delay(150); }
-    
-    // Al terminar de generar el "Flujo", procesamos inmediatamente las features.
+    int pkts = random(4, 9);
+    Serial.print("\n--- [SIM] Trafico MQTT Normal ("); Serial.print(pkts); Serial.println(" pkts) ---");
+
+    for (int i = 0; i < pkts; i++) {
+        uint16_t pkt_len;
+        bool psh;
+        if (i == 0 || (random(100) < 40)) {
+            pkt_len = 52;
+            psh = false;
+        } else {
+            pkt_len = random(58, 112);
+            psh = (random(100) < 60);
+        }
+        brokerTrackEvent(pkt_len, psh);
+        delayMicroseconds(random(35, 680));
+    }
+
     float features[FEATURE_COUNT];
     brokerExtractFeatures(features);
-    bool ruleTriggered = (brokerGlobalPkts >= RULE_PKTS_ALERT);
-    
-    if (brokerGlobalPkts >= MIN_PKTS_FOR_ML || ruleTriggered) {
-        analyzeAndAlert(features, ruleTriggered);
-    }
+
+    analyzeAndAlert(features, false);
     resetBrokerFlow();
 }
 
