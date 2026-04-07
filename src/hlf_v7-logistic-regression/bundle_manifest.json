@@ -1,0 +1,8 @@
+{
+  "bundle": "hlf_v7-logistic-regression",
+  "display_name": "Logistic Regression",
+  "model_path": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src\\ml_outputs\\logistic_regression_model\\logistic_regression_best.pkl",
+  "scaler_path": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src\\ml_outputs\\logistic_regression_model\\scaler_lr.pkl",
+  "esp32_header_kb": 3.2,
+  "warnings": []
+}

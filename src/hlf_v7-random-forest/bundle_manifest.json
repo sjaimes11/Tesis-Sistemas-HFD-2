@@ -1,0 +1,10 @@
+{
+  "bundle": "hlf_v7-random-forest",
+  "display_name": "Random Forest",
+  "model_path": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src\\ml_outputs\\random_forest_model\\random_forest_best.pkl",
+  "scaler_path": null,
+  "esp32_header_kb": 15805.0,
+  "warnings": [
+    "El header C excede 4 MB; esta variante es poco realista para ESP32 y est\u00e1 orientada m\u00e1s a Raspberry/validaci\u00f3n."
+  ]
+}

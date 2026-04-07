@@ -1,0 +1,8 @@
+{
+  "bundle": "hlf_v7-decision-tree",
+  "display_name": "Decision Tree",
+  "model_path": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src\\ml_outputs\\decision_tree_model\\decision_tree_best.pkl",
+  "scaler_path": null,
+  "esp32_header_kb": 61.5,
+  "warnings": []
+}
