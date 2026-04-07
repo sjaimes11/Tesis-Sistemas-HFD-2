@@ -21,9 +21,14 @@
 constexpr size_t FEATURE_COUNT = NUM_FEATURES;
 const char* CLASS_NAMES_STR[NUM_CLASSES] = {"normal", "mqtt_bruteforce", "scan_A"};
 
-const char* STA_SSID = "CAMBIAR_WIFI";
-const char* STA_PASS = "CAMBIAR_PASSWORD";
-const char* GATEWAY_MQTT_SERVER = "192.168.40.124";
+// const char* STA_SSID = "JAIMES_PUERTO 2.4"; // Reemplaza por el WiFi de tu casa
+// const char* STA_PASS = "Anderson123";
+
+const char* STA_SSID = "TP-Link_AADB";       // <-- CAMBIAR
+const char* STA_PASS = "55707954";            // <-- CAMBIAR
+
+const char* GATEWAY_MQTT_SERVER = "192.168.1.14"; // <-- IP Raspberry Pi 4 Gateway
+
 const int GATEWAY_MQTT_PORT = 1883;
 const char* TOPIC_FEATURES = "fl/features";
 const String CLIENT_ID = "esp32_edge_normal_logistic_regression";

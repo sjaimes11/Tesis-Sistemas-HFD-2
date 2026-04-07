@@ -25,7 +25,7 @@
 - `max_pkt_len`
 
         ## Tamaño del header ESP32
-        - `model_weights.h`: 15805.0 KB
+        - `model_weights.h`: 15805.2 KB
 
         ## Advertencias
         - El header C excede 4 MB; esta variante es poco realista para ESP32 y está orientada más a Raspberry/validación.

@@ -3,7 +3,7 @@
   "display_name": "SVM",
   "model_path": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src\\ml_outputs\\svm_model\\svm_selected.pkl",
   "scaler_path": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src\\ml_outputs\\svm_model\\scaler_svm.pkl",
-  "esp32_header_kb": 3.2,
+  "esp32_header_kb": 3.3,
   "warnings": [],
   "gateway_script": "gateway_hfl_fog_svm.py",
   "server_script": "server_hfl_svm.py",

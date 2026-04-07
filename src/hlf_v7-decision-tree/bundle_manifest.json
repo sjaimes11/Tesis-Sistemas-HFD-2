@@ -3,7 +3,7 @@
   "display_name": "Decision Tree",
   "model_path": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src\\ml_outputs\\decision_tree_model\\decision_tree_best.pkl",
   "scaler_path": null,
-  "esp32_header_kb": 61.5,
+  "esp32_header_kb": 61.6,
   "warnings": [],
   "gateway_script": "gateway_hfl_fog_decision_tree.py",
   "server_script": "server_hfl_decision_tree.py",

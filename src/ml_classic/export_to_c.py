@@ -82,8 +82,14 @@ int classify(const float raw_features[NUM_FEATURES], float* confidence) {
 #define NUM_CLASSES {num_classes}
 
 int predict_class(const float features[NUM_FEATURES], float* confidence) {{
+    double input[NUM_FEATURES];
     double scores[NUM_CLASSES];
-    score(features, scores);
+
+    for (int i = 0; i < NUM_FEATURES; i++) {{
+        input[i] = (double)features[i];
+    }}
+
+    score(input, scores);
 
     int best = 0;
     double best_score = scores[0];
