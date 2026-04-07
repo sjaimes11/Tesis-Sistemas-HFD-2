@@ -9,11 +9,13 @@
 """
 
 import os
+from pathlib import Path
+from typing import Optional, Tuple
+
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from typing import Tuple, Optional
 
 FEATURE_COLUMNS = [
     "num_pkts", "mean_iat", "std_iat", "min_iat", "max_iat",
@@ -23,14 +25,52 @@ FEATURE_COLUMNS = [
 
 CLASS_NAMES = ["normal", "mqtt_bruteforce", "scan_A"]
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "Data")
+def _default_data_dir() -> Path:
+    """
+    Devuelve una ruta base razonable tanto en scripts normales como en notebooks.
+    En Jupyter `__file__` no existe, así que se usa el directorio actual.
+    """
+    linux_server_dir = Path("/home/sajaimesp/Tesis_Sistemas/Data_Sets")
+    if linux_server_dir.exists():
+        return linux_server_dir
+
+    if "__file__" in globals():
+        repo_data_dir = Path(__file__).resolve().parents[1] / "Data"
+        if repo_data_dir.exists():
+            return repo_data_dir
+
+    cwd_data_dir = Path.cwd() / "Data"
+    if cwd_data_dir.exists():
+        return cwd_data_dir
+
+    return linux_server_dir
+
+
+def resolve_data_dir(data_dir: Optional[str] = None) -> Path:
+    """
+    Resuelve el directorio de datasets de forma portable.
+
+    Prioridad:
+    1. argumento `data_dir`
+    2. variable de entorno `ML_CLASSIC_DATA_DIR`
+    3. `<repo>/Data`
+    """
+    if data_dir:
+        return Path(data_dir).expanduser().resolve()
+
+    env_dir = os.environ.get("ML_CLASSIC_DATA_DIR")
+    if env_dir:
+        return Path(env_dir).expanduser().resolve()
+
+    return _default_data_dir()
 
 
 def load_dataset(
     max_samples_per_class: Optional[int] = None,
     test_size: float = 0.2,
     random_state: int = 42,
-    scale: bool = True
+    scale: bool = True,
+    data_dir: Optional[str] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, Optional[StandardScaler]]:
     """
     Carga los 3 CSVs, extrae las 13 features, asigna etiqueta por archivo,
@@ -38,11 +78,21 @@ def load_dataset(
 
     Returns: X_train, X_test, y_train, y_test, scaler
     """
+    dataset_dir = resolve_data_dir(data_dir)
     files = {
-        0: os.path.join(DATA_DIR, "uniflow_normal.csv"),
-        1: os.path.join(DATA_DIR, "uniflow_mqtt_bruteforce.csv"),
-        2: os.path.join(DATA_DIR, "uniflow_scan_A.csv"),
+        0: dataset_dir / "uniflow_normal.csv",
+        1: dataset_dir / "uniflow_mqtt_bruteforce.csv",
+        2: dataset_dir / "uniflow_scan_A.csv",
     }
+
+    missing = [str(path) for path in files.values() if not path.exists()]
+    if missing:
+        joined = "\n".join(f"  - {path}" for path in missing)
+        raise FileNotFoundError(
+            "No se encontraron todos los CSV requeridos. "
+            "Ajusta `--data-dir` o la variable `ML_CLASSIC_DATA_DIR`.\n"
+            f"{joined}"
+        )
 
     frames = []
     for label, path in files.items():
@@ -71,7 +121,8 @@ def load_dataset(
         X_train = scaler.fit_transform(X_train)
         X_test = scaler.transform(X_test)
 
-    print(f"\nDataset cargado: {len(X_train)} train, {len(X_test)} test")
+    print(f"\nDatasets cargados desde: {dataset_dir}")
+    print(f"Dataset cargado: {len(X_train)} train, {len(X_test)} test")
     for i, name in enumerate(CLASS_NAMES):
         n_train = np.sum(y_train == i)
         n_test = np.sum(y_test == i)
@@ -92,6 +143,9 @@ def print_evaluation(model_name, y_test, y_pred, best_params=None, cv_scores=Non
         classification_report, confusion_matrix, accuracy_score,
         f1_score, precision_score, recall_score, matthews_corrcoef
     )
+
+    y_test = np.asarray(y_test, dtype=np.int32).reshape(-1)
+    y_pred = np.asarray(y_pred, dtype=np.int32).reshape(-1)
 
     acc = accuracy_score(y_test, y_pred)
     f1_macro = f1_score(y_test, y_pred, average="macro")

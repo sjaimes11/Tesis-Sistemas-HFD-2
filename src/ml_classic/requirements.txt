@@ -1,6 +1,13 @@
+# Base CPU / compatible con Windows y Linux
 numpy
 pandas
 scikit-learn
 matplotlib
 joblib
 m2cgen
+
+# GPU opcional para Linux + NVIDIA (instalar en el servidor, no en Windows):
+# cupy-cuda12x
+# cudf-cu12
+# cuml-cu12
+# dask-cuda
