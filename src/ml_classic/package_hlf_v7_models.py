@@ -30,12 +30,14 @@ except ImportError:
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ARTEFACT_ROOT = REPO_ROOT / "ml_outputs"
+REFERENCE_HFL_DIR = REPO_ROOT / "hfl_v7-RN"
 
 MODEL_SPECS = [
     {
         "artifact_dir": "decision_tree_model",
         "bundle_name": "hlf_v7-decision-tree",
         "display_name": "Decision Tree",
+        "file_slug": "decision_tree",
         "model_file": "decision_tree_best.pkl",
         "scaler_file": None,
         "supports_proba": True,
@@ -44,6 +46,7 @@ MODEL_SPECS = [
         "artifact_dir": "logistic_regression_model",
         "bundle_name": "hlf_v7-logistic-regression",
         "display_name": "Logistic Regression",
+        "file_slug": "logistic_regression",
         "model_file": "logistic_regression_best.pkl",
         "scaler_file": "scaler_lr.pkl",
         "supports_proba": True,
@@ -52,6 +55,7 @@ MODEL_SPECS = [
         "artifact_dir": "random_forest_model",
         "bundle_name": "hlf_v7-random-forest",
         "display_name": "Random Forest",
+        "file_slug": "random_forest",
         "model_file": "random_forest_best.pkl",
         "scaler_file": None,
         "supports_proba": True,
@@ -60,6 +64,7 @@ MODEL_SPECS = [
         "artifact_dir": "svm_model",
         "bundle_name": "hlf_v7-svm",
         "display_name": "SVM",
+        "file_slug": "svm",
         "model_file": "svm_selected.pkl",
         "scaler_file": "scaler_svm.pkl",
         "supports_proba": False,
@@ -105,6 +110,16 @@ def copy_if_exists(src: Path, dst: Path) -> bool:
     return True
 
 
+def copy_reference_ascon_files(bundle_dir: Path) -> list[Path]:
+    copied: list[Path] = []
+    for name in ["ascon128.py", "ascon128.h", "ascon_metrics.py", "README_ASCON.md", "benchmark_ascon.py", "test_ascon.py"]:
+        src = REFERENCE_HFL_DIR / name
+        dst = bundle_dir / name
+        if copy_if_exists(src, dst):
+            copied.append(dst)
+    return copied
+
+
 def render_bundle_readme(display_name: str, class_names: list[str], feature_names: list[str], header_kb: float, warnings: list[str]) -> str:
     warnings_md = "\n".join(f"- {warning}" for warning in warnings) if warnings else "- Sin advertencias adicionales."
     return dedent(
@@ -128,8 +143,8 @@ def render_bundle_readme(display_name: str, class_names: list[str], feature_name
         {warnings_md}
 
         ## Uso rápido
-        - ESP32: copia `esp32/model_weights.h` y `esp32/main_edge_node.cpp` a tu sketch/firmware.
-        - Raspberry Pi: instala `raspberry/requirements.txt` y ejecuta `python raspberry/mqtt_gateway.py`.
+        - ESP32: usa `main_edge_node_normal_<modelo>.cpp` o `main_edge_node_simulated_<modelo>.cpp` junto a `model_weights.h` y `ascon128.h`.
+        - Raspberry Pi: instala `raspberry/requirements.txt` y ejecuta `python gateway_hfl_fog_<modelo>.py`.
         """
     )
 
@@ -378,6 +393,567 @@ def render_esp32_main(class_names: list[str], display_name: str) -> str:
     )
 
 
+def render_server_script(display_name: str, file_slug: str) -> str:
+    return dedent(
+        f"""\
+        import base64
+        import json
+        import time
+        from datetime import datetime
+        from pathlib import Path
+
+        from fastapi import FastAPI
+        from fastapi.middleware.cors import CORSMiddleware
+        from pydantic import BaseModel
+        import uvicorn
+
+        from ascon128 import decrypt as ascon_decrypt
+        from ascon_metrics import AsconMetrics
+
+
+        BASE_DIR = Path(__file__).resolve().parent
+        ASCON_KEY = bytes([0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x18,
+                           0x29, 0x3A, 0x4B, 0x5C, 0x6D, 0x7E, 0x8F, 0x90])
+
+        metrics = AsconMetrics("server_{file_slug}")
+        app = FastAPI(title="server_hfl_{file_slug}")
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
+        history = []
+
+
+        class EncryptedPayload(BaseModel):
+            ct: str
+            tag: str
+            nonce: str
+
+
+        def decrypt_payload(envelope: EncryptedPayload):
+            ct = base64.b64decode(envelope.ct)
+            tag = base64.b64decode(envelope.tag)
+            nonce = base64.b64decode(envelope.nonce)
+
+            t0 = time.perf_counter()
+            plaintext = ascon_decrypt(ct, ASCON_KEY, nonce, tag)
+            dec_ms = (time.perf_counter() - t0) * 1000
+            if plaintext is None:
+                return None
+
+            metrics.record("RPi->PC", "decrypt", len(plaintext), len(envelope.ct) + len(envelope.tag) + len(envelope.nonce), dec_ms, 0)
+            return json.loads(plaintext.decode("utf-8"))
+
+
+        @app.post("/ingest-prediction")
+        async def ingest_prediction(envelope: EncryptedPayload):
+            payload = decrypt_payload(envelope)
+            if payload is None:
+                return {{"status": "error", "reason": "invalid_tag"}}
+
+            payload["received_at"] = datetime.now().isoformat(timespec="seconds")
+            history.append(payload)
+            print("[SERVER]", json.dumps(payload))
+            return {{"status": "ok", "records": len(history)}}
+
+
+        @app.get("/api/status")
+        def api_status():
+            return {{
+                "model": "{display_name}",
+                "records": len(history),
+                "last_record": history[-1] if history else None,
+            }}
+
+
+        @app.get("/")
+        def root():
+            return {{
+                "service": "server_hfl_{file_slug}",
+                "model": "{display_name}",
+                "records": len(history),
+            }}
+
+
+        if __name__ == "__main__":
+            uvicorn.run(app, host="0.0.0.0", port=8001)
+        """
+    )
+
+
+def render_gateway_script(display_name: str, file_slug: str) -> str:
+    return dedent(
+        f"""\
+        import base64
+        import csv
+        import json
+        import time
+        from pathlib import Path
+
+        import joblib
+        import numpy as np
+        import paho.mqtt.client as mqtt
+        import requests
+
+        from ascon128 import encrypt as ascon_encrypt, decrypt as ascon_decrypt, generate_nonce
+        from ascon_metrics import AsconMetrics
+
+
+        BASE_DIR = Path(__file__).resolve().parent
+        RPI_DIR = BASE_DIR / "raspberry"
+        MODEL_PATH = RPI_DIR / "model.pkl"
+        SCALER_PATH = RPI_DIR / "scaler.pkl"
+        FEATURE_ORDER_PATH = RPI_DIR / "feature_order.csv"
+        LABEL_MAP_PATH = RPI_DIR / "label_map.json"
+
+        GATEWAY_ID = "gateway_{file_slug}"
+        MQTT_LOCAL_BROKER = "localhost"
+        MQTT_LOCAL_PORT = 1883
+        TOPIC_FEATURES = "fl/features"
+        TOPIC_ALERTS = "fl/alerts"
+        TOPIC_PREDICTIONS = "fl/predictions"
+        SERVER_URL = "http://192.168.40.95:8001/ingest-prediction"
+
+        ASCON_KEY = bytes([0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x18,
+                           0x29, 0x3A, 0x4B, 0x5C, 0x6D, 0x7E, 0x8F, 0x90])
+        MSG_COUNTER = 0
+
+        metrics = AsconMetrics("gateway_{file_slug}")
+
+
+        def load_feature_order():
+            with FEATURE_ORDER_PATH.open("r", encoding="utf-8", newline="") as handle:
+                values = [row[0].strip() for row in csv.reader(handle) if row]
+            return [value for value in values if value and value != "feature"]
+
+
+        def load_label_names():
+            data = json.loads(LABEL_MAP_PATH.read_text(encoding="utf-8"))
+            return [data[str(index)] for index in sorted((int(key) for key in data.keys()))]
+
+
+        def softmax(x):
+            x = np.asarray(x, dtype=np.float64)
+            x = x - np.max(x)
+            exps = np.exp(x)
+            return exps / np.sum(exps)
+
+
+        model = joblib.load(MODEL_PATH)
+        scaler = joblib.load(SCALER_PATH) if SCALER_PATH.exists() else None
+        feature_names = load_feature_order()
+        label_names = load_label_names()
+
+
+        def decrypt_payload(raw_payload, direction):
+            envelope = json.loads(raw_payload.decode("utf-8"))
+            ct = base64.b64decode(envelope["ct"])
+            tag = base64.b64decode(envelope["tag"])
+            nonce = base64.b64decode(envelope["nonce"])
+
+            t0 = time.perf_counter()
+            plaintext = ascon_decrypt(ct, ASCON_KEY, nonce, tag)
+            dec_ms = (time.perf_counter() - t0) * 1000
+            if plaintext is None:
+                return None
+
+            metrics.record(direction, "decrypt", len(plaintext), len(raw_payload), dec_ms, 0)
+            return json.loads(plaintext.decode("utf-8"))
+
+
+        def encrypt_payload(payload_dict, direction):
+            global MSG_COUNTER
+            payload_bytes = json.dumps(payload_dict).encode("utf-8")
+            nonce = generate_nonce(int(time.time() * 1000), MSG_COUNTER)
+            MSG_COUNTER += 1
+
+            t0 = time.perf_counter()
+            ciphertext, tag = ascon_encrypt(payload_bytes, ASCON_KEY, nonce)
+            enc_ms = (time.perf_counter() - t0) * 1000
+
+            envelope = {{
+                "ct": base64.b64encode(ciphertext).decode("ascii"),
+                "tag": base64.b64encode(tag).decode("ascii"),
+                "nonce": base64.b64encode(nonce).decode("ascii"),
+            }}
+            metrics.record(direction, "encrypt", len(payload_bytes), len(json.dumps(envelope)), enc_ms, 0)
+            return envelope
+
+
+        def infer(features):
+            X = np.asarray(features, dtype=np.float32).reshape(1, -1)
+            if X.shape[1] != len(feature_names):
+                raise ValueError(f"Se esperaban {{len(feature_names)}} features y llegaron {{X.shape[1]}}")
+
+            if scaler is not None:
+                X = scaler.transform(X)
+
+            pred = int(model.predict(X)[0])
+            if hasattr(model, "predict_proba"):
+                confidence = float(np.max(model.predict_proba(X)[0]))
+            elif hasattr(model, "decision_function"):
+                decision = model.decision_function(X)
+                confidence = float(np.max(softmax(decision[0] if decision.ndim > 1 else [0.0, decision[0]])))
+            else:
+                confidence = None
+            return pred, confidence
+
+
+        def forward_to_server(result):
+            envelope = encrypt_payload(result, "RPi->PC")
+            try:
+                requests.post(SERVER_URL, json=envelope, timeout=5)
+            except Exception as exc:
+                print(f"[GATEWAY][WARN] No se pudo enviar al server: {{exc}}")
+
+
+        def on_connect(client, userdata, flags, rc):
+            print(f"[GATEWAY] MQTT conectado rc={{rc}} | modelo={display_name}")
+            client.subscribe(TOPIC_FEATURES)
+
+
+        def on_message(client, userdata, msg):
+            try:
+                payload = decrypt_payload(msg.payload, "ESP32->RPi")
+                if payload is None:
+                    print("[GATEWAY][ERROR] Tag ASCON inválido.")
+                    return
+
+                client_id = payload.get("client_id", "unknown")
+                features = payload["features"]
+                pred, confidence = infer(features)
+
+                result = {{
+                    "gateway_id": GATEWAY_ID,
+                    "client_id": client_id,
+                    "model": "{display_name}",
+                    "predicted_class": pred,
+                    "predicted_label": label_names[pred],
+                    "confidence": confidence,
+                }}
+                print("[GATEWAY]", json.dumps(result))
+                client.publish(TOPIC_PREDICTIONS, json.dumps(result))
+
+                if pred != 0:
+                    alert = {{
+                        "client_id": client_id,
+                        "alert": True,
+                        "attack_type": label_names[pred],
+                        "attack_probability": confidence,
+                        "model": "{display_name}",
+                    }}
+                    client.publish(TOPIC_ALERTS, json.dumps(alert))
+
+                forward_to_server(result)
+            except Exception as exc:
+                print(f"[GATEWAY][ERROR] {{exc}}")
+
+
+        if __name__ == "__main__":
+            client = mqtt.Client(client_id=f"gateway_hfl_fog_{file_slug}")
+            client.on_connect = on_connect
+            client.on_message = on_message
+            client.connect(MQTT_LOCAL_BROKER, MQTT_LOCAL_PORT, 60)
+            client.loop_forever()
+        """
+    )
+
+
+def render_edge_normal(display_name: str, file_slug: str, class_names: list[str]) -> str:
+    class_array = ", ".join(f'"{name}"' for name in class_names)
+    return dedent(
+        f"""\
+        // =====================================================================
+        // main_edge_node_normal_{file_slug}.cpp — ESP32-S3 Edge Node ({display_name})
+        // =====================================================================
+        // Simula tráfico normal, detecta localmente con el modelo clásico y
+        // envía features cifradas con ASCON al Gateway.
+        // =====================================================================
+
+        #include <Arduino.h>
+        #include <WiFi.h>
+        #include <PubSubClient.h>
+        #include <ArduinoJson.h>
+        #include "model_weights.h"
+        #include "ascon128.h"
+        #include <mbedtls/base64.h>
+        #include <math.h>
+
+        #ifndef RGB_BUILTIN
+        #define RGB_BUILTIN 48
+        #endif
+
+        constexpr size_t FEATURE_COUNT = NUM_FEATURES;
+        const char* CLASS_NAMES_STR[NUM_CLASSES] = {{{class_array}}};
+
+        const char* STA_SSID = "CAMBIAR_WIFI";
+        const char* STA_PASS = "CAMBIAR_PASSWORD";
+        const char* GATEWAY_MQTT_SERVER = "192.168.40.124";
+        const int GATEWAY_MQTT_PORT = 1883;
+        const char* TOPIC_FEATURES = "fl/features";
+        const String CLIENT_ID = "esp32_edge_normal_{file_slug}";
+
+        const uint8_t ASCON_KEY[16] = {{
+          0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x18,
+          0x29, 0x3A, 0x4B, 0x5C, 0x6D, 0x7E, 0x8F, 0x90
+        }};
+
+        WiFiClient wifiClient;
+        PubSubClient mqttGateway(wifiClient);
+        uint32_t msg_counter = 0;
+
+        void setLED(uint8_t r, uint8_t g, uint8_t b) {{
+          neopixelWrite(RGB_BUILTIN, r, g, b);
+        }}
+
+        void publishEncryptedFeatures(const float features[FEATURE_COUNT]) {{
+          if (!mqttGateway.connected()) return;
+
+          StaticJsonDocument<512> doc;
+          doc["client_id"] = CLIENT_ID;
+          JsonArray array = doc.createNestedArray("features");
+          for (size_t i = 0; i < FEATURE_COUNT; i++) array.add(features[i]);
+
+          char plain[512];
+          size_t plain_len = serializeJson(doc, plain);
+
+          uint8_t nonce[16];
+          ascon_generate_nonce(nonce, millis(), msg_counter++);
+
+          uint8_t ciphertext[512];
+          uint8_t tag[16];
+          ascon128_encrypt((uint8_t*)plain, plain_len, ASCON_KEY, nonce, ciphertext, tag);
+
+          char ct_b64[1024];
+          char tag_b64[64];
+          char nonce_b64[64];
+          size_t ct_len = 0, tag_len = 0, nonce_len = 0;
+          mbedtls_base64_encode((unsigned char*)ct_b64, sizeof(ct_b64), &ct_len, ciphertext, plain_len);
+          mbedtls_base64_encode((unsigned char*)tag_b64, sizeof(tag_b64), &tag_len, tag, 16);
+          mbedtls_base64_encode((unsigned char*)nonce_b64, sizeof(nonce_b64), &nonce_len, nonce, 16);
+
+          StaticJsonDocument<1536> envelope;
+          envelope["ct"] = String(ct_b64).substring(0, ct_len);
+          envelope["tag"] = String(tag_b64).substring(0, tag_len);
+          envelope["nonce"] = String(nonce_b64).substring(0, nonce_len);
+
+          char output[1536];
+          size_t out_len = serializeJson(envelope, output);
+          mqttGateway.publish(TOPIC_FEATURES, output, out_len);
+        }}
+
+        void generateNormalFeatures(float out[FEATURE_COUNT]) {{
+          float pkts = (float)random(4, 9);
+          float meanPkt = (float)random(58, 90);
+          out[0] = pkts;
+          out[1] = random(30, 680) / 1000000.0f;
+          out[2] = random(1, 200) / 1000000.0f;
+          out[3] = random(1, 30) / 1000000.0f;
+          out[4] = random(50, 900) / 1000000.0f;
+          out[5] = meanPkt;
+          out[6] = pkts * meanPkt;
+          out[7] = (float)random(0, 3);
+          out[8] = 0.0f;
+          out[9] = 0.0f;
+          out[10] = random(0, 60) / 10.0f;
+          out[11] = 52.0f;
+          out[12] = (float)random(58, 112);
+        }}
+
+        void setup() {{
+          Serial.begin(115200);
+          delay(1000);
+          setLED(0, 10, 0);
+          WiFi.begin(STA_SSID, STA_PASS);
+          mqttGateway.setServer(GATEWAY_MQTT_SERVER, GATEWAY_MQTT_PORT);
+        }}
+
+        void loop() {{
+          if (WiFi.status() == WL_CONNECTED && !mqttGateway.connected()) {{
+            mqttGateway.connect(CLIENT_ID.c_str());
+          }}
+          mqttGateway.loop();
+
+          float features[FEATURE_COUNT];
+          generateNormalFeatures(features);
+          float confidence = 0.0f;
+          int pred = classify(features, &confidence);
+
+          Serial.print("[NORMAL][{display_name}] pred=");
+          Serial.print(CLASS_NAMES_STR[pred]);
+          Serial.print(" conf=");
+          Serial.println(confidence, 4);
+
+          publishEncryptedFeatures(features);
+          delay(5000);
+        }}
+        """
+    )
+
+
+def render_edge_simulated(display_name: str, file_slug: str, class_names: list[str]) -> str:
+    class_array = ", ".join(f'"{name}"' for name in class_names)
+    return dedent(
+        f"""\
+        // =====================================================================
+        // main_edge_node_simulated_{file_slug}.cpp — ESP32-S3 Edge Node ({display_name})
+        // =====================================================================
+        // Simula tráfico normal, mqtt_bruteforce y scan_A, detecta localmente
+        // con el modelo clásico y envía features cifradas con ASCON al Gateway.
+        // =====================================================================
+
+        #include <Arduino.h>
+        #include <WiFi.h>
+        #include <PubSubClient.h>
+        #include <ArduinoJson.h>
+        #include "model_weights.h"
+        #include "ascon128.h"
+        #include <mbedtls/base64.h>
+        #include <math.h>
+
+        #ifndef RGB_BUILTIN
+        #define RGB_BUILTIN 48
+        #endif
+
+        constexpr size_t FEATURE_COUNT = NUM_FEATURES;
+        const char* CLASS_NAMES_STR[NUM_CLASSES] = {{{class_array}}};
+
+        const char* STA_SSID = "CAMBIAR_WIFI";
+        const char* STA_PASS = "CAMBIAR_PASSWORD";
+        const char* GATEWAY_MQTT_SERVER = "192.168.40.124";
+        const int GATEWAY_MQTT_PORT = 1883;
+        const char* TOPIC_FEATURES = "fl/features";
+        const String CLIENT_ID = "esp32_edge_simulated_{file_slug}";
+
+        const uint8_t ASCON_KEY[16] = {{
+          0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x18,
+          0x29, 0x3A, 0x4B, 0x5C, 0x6D, 0x7E, 0x8F, 0x90
+        }};
+
+        WiFiClient wifiClient;
+        PubSubClient mqttGateway(wifiClient);
+        uint32_t msg_counter = 0;
+
+        void publishEncryptedFeatures(const float features[FEATURE_COUNT]) {{
+          if (!mqttGateway.connected()) return;
+
+          StaticJsonDocument<512> doc;
+          doc["client_id"] = CLIENT_ID;
+          JsonArray array = doc.createNestedArray("features");
+          for (size_t i = 0; i < FEATURE_COUNT; i++) array.add(features[i]);
+
+          char plain[512];
+          size_t plain_len = serializeJson(doc, plain);
+
+          uint8_t nonce[16];
+          ascon_generate_nonce(nonce, millis(), msg_counter++);
+          uint8_t ciphertext[512];
+          uint8_t tag[16];
+          ascon128_encrypt((uint8_t*)plain, plain_len, ASCON_KEY, nonce, ciphertext, tag);
+
+          char ct_b64[1024];
+          char tag_b64[64];
+          char nonce_b64[64];
+          size_t ct_len = 0, tag_len = 0, nonce_len = 0;
+          mbedtls_base64_encode((unsigned char*)ct_b64, sizeof(ct_b64), &ct_len, ciphertext, plain_len);
+          mbedtls_base64_encode((unsigned char*)tag_b64, sizeof(tag_b64), &tag_len, tag, 16);
+          mbedtls_base64_encode((unsigned char*)nonce_b64, sizeof(nonce_b64), &nonce_len, nonce, 16);
+
+          StaticJsonDocument<1536> envelope;
+          envelope["ct"] = String(ct_b64).substring(0, ct_len);
+          envelope["tag"] = String(tag_b64).substring(0, tag_len);
+          envelope["nonce"] = String(nonce_b64).substring(0, nonce_len);
+
+          char output[1536];
+          size_t out_len = serializeJson(envelope, output);
+          mqttGateway.publish(TOPIC_FEATURES, output, out_len);
+        }}
+
+        void generateNormal(float out[FEATURE_COUNT]) {{
+          out[0] = (float)random(4, 9);
+          out[1] = random(30, 680) / 1000000.0f;
+          out[2] = random(1, 200) / 1000000.0f;
+          out[3] = random(1, 30) / 1000000.0f;
+          out[4] = random(50, 900) / 1000000.0f;
+          out[5] = (float)random(58, 90);
+          out[6] = out[0] * out[5];
+          out[7] = (float)random(0, 3);
+          out[8] = 0.0f;
+          out[9] = 0.0f;
+          out[10] = random(0, 60) / 10.0f;
+          out[11] = 52.0f;
+          out[12] = (float)random(58, 112);
+        }}
+
+        void generateBruteforce(float out[FEATURE_COUNT]) {{
+          out[0] = (float)random(200, 500);
+          out[1] = random(100, 700) / 100.0f;
+          out[2] = random(400, 1500) / 100.0f;
+          out[3] = random(0, 100) / 100000.0f;
+          out[4] = random(4000, 12000) / 100.0f;
+          out[5] = random(545, 650) / 10.0f;
+          out[6] = out[0] * out[5];
+          out[7] = out[0] * (random(15, 25) / 100.0f);
+          out[8] = 0.0f;
+          out[9] = 0.0f;
+          out[10] = random(20, 70) / 10.0f;
+          out[11] = 52.0f;
+          out[12] = (float)random(60, 90);
+        }}
+
+        void generateScanA(float out[FEATURE_COUNT]) {{
+          out[0] = (float)random(1, 4);
+          out[1] = (out[0] > 1.0f) ? random(0, 50) / 100000.0f : 0.0f;
+          out[2] = (out[0] > 1.0f) ? random(0, 30) / 100000.0f : 0.0f;
+          out[3] = (out[0] > 1.0f) ? random(0, 10) / 100000.0f : 0.0f;
+          out[4] = (out[0] > 1.0f) ? random(0, 80) / 100000.0f : 0.0f;
+          out[5] = (float)random(40, 48);
+          out[6] = out[0] * out[5];
+          out[7] = 0.0f;
+          out[8] = (random(100) < 40) ? 1.0f : 0.0f;
+          out[9] = 0.0f;
+          out[10] = (out[0] > 1.0f) ? random(0, 30) / 10.0f : 0.0f;
+          out[11] = (float)random(40, 46);
+          out[12] = (float)random(40, 52);
+        }}
+
+        void setup() {{
+          Serial.begin(115200);
+          delay(1000);
+          WiFi.begin(STA_SSID, STA_PASS);
+          mqttGateway.setServer(GATEWAY_MQTT_SERVER, GATEWAY_MQTT_PORT);
+        }}
+
+        void loop() {{
+          if (WiFi.status() == WL_CONNECTED && !mqttGateway.connected()) {{
+            mqttGateway.connect(CLIENT_ID.c_str());
+          }}
+          mqttGateway.loop();
+
+          float features[FEATURE_COUNT];
+          int scenario = random(100);
+          if (scenario < 40) generateNormal(features);
+          else if (scenario < 70) generateBruteforce(features);
+          else generateScanA(features);
+
+          float confidence = 0.0f;
+          int pred = classify(features, &confidence);
+
+          Serial.print("[SIM][{display_name}] pred=");
+          Serial.print(CLASS_NAMES_STR[pred]);
+          Serial.print(" conf=");
+          Serial.println(confidence, 4);
+
+          publishEncryptedFeatures(features);
+          delay(5000);
+        }}
+        """
+    )
+
+
 def render_raspberry_predict(display_name: str) -> str:
     return dedent(
         f"""\
@@ -619,6 +1195,8 @@ def package_model(spec: dict, artefact_root: Path, bundle_root: Path) -> dict:
             "El header C excede 4 MB; esta variante es poco realista para ESP32 y está orientada más a Raspberry/validación."
         )
 
+    copy_reference_ascon_files(bundle_dir)
+
     copy_if_exists(feature_order_path, metadata_dir / "feature_order.csv")
     copy_if_exists(label_map_path, metadata_dir / "label_map.json")
     copy_if_exists(scaler_params_path, metadata_dir / "scaler_params.json")
@@ -633,6 +1211,10 @@ def package_model(spec: dict, artefact_root: Path, bundle_root: Path) -> dict:
     copy_if_exists(feature_order_path, esp32_dir / "feature_order.csv")
     copy_if_exists(label_map_path, esp32_dir / "label_map.json")
     copy_if_exists(scaler_params_path, esp32_dir / "scaler_params.json")
+    copy_if_exists(model_header_path, bundle_dir / "model_weights.h")
+    copy_if_exists(feature_order_path, bundle_dir / "feature_order.csv")
+    copy_if_exists(label_map_path, bundle_dir / "label_map.json")
+    copy_if_exists(scaler_params_path, bundle_dir / "scaler_params.json")
 
     (esp32_dir / "main_edge_node.cpp").write_text(
         render_esp32_main(class_names, spec["display_name"]),
@@ -654,6 +1236,21 @@ def package_model(spec: dict, artefact_root: Path, bundle_root: Path) -> dict:
         render_bundle_readme(spec["display_name"], class_names, feature_names, header_kb, warnings),
         encoding="utf-8",
     )
+    (bundle_dir / f"gateway_hfl_fog_{spec['file_slug']}.py").write_text(
+        render_gateway_script(spec["display_name"], spec["file_slug"]),
+        encoding="utf-8",
+    )
+    server_script = render_server_script(spec["display_name"], spec["file_slug"])
+    (bundle_dir / f"server_hfl_{spec['file_slug']}.py").write_text(server_script, encoding="utf-8")
+    (bundle_dir / f"server_hfl_fog_{spec['file_slug']}.py").write_text(server_script, encoding="utf-8")
+    (bundle_dir / f"main_edge_node_normal_{spec['file_slug']}.cpp").write_text(
+        render_edge_normal(spec["display_name"], spec["file_slug"], class_names),
+        encoding="utf-8",
+    )
+    (bundle_dir / f"main_edge_node_simulated_{spec['file_slug']}.cpp").write_text(
+        render_edge_simulated(spec["display_name"], spec["file_slug"], class_names),
+        encoding="utf-8",
+    )
 
     manifest = {
         "bundle": spec["bundle_name"],
@@ -662,6 +1259,10 @@ def package_model(spec: dict, artefact_root: Path, bundle_root: Path) -> dict:
         "scaler_path": str(scaler_path) if scaler_path else None,
         "esp32_header_kb": round(header_kb, 1),
         "warnings": warnings,
+        "gateway_script": f"gateway_hfl_fog_{spec['file_slug']}.py",
+        "server_script": f"server_hfl_{spec['file_slug']}.py",
+        "edge_normal": f"main_edge_node_normal_{spec['file_slug']}.cpp",
+        "edge_simulated": f"main_edge_node_simulated_{spec['file_slug']}.cpp",
     }
     (bundle_dir / "bundle_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest

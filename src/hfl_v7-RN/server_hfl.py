@@ -73,8 +73,8 @@ round_in_progress = True
 
 # ====================== IPs de GATEWAYS ======================
 GATEWAYS = [
-    "http://192.168.40.120:5000",
-    "http://192.168.40.124:5000"
+    "http://192.168.1.19:5000",
+    "http://192.168.1.14:5000"
 ]
 
 # Clave ASCON pre-compartida (misma que ESP32 y Gateway)

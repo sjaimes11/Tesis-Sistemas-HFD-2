@@ -31,5 +31,5 @@
         - El header C excede 4 MB; esta variante es poco realista para ESP32 y está orientada más a Raspberry/validación.
 
         ## Uso rápido
-        - ESP32: copia `esp32/model_weights.h` y `esp32/main_edge_node.cpp` a tu sketch/firmware.
-        - Raspberry Pi: instala `raspberry/requirements.txt` y ejecuta `python raspberry/mqtt_gateway.py`.
+        - ESP32: usa `main_edge_node_normal_<modelo>.cpp` o `main_edge_node_simulated_<modelo>.cpp` junto a `model_weights.h` y `ascon128.h`.
+        - Raspberry Pi: instala `raspberry/requirements.txt` y ejecuta `python gateway_hfl_fog_<modelo>.py`.
