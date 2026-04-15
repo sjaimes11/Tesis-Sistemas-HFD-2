@@ -1,0 +1,21 @@
+timestamp,device_name,device_suffix,hostname,run_id,stage,fl_round,num_samples,accuracy,loss,buffer_target
+2026-04-15 16:59:27,gateway,gateway_B,gatewayB,6,local_train,0,30,0.7666666507720947,0.7261812686920166,30
+2026-04-15 17:00:18,gateway,gateway_B,gatewayB,6,local_train,1,30,0.9333333373069763,0.29909807443618774,30
+2026-04-15 17:01:16,gateway,gateway_B,gatewayB,6,local_train,2,30,0.8999999761581421,0.1768369972705841,30
+2026-04-15 17:02:17,gateway,gateway_B,gatewayB,6,local_train,3,30,1.0,0.06296875327825546,30
+2026-04-15 17:03:15,gateway,gateway_B,gatewayB,6,local_train,4,30,1.0,0.032199304550886154,30
+2026-04-15 17:04:16,gateway,gateway_B,gatewayB,6,local_train,5,30,1.0,0.024262240156531334,30
+2026-04-15 17:05:15,gateway,gateway_B,gatewayB,6,local_train,6,30,1.0,0.006705263629555702,30
+2026-04-15 17:06:14,gateway,gateway_B,gatewayB,6,local_train,7,30,1.0,0.024155979976058006,30
+2026-04-15 17:07:13,gateway,gateway_B,gatewayB,6,local_train,8,30,1.0,0.0060663651674985886,30
+2026-04-15 17:08:12,gateway,gateway_B,gatewayB,6,local_train,9,30,1.0,0.009197032079100609,30
+2026-04-15 17:09:11,gateway,gateway_B,gatewayB,6,local_train,10,30,1.0,0.013934299349784851,30
+2026-04-15 17:10:10,gateway,gateway_B,gatewayB,6,local_train,11,30,1.0,0.010725217871367931,30
+2026-04-15 17:11:09,gateway,gateway_B,gatewayB,6,local_train,12,30,1.0,0.0051034679636359215,30
+2026-04-15 17:12:09,gateway,gateway_B,gatewayB,6,local_train,13,30,1.0,0.02461603470146656,30
+2026-04-15 17:13:08,gateway,gateway_B,gatewayB,6,local_train,14,30,1.0,0.003068552352488041,30
+2026-04-15 17:14:06,gateway,gateway_B,gatewayB,6,local_train,15,30,1.0,0.003308956976979971,30
+2026-04-15 17:15:09,gateway,gateway_B,gatewayB,6,local_train,16,30,1.0,0.00321070640347898,30
+2026-04-15 17:16:09,gateway,gateway_B,gatewayB,6,local_train,17,30,1.0,0.02586783841252327,30
+2026-04-15 17:17:09,gateway,gateway_B,gatewayB,6,local_train,18,30,1.0,0.00400115130469203,30
+2026-04-15 17:18:07,gateway,gateway_B,gatewayB,6,local_train,19,30,1.0,0.02178664691746235,30
