@@ -32,7 +32,7 @@
 const char* STA_SSID = "TP-Link_AADB";       // <-- CAMBIAR
 const char* STA_PASS = "55707954";            // <-- CAMBIAR
 
-const char* GATEWAY_MQTT_SERVER = "192.168.1.14"; // <-- IP Raspberry Pi 4 Gateway
+const char* GATEWAY_MQTT_SERVER = "192.168.1.13"; // <-- IP Raspberry Pi 4 Gateway
 const int GATEWAY_MQTT_PORT = 1883;
 
 // ==========================================

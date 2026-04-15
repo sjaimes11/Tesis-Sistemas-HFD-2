@@ -1,0 +1,21 @@
+timestamp,device_name,device_suffix,hostname,run_id,stage,fl_round,num_samples,accuracy,loss,buffer_target
+2026-04-15 15:07:21,gateway,gateway_B,gatewayB,3,local_train,0,30,0.6666666865348816,0.8518619537353516,30
+2026-04-15 15:08:15,gateway,gateway_B,gatewayB,3,local_train,1,30,0.9333333373069763,0.1560298055410385,30
+2026-04-15 15:09:13,gateway,gateway_B,gatewayB,3,local_train,2,30,1.0,0.030598104000091553,30
+2026-04-15 15:10:14,gateway,gateway_B,gatewayB,3,local_train,3,30,1.0,0.017258914187550545,30
+2026-04-15 15:11:12,gateway,gateway_B,gatewayB,3,local_train,4,30,1.0,0.020718419924378395,30
+2026-04-15 15:13:33,gateway,gateway_B,gatewayB,3,local_train,5,30,1.0,0.027023883536458015,30
+2026-04-15 15:14:34,gateway,gateway_B,gatewayB,3,local_train,6,30,1.0,0.013982214964926243,30
+2026-04-15 15:15:33,gateway,gateway_B,gatewayB,3,local_train,7,30,1.0,0.03464363515377045,30
+2026-04-15 15:16:31,gateway,gateway_B,gatewayB,3,local_train,8,30,1.0,0.010285455733537674,30
+2026-04-15 15:17:32,gateway,gateway_B,gatewayB,3,local_train,9,30,1.0,0.014489082619547844,30
+2026-04-15 15:18:34,gateway,gateway_B,gatewayB,3,local_train,10,30,1.0,0.009144783020019531,30
+2026-04-15 15:19:35,gateway,gateway_B,gatewayB,3,local_train,11,30,1.0,0.015399468131363392,30
+2026-04-15 15:20:34,gateway,gateway_B,gatewayB,3,local_train,12,30,1.0,0.02783614955842495,30
+2026-04-15 15:21:33,gateway,gateway_B,gatewayB,3,local_train,13,30,1.0,0.00761035643517971,30
+2026-04-15 15:22:31,gateway,gateway_B,gatewayB,3,local_train,14,30,1.0,0.00685740914195776,30
+2026-04-15 15:23:32,gateway,gateway_B,gatewayB,3,local_train,15,30,1.0,0.0068125976249575615,30
+2026-04-15 15:24:30,gateway,gateway_B,gatewayB,3,local_train,16,30,1.0,0.004167563747614622,30
+2026-04-15 15:25:29,gateway,gateway_B,gatewayB,3,local_train,17,30,1.0,0.017254594713449478,30
+2026-04-15 15:26:28,gateway,gateway_B,gatewayB,3,local_train,18,30,1.0,0.006094016134738922,30
+2026-04-15 15:27:27,gateway,gateway_B,gatewayB,3,local_train,19,30,1.0,0.0041943807154893875,30
