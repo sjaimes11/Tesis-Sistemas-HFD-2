@@ -1,0 +1,2 @@
+timestamp,uptime_s,channel,operation,pt_bytes,enc_bytes,overhead_bytes,elapsed_ms,fl_round
+10:42:56.838,0.0,A->B,encrypt,44,76,32,1.5,0

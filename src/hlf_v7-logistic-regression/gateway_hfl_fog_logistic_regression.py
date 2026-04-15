@@ -164,7 +164,7 @@ def on_message(client, userdata, msg):
 
 
 if __name__ == "__main__":
-    client = mqtt.Client(client_id=f"gateway_hfl_fog_logistic_regression")
+    client = mqtt.Client(client_id="gateway_hfl_fog_logistic_regression")
     client.on_connect = on_connect
     client.on_message = on_message
     client.connect(MQTT_LOCAL_BROKER, MQTT_LOCAL_PORT, 60)

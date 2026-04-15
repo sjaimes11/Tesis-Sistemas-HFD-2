@@ -1,0 +1,37 @@
+{
+  "model_kind": "naive_bayes",
+  "display_name": "Gaussian Naive Bayes",
+  "bundle_dir": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src\\hfl_v7-naive-bayes",
+  "teacher_path": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src\\hfl_v7-naive-bayes\\teacher_naive_bayes.joblib",
+  "h5_path": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src\\hfl_v7-naive-bayes\\ids_3class.h5",
+  "keras_path": null,
+  "header_path": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src\\hfl_v7-naive-bayes\\model_weights.h",
+  "teacher_metrics": {
+    "accuracy": 0.7466666666666667,
+    "f1_macro": 0.7447217064097034,
+    "f1_weighted": 0.7447217064097034,
+    "precision_macro": 0.7828308696010021,
+    "recall_macro": 0.7466666666666667,
+    "mcc": 0.6401503754085506
+  },
+  "student_metrics": {
+    "accuracy": 0.9041666666666667,
+    "f1_macro": 0.9030257334507127,
+    "f1_weighted": 0.9030257334507129,
+    "precision_macro": 0.9140606348840555,
+    "recall_macro": 0.9041666666666667,
+    "mcc": 0.8614239369669381
+  },
+  "config": {
+    "random_state": 42,
+    "test_size": 0.2,
+    "max_samples_per_class": 12000,
+    "learning_rate": 0.003,
+    "soft_epochs": 8,
+    "hard_epochs": 4,
+    "save_native_keras": false,
+    "distill_samples": null,
+    "teacher_eval_samples": null
+  },
+  "retraining_note": "Gaussian Naive Bayes si soporta actualizacion incremental, pero aqui se mantiene la MLP estudiante para seguir el protocolo HFL v7."
+}

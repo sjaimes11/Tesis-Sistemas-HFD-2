@@ -150,6 +150,7 @@ def ascon_decrypt_json(envelope_raw, direction, round_num):
     ct = base64.b64decode(envelope["ct"])
     tag = base64.b64decode(envelope["tag"])
     nonce = base64.b64decode(envelope["nonce"])
+    
 
     raw_size = len(json.dumps(envelope))
     t0 = time.perf_counter()

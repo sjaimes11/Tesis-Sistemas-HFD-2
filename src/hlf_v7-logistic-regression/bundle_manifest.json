@@ -5,7 +5,8 @@
   "scaler_path": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src\\ml_outputs\\logistic_regression_model\\scaler_lr.pkl",
   "esp32_header_kb": 3.3,
   "warnings": [],
-  "gateway_script": "gateway_hfl_fog_logistic_regression.py",
+  "gateway_script": "gateway_hfl_logistic_regression.py",
+  "gateway_fog_script": "gateway_hfl_fog_logistic_regression.py",
   "server_script": "server_hfl_logistic_regression.py",
   "edge_normal": "main_edge_node_normal_logistic_regression.cpp",
   "edge_simulated": "main_edge_node_simulated_logistic_regression.cpp"
