@@ -15,13 +15,31 @@ import csv
 import os
 import atexit
 from datetime import datetime
+from pathlib import Path
+
+
+RESULTS_DIR = Path(__file__).resolve().parent / "Results"
+
+
+def _next_results_csv_path(device_name: str) -> Path:
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    prefix = f"ascon_metrics_{device_name}_"
+    indices = []
+
+    for path in RESULTS_DIR.glob(f"{prefix}*.csv"):
+        suffix = path.stem.replace(prefix, "")
+        if suffix.isdigit():
+            indices.append(int(suffix))
+
+    next_index = (max(indices) + 1) if indices else 1
+    return RESULTS_DIR / f"{prefix}{next_index}.csv"
 
 class AsconMetrics:
     def __init__(self, device_name="unknown"):
         self.device_name = device_name
         self.records = []
         self.start_time = time.time()
-        self.csv_path = f"ascon_metrics_{device_name}.csv"
+        self.csv_path = _next_results_csv_path(device_name)
         atexit.register(self.export_summary)
     
     def record(self, channel, operation, pt_size, enc_size, elapsed_ms, fl_round):
@@ -103,7 +121,7 @@ class AsconMetrics:
         
         self.print_live_summary()
         
-        with open(self.csv_path, 'w', newline='') as f:
+        with open(self.csv_path, 'w', newline='', encoding='utf-8') as f:
             writer = csv.DictWriter(f, fieldnames=self.records[0].keys())
             writer.writeheader()
             writer.writerows(self.records)
