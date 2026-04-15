@@ -12,7 +12,7 @@
 =============================================================================
 """
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -23,6 +23,7 @@ import logging
 import csv as csv_module
 import base64
 import time
+import atexit
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
@@ -76,6 +77,17 @@ MIN_UPDATES_PER_ROUND = 2
 history = []
 round_in_progress = True
 
+GLOBAL_HISTORY_COLUMNS = [
+    "round",
+    "time",
+    "accuracy",
+    "loss",
+    "w3_mag",
+    "w4_normal",
+    "w4_brute",
+    "w4_scan",
+]
+
 # ====================== IPs de GATEWAYS ======================
 GATEWAYS = [
     "http://192.168.1.15:5000",
@@ -94,8 +106,56 @@ class EncryptedPayload(BaseModel):
     nonce: str
 
 
+def next_results_csv_path(prefix: str) -> Path:
+    indices = []
+    for path in RESULTS_DIR.glob(f"{prefix}_*.csv"):
+        suffix = path.stem.replace(f"{prefix}_", "")
+        if suffix.isdigit():
+            indices.append(int(suffix))
+
+    next_index = (max(indices) + 1) if indices else 1
+    return RESULTS_DIR / f"{prefix}_{next_index}.csv"
+
+
+CURRENT_HISTORY_CSV_PATH = next_results_csv_path("global_weights_history")
+
+
+def history_rows_for_export():
+    rows = []
+    for row in history:
+        rows.append(
+            {
+                "round": row["round"],
+                "time": row["time"],
+                "accuracy": round(float(row["accuracy"]), 6),
+                "loss": round(float(row["loss"]), 6),
+                "w3_mag": round(float(row["w3_mag"]), 6),
+                "w4_normal": round(float(row["w4_normal"]), 6),
+                "w4_brute": round(float(row["w4_brute"]), 6),
+                "w4_scan": round(float(row["w4_scan"]), 6),
+            }
+        )
+    return rows
+
+
+def export_global_history_csv() -> Path | None:
+    if not history:
+        return None
+
+    rows = history_rows_for_export()
+    with CURRENT_HISTORY_CSV_PATH.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv_module.DictWriter(handle, fieldnames=GLOBAL_HISTORY_COLUMNS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    return CURRENT_HISTORY_CSV_PATH
+
+
+atexit.register(export_global_history_csv)
+
+
 def list_results_csv_files():
-    files = [path for path in RESULTS_DIR.glob("ascon_metrics_*.csv") if path.is_file()]
+    files = [path for path in RESULTS_DIR.glob("*.csv") if path.is_file()]
     files.sort(key=lambda path: path.stat().st_mtime, reverse=True)
     return files
 
@@ -222,6 +282,7 @@ async def receive_gateway_model(envelope: EncryptedPayload):
             "w4_brute": class_mags[1],
             "w4_scan": class_mags[2]
         })
+        export_global_history_csv()
 
         W3_update_sum.fill(0); b3_update_sum.fill(0)
         W4_update_sum.fill(0); b4_update_sum.fill(0)
@@ -259,6 +320,19 @@ def get_status():
 @app.get("/api/history")
 def get_history():
     return {"history": history}
+
+
+@app.get("/api/history/export")
+def export_history():
+    csv_path = export_global_history_csv()
+    if csv_path is None:
+        return JSONResponse(status_code=404, content={"error": "Todavia no hay rondas para exportar"})
+
+    return FileResponse(
+        path=csv_path,
+        media_type="text/csv",
+        filename=csv_path.name,
+    )
 
 
 @app.get("/api/results-files")
@@ -462,7 +536,13 @@ def dashboard():
     </div>
 
     <div class="table-container">
-        <div class="card-title" style="text-align:left; margin-bottom: 15px; color:white; font-size: 1rem;">Historial Dinámico de Pesos Globales</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom: 15px;">
+            <div class="card-title" style="text-align:left; margin-bottom: 0; color:white; font-size: 1rem;">Historial Dinámico de Pesos Globales</div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <button class="button" onclick="exportHistoryCsv()">Exportar historial actual CSV</button>
+                <span id="history-export-info" class="csv-info" style="margin:0;">Autosave en Results por cada ronda completada.</span>
+            </div>
+        </div>
         <table>
             <thead>
                 <tr>
@@ -767,6 +847,36 @@ def dashboard():
 
         function startRound() {
             fetch('/start-round').then(() => fetchDashboard());
+        }
+
+        async function exportHistoryCsv() {
+            const info = document.getElementById('history-export-info');
+            try {
+                const response = await fetch('/api/history/export');
+                if (!response.ok) {
+                    const payload = await response.json();
+                    info.innerText = payload.error || 'No se pudo exportar el historial.';
+                    return;
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const disposition = response.headers.get('content-disposition') || '';
+                const match = disposition.match(/filename="?([^"]+)"?/i);
+                const filename = match ? match[1] : 'global_weights_history.csv';
+                const anchor = document.createElement('a');
+                anchor.href = url;
+                anchor.download = filename;
+                document.body.appendChild(anchor);
+                anchor.click();
+                anchor.remove();
+                window.URL.revokeObjectURL(url);
+                info.innerText = `Historial exportado: ${filename}`;
+                loadResultsFiles();
+            } catch (err) {
+                console.error('No se pudo exportar el historial:', err);
+                info.innerText = 'No se pudo exportar el historial.';
+            }
         }
 
         // Auto-refresh via AJAX sin parpadeos cada 2.5 segundos

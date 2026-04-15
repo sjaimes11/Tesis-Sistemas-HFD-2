@@ -24,14 +24,16 @@ import base64
 import time
 from ascon128 import encrypt as ascon_encrypt, decrypt as ascon_decrypt, generate_nonce
 from ascon_metrics import AsconMetrics
-
-metrics = AsconMetrics("gateway")
+from model_results_logger import ModelResultsLogger
 
 # ====================== CONFIGURACIÓN ======================
 GATEWAY_ID = "gateway_A"
 IP_PC = "192.168.40.95"
 PORT_PC = "8001"
 url_servidor = f"http://{IP_PC}:{PORT_PC}/aggregate-from-gateway"
+
+metrics = AsconMetrics("gateway", suffix=GATEWAY_ID)
+model_results = ModelResultsLogger("gateway", suffix=GATEWAY_ID)
 
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
@@ -232,6 +234,14 @@ def train_local_model():
     W4, b4 = model.get_layer("dense_out").get_weights()
     
     print(f"[ENTRENAMIENTO LOCAL] Finalizado (Acc: {final_acc:.2%}, Loss: {final_loss:.4f})")
+    model_results.record(
+        stage="local_train",
+        fl_round=current_round,
+        num_samples=len(X),
+        accuracy=final_acc,
+        loss=final_loss,
+        buffer_target=SAMPLES_PER_UPDATE,
+    )
     
     payload = {
         "gateway_id": GATEWAY_ID,
@@ -288,7 +298,6 @@ def on_message(client, userdata, msg):
             print("[ERROR] ASCON: Tag inválido desde ESP32. Mensaje rechazado.")
             return
         
-        metrics.record("ESP32->RPi", "decrypt", len(plaintext), len(msg.payload), dec_ms, current_round)
         data = json.loads(plaintext.decode('utf-8'))
         client_id = data.get("client_id", "unknown")
         features = data.get("features", [])
@@ -296,6 +305,18 @@ def on_message(client, userdata, msg):
         if len(features) != FEATURE_COUNT: return
         
         label = heuristicLabel(features)
+        label_name = CLASS_NAMES[label] if 0 <= label < len(CLASS_NAMES) else "unknown"
+        metrics.record(
+            "ESP32->RPi",
+            "decrypt",
+            len(plaintext),
+            len(msg.payload),
+            dec_ms,
+            current_round,
+            client_id=client_id,
+            sample_label=label,
+            sample_label_name=label_name,
+        )
         update_node_stats(client_id, label)
         
         if label >= 0 and features[0] >= MIN_PKTS_FOR_ML:

@@ -37,6 +37,7 @@ import tensorflow as tf
 
 from ascon128 import encrypt as ascon_encrypt, decrypt as ascon_decrypt, generate_nonce
 from ascon_metrics import AsconMetrics
+from model_results_logger import ModelResultsLogger
 
 # Lock global para msg_counter (accedido desde hilos MQTT local, MQTT fog e HTTP)
 _counter_lock = threading.Lock()
@@ -73,7 +74,8 @@ ASCON_KEY = bytes([0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x18,
                    0x29, 0x3A, 0x4B, 0x5C, 0x6D, 0x7E, 0x8F, 0x90])
 msg_counter = 0
 
-metrics = AsconMetrics(f"fog_{FOG_ROLE}")
+metrics = AsconMetrics("gateway", suffix=GATEWAY_ID)
+model_results = ModelResultsLogger("gateway", suffix=GATEWAY_ID)
 
 # =============================================================================
 #  DATASET LOCAL Y MODELO
@@ -138,7 +140,7 @@ def ascon_encrypt_json(payload_dict, direction, round_num):
     return envelope, envelope_str
 
 
-def ascon_decrypt_json(envelope_raw, direction, round_num):
+def ascon_decrypt_json(envelope_raw, direction, round_num, **extra_fields):
     """Descifra un envelope (dict o bytes/str) con ASCON-128, retorna dict."""
     if isinstance(envelope_raw, (bytes, bytearray)):
         envelope = json.loads(envelope_raw.decode('utf-8'))
@@ -161,7 +163,7 @@ def ascon_decrypt_json(envelope_raw, direction, round_num):
         print(f"[ERROR] ASCON: Tag inválido ({direction}). Mensaje rechazado.")
         return None
 
-    metrics.record(direction, "decrypt", len(plaintext), raw_size, dec_ms, round_num)
+    metrics.record(direction, "decrypt", len(plaintext), raw_size, dec_ms, round_num, **extra_fields)
     return json.loads(plaintext.decode('utf-8'))
 
 
@@ -220,16 +222,36 @@ def on_local_connect(client, userdata, flags, rc):
 
 def on_local_message(client, userdata, msg):
     try:
-        data = ascon_decrypt_json(msg.payload, "ESP32->RPi", current_round)
-        if data is None:
+        envelope = json.loads(msg.payload.decode("utf-8"))
+        candidate_ct = base64.b64decode(envelope["ct"])
+        candidate_tag = base64.b64decode(envelope["tag"])
+        candidate_nonce = base64.b64decode(envelope["nonce"])
+        t0 = time.perf_counter()
+        plaintext = ascon_decrypt(candidate_ct, ASCON_KEY, candidate_nonce, candidate_tag)
+        dec_ms = (time.perf_counter() - t0) * 1000
+        if plaintext is None:
+            print("[ERROR] ASCON: Tag inválido (ESP32->RPi). Mensaje rechazado.")
             return
 
+        data = json.loads(plaintext.decode("utf-8"))
         client_id = data.get("client_id", "unknown")
         features = data.get("features", [])
         if len(features) != FEATURE_COUNT:
             return
 
         label = heuristicLabel(features)
+        label_name = CLASS_NAMES[label] if 0 <= label < len(CLASS_NAMES) else "unknown"
+        metrics.record(
+            "ESP32->RPi",
+            "decrypt",
+            len(plaintext),
+            len(msg.payload),
+            dec_ms,
+            current_round,
+            client_id=client_id,
+            sample_label=label,
+            sample_label_name=label_name,
+        )
         update_node_stats(client_id, label)
 
         if label >= 0 and features[0] >= MIN_PKTS_FOR_ML:
@@ -346,6 +368,15 @@ def fog_fedavg():
 
     print(f"  Fog FedAvg: {total_samples} muestras totales, "
           f"Acc promedio={acc_agg:.2%}, Loss={loss_agg:.4f}")
+    model_results.record(
+        stage="fog_fedavg",
+        fl_round=current_round,
+        num_samples=total_samples,
+        accuracy=acc_agg,
+        loss=loss_agg,
+        peer_count=len(fog_weights_buffer),
+        fog_role=FOG_ROLE,
+    )
 
     fog_weights_buffer.clear()
 
@@ -504,6 +535,15 @@ def train_local_model():
     W4, b4 = dense_layers[-1].get_weights()
 
     print(f"[TRAIN] Finalizado (Acc: {final_acc:.2%}, Loss: {final_loss:.4f})")
+    model_results.record(
+        stage="local_train",
+        fl_round=current_round,
+        num_samples=len(X),
+        accuracy=final_acc,
+        loss=final_loss,
+        fog_role=FOG_ROLE,
+        buffer_target=SAMPLES_PER_UPDATE,
+    )
 
     if FOG_ROLE == "leader":
         with fog_weights_lock:
