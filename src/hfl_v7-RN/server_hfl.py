@@ -91,7 +91,7 @@ GLOBAL_HISTORY_COLUMNS = [
 # ====================== IPs de GATEWAYS ======================
 GATEWAYS = [
     "http://192.168.1.15:5000",
-    "http://192.168.1.13:5000"
+    "http://192.168.1.12:5000"
 ]
 
 # Clave ASCON pre-compartida (misma que ESP32 y Gateway)
