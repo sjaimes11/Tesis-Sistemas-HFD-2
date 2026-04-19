@@ -1,0 +1,21 @@
+timestamp,device_name,device_suffix,hostname,run_id,stage,fl_round,num_samples,accuracy,loss,buffer_target
+2026-04-19 13:34:05,gateway,gateway_B,gatewayB,22,local_train,0,30,0.800000011920929,0.7544409036636353,30
+2026-04-19 13:34:49,gateway,gateway_B,gatewayB,22,local_train,1,30,1.0,0.09931513667106628,30
+2026-04-19 13:35:39,gateway,gateway_B,gatewayB,22,local_train,2,30,0.9666666388511658,0.05538830906152725,30
+2026-04-19 13:36:29,gateway,gateway_B,gatewayB,22,local_train,3,30,1.0,0.03281068056821823,30
+2026-04-19 13:37:19,gateway,gateway_B,gatewayB,22,local_train,4,30,1.0,0.004874019417911768,30
+2026-04-19 13:38:09,gateway,gateway_B,gatewayB,22,local_train,5,30,1.0,0.006506642792373896,30
+2026-04-19 13:38:59,gateway,gateway_B,gatewayB,22,local_train,6,30,1.0,0.01663150265812874,30
+2026-04-19 13:39:49,gateway,gateway_B,gatewayB,22,local_train,7,30,1.0,0.014855744317173958,30
+2026-04-19 13:40:39,gateway,gateway_B,gatewayB,22,local_train,8,30,1.0,0.01042377483099699,30
+2026-04-19 13:41:29,gateway,gateway_B,gatewayB,22,local_train,9,30,1.0,0.0129810506477952,30
+2026-04-19 13:42:19,gateway,gateway_B,gatewayB,22,local_train,10,30,1.0,0.012584662064909935,30
+2026-04-19 13:43:09,gateway,gateway_B,gatewayB,22,local_train,11,30,1.0,0.022883713245391846,30
+2026-04-19 13:43:59,gateway,gateway_B,gatewayB,22,local_train,12,30,1.0,0.019030660390853882,30
+2026-04-19 13:44:49,gateway,gateway_B,gatewayB,22,local_train,13,30,1.0,0.00668322155252099,30
+2026-04-19 13:45:39,gateway,gateway_B,gatewayB,22,local_train,14,30,1.0,0.0069762361235916615,30
+2026-04-19 13:46:29,gateway,gateway_B,gatewayB,22,local_train,15,30,0.9666666388511658,0.038774412125349045,30
+2026-04-19 13:47:19,gateway,gateway_B,gatewayB,22,local_train,16,30,1.0,0.0020053451880812645,30
+2026-04-19 13:48:09,gateway,gateway_B,gatewayB,22,local_train,17,30,1.0,0.003242099191993475,30
+2026-04-19 13:48:59,gateway,gateway_B,gatewayB,22,local_train,18,30,1.0,0.00276728137396276,30
+2026-04-19 13:49:49,gateway,gateway_B,gatewayB,22,local_train,19,30,1.0,0.007033102679997683,30

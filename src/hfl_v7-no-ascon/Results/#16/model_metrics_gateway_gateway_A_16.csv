@@ -1,0 +1,21 @@
+timestamp,device_name,device_suffix,hostname,run_id,stage,fl_round,num_samples,accuracy,loss,buffer_target
+2026-04-19 10:25:58,gateway,gateway_A,raspberrypi,16,local_train,0,30,0.7333333492279053,0.8140271306037903,30
+2026-04-19 10:26:43,gateway,gateway_A,raspberrypi,16,local_train,1,30,1.0,0.06447917968034744,30
+2026-04-19 10:27:33,gateway,gateway_A,raspberrypi,16,local_train,2,30,1.0,0.05113419517874718,30
+2026-04-19 10:28:23,gateway,gateway_A,raspberrypi,16,local_train,3,30,1.0,0.031877681612968445,30
+2026-04-19 10:29:12,gateway,gateway_A,raspberrypi,16,local_train,4,30,1.0,0.024888550862669945,30
+2026-04-19 10:34:05,gateway,gateway_A,raspberrypi,16,local_train,5,30,0.6666666865348816,1.2271682024002075,30
+2026-04-19 10:34:55,gateway,gateway_A,raspberrypi,16,local_train,6,30,0.8333333134651184,0.4497591555118561,30
+2026-04-19 10:35:45,gateway,gateway_A,raspberrypi,16,local_train,7,30,0.5,1.443485975265503,30
+2026-04-19 10:36:35,gateway,gateway_A,raspberrypi,16,local_train,8,30,0.699999988079071,0.7392966747283936,30
+2026-04-19 10:37:25,gateway,gateway_A,raspberrypi,16,local_train,9,30,0.7333333492279053,0.3893095552921295,30
+2026-04-19 10:38:15,gateway,gateway_A,raspberrypi,16,local_train,10,30,0.9333333373069763,0.17481054365634918,30
+2026-04-19 10:39:05,gateway,gateway_A,raspberrypi,16,local_train,11,30,0.7666666507720947,0.37088337540626526,30
+2026-04-19 10:39:55,gateway,gateway_A,raspberrypi,16,local_train,12,30,0.699999988079071,0.5434021353721619,30
+2026-04-19 10:40:45,gateway,gateway_A,raspberrypi,16,local_train,13,30,0.7666666507720947,0.547869861125946,30
+2026-04-19 10:41:35,gateway,gateway_A,raspberrypi,16,local_train,14,30,0.6666666865348816,0.5584983229637146,30
+2026-04-19 10:42:25,gateway,gateway_A,raspberrypi,16,local_train,15,30,0.8999999761581421,0.21397586166858673,30
+2026-04-19 10:43:15,gateway,gateway_A,raspberrypi,16,local_train,16,30,0.8666666746139526,0.3305763900279999,30
+2026-04-19 10:44:05,gateway,gateway_A,raspberrypi,16,local_train,17,30,0.9666666388511658,0.2738121449947357,30
+2026-04-19 10:44:55,gateway,gateway_A,raspberrypi,16,local_train,18,30,1.0,0.06664355844259262,30
+2026-04-19 10:45:45,gateway,gateway_A,raspberrypi,16,local_train,19,30,0.8999999761581421,0.2678395211696625,30

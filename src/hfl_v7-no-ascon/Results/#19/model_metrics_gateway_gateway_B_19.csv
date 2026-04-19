@@ -1,0 +1,21 @@
+timestamp,device_name,device_suffix,hostname,run_id,stage,fl_round,num_samples,accuracy,loss,buffer_target
+2026-04-19 12:24:15,gateway,gateway_B,gatewayB,19,local_train,0,30,0.7333333492279053,0.7158491015434265,30
+2026-04-19 12:24:59,gateway,gateway_B,gatewayB,19,local_train,1,30,0.9666666388511658,0.0941605269908905,30
+2026-04-19 12:25:49,gateway,gateway_B,gatewayB,19,local_train,2,30,1.0,0.027751421555876732,30
+2026-04-19 12:26:39,gateway,gateway_B,gatewayB,19,local_train,3,30,0.9666666388511658,0.044700488448143005,30
+2026-04-19 12:27:29,gateway,gateway_B,gatewayB,19,local_train,4,30,1.0,0.01340649463236332,30
+2026-04-19 12:28:19,gateway,gateway_B,gatewayB,19,local_train,5,30,1.0,0.008912666700780392,30
+2026-04-19 12:29:09,gateway,gateway_B,gatewayB,19,local_train,6,30,1.0,0.020300107076764107,30
+2026-04-19 12:29:59,gateway,gateway_B,gatewayB,19,local_train,7,30,1.0,0.027468563988804817,30
+2026-04-19 12:30:49,gateway,gateway_B,gatewayB,19,local_train,8,30,1.0,0.013418491929769516,30
+2026-04-19 12:31:39,gateway,gateway_B,gatewayB,19,local_train,9,30,1.0,0.012143794447183609,30
+2026-04-19 12:32:29,gateway,gateway_B,gatewayB,19,local_train,10,30,1.0,0.018343813717365265,30
+2026-04-19 12:33:19,gateway,gateway_B,gatewayB,19,local_train,11,30,1.0,0.011423668824136257,30
+2026-04-19 12:34:09,gateway,gateway_B,gatewayB,19,local_train,12,30,1.0,0.010912692174315453,30
+2026-04-19 12:34:59,gateway,gateway_B,gatewayB,19,local_train,13,30,1.0,0.024766547605395317,30
+2026-04-19 12:35:49,gateway,gateway_B,gatewayB,19,local_train,14,30,1.0,0.011341096833348274,30
+2026-04-19 12:36:39,gateway,gateway_B,gatewayB,19,local_train,15,30,1.0,0.010831659659743309,30
+2026-04-19 12:37:29,gateway,gateway_B,gatewayB,19,local_train,16,30,1.0,0.010420636273920536,30
+2026-04-19 12:38:19,gateway,gateway_B,gatewayB,19,local_train,17,30,1.0,0.005054161883890629,30
+2026-04-19 12:39:09,gateway,gateway_B,gatewayB,19,local_train,18,30,1.0,0.005172327626496553,30
+2026-04-19 12:39:59,gateway,gateway_B,gatewayB,19,local_train,19,30,1.0,0.0041766236536204815,30

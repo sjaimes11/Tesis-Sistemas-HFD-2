@@ -1,0 +1,21 @@
+timestamp,device_name,device_suffix,hostname,run_id,stage,fl_round,num_samples,accuracy,loss,buffer_target
+2026-04-19 12:00:39,gateway,gateway_B,gatewayB,18,local_train,0,30,0.8333333134651184,0.4998680353164673,30
+2026-04-19 12:01:23,gateway,gateway_B,gatewayB,18,local_train,1,30,1.0,0.0744728147983551,30
+2026-04-19 12:02:13,gateway,gateway_B,gatewayB,18,local_train,2,30,1.0,0.03872748836874962,30
+2026-04-19 12:03:03,gateway,gateway_B,gatewayB,18,local_train,3,30,1.0,0.021909063681960106,30
+2026-04-19 12:03:53,gateway,gateway_B,gatewayB,18,local_train,4,30,1.0,0.028727702796459198,30
+2026-04-19 12:04:43,gateway,gateway_B,gatewayB,18,local_train,5,30,1.0,0.005057937931269407,30
+2026-04-19 12:05:33,gateway,gateway_B,gatewayB,18,local_train,6,30,1.0,0.025399118661880493,30
+2026-04-19 12:06:23,gateway,gateway_B,gatewayB,18,local_train,7,30,1.0,0.005730324424803257,30
+2026-04-19 12:07:13,gateway,gateway_B,gatewayB,18,local_train,8,30,1.0,0.03611273318529129,30
+2026-04-19 12:08:03,gateway,gateway_B,gatewayB,18,local_train,9,30,1.0,0.01027475856244564,30
+2026-04-19 12:08:53,gateway,gateway_B,gatewayB,18,local_train,10,30,1.0,0.014004883356392384,30
+2026-04-19 12:09:43,gateway,gateway_B,gatewayB,18,local_train,11,30,1.0,0.008435375057160854,30
+2026-04-19 12:10:33,gateway,gateway_B,gatewayB,18,local_train,12,30,1.0,0.0032148242462426424,30
+2026-04-19 12:11:23,gateway,gateway_B,gatewayB,18,local_train,13,30,1.0,0.005823303479701281,30
+2026-04-19 12:12:14,gateway,gateway_B,gatewayB,18,local_train,14,30,1.0,0.018169768154621124,30
+2026-04-19 12:13:04,gateway,gateway_B,gatewayB,18,local_train,15,30,1.0,0.0037415868137031794,30
+2026-04-19 12:13:54,gateway,gateway_B,gatewayB,18,local_train,16,30,1.0,0.004181550350040197,30
+2026-04-19 12:14:44,gateway,gateway_B,gatewayB,18,local_train,17,30,1.0,0.0038713181857019663,30
+2026-04-19 12:15:34,gateway,gateway_B,gatewayB,18,local_train,18,30,1.0,0.00413580471649766,30
+2026-04-19 12:16:24,gateway,gateway_B,gatewayB,18,local_train,19,30,1.0,0.004788550082594156,30
