@@ -8,7 +8,7 @@
  Modo baseline sin ASCON: JSON plano con Gateways
  
  Ejecutar: python server_hfl.py
- Dashboard: http://localhost:8001/
+ Dashboard: http://localhost:8002/
 =============================================================================
 """
 from fastapi import FastAPI
@@ -27,6 +27,8 @@ from pathlib import Path
 from plain_metrics import PlainMetrics
 
 metrics = PlainMetrics("server")
+PLAIN_AGGREGATE_PATH = "/aggregate-from-gateway-plain"
+PLAIN_DEPLOY_PATH = "/deploy-model-plain"
 
 app = FastAPI(title="Servidor HFL v7 - Analytics Dashboard")
 
@@ -86,8 +88,8 @@ GLOBAL_HISTORY_COLUMNS = [
 
 # ====================== IPs de GATEWAYS ======================
 GATEWAYS = [
-    "http://192.168.1.15:5000",
-    "http://192.168.1.13:5000"
+    "http://192.168.40.40:5000",
+    "http://192.168.40.41:5000"
 ]
 
 def next_results_csv_path(prefix: str) -> Path:
@@ -169,7 +171,7 @@ def distribute_global_model():
     
     for gw_url in GATEWAYS:
         try:
-            resp = requests.post(f"{gw_url}/deploy-model", json=payload, timeout=5)
+            resp = requests.post(f"{gw_url}{PLAIN_DEPLOY_PATH}", json=payload, timeout=5)
             print(f"  -> {gw_url} OK")
         except Exception as e:
             print(f"  -> ERROR publicando a {gw_url}: {e}")
@@ -177,7 +179,7 @@ def distribute_global_model():
     round_in_progress = True
 
 
-@app.post("/aggregate-from-gateway")
+@app.post(PLAIN_AGGREGATE_PATH)
 async def receive_gateway_model(data: dict):
     global W3_global, b3_global, W4_global, b4_global
     global W3_update_sum, b3_update_sum, W4_update_sum, b4_update_sum
@@ -851,8 +853,8 @@ if __name__ == "__main__":
     print("=" * 60)
     print(" SERVIDOR CENTRAL FEDERADO HFL v7 - ANALYTICS DASHBOARD")
     print(" Modo baseline sin ASCON: JSON plano")
-    print(" -> Dashboard Gráfico: http://localhost:8001/")
+    print(" -> Dashboard Gráfico: http://localhost:8002/")
     print("=" * 60)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-    uvicorn.run(app, host="0.0.0.0", port=8001, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=8002, log_level="warning")
 

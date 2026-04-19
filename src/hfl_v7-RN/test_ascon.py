@@ -3,7 +3,11 @@
 Test de ASCON-128 para verificar cifrado/descifrado
 """
 import sys
-sys.path.insert(0, '/Users/nicasas/Documents/Tesis/Tesis-Sistemas-HFD-2/src/hfl_v7')
+from pathlib import Path
+
+CURRENT_DIR = Path(__file__).resolve().parent
+if str(CURRENT_DIR) not in sys.path:
+    sys.path.insert(0, str(CURRENT_DIR))
 
 from ascon128 import encrypt, decrypt, generate_nonce
 
@@ -18,7 +22,7 @@ nonce1 = generate_nonce(1000, 1)
 ct1, tag1 = encrypt(msg1, ASCON_KEY, nonce1)
 pt1 = decrypt(ct1, ASCON_KEY, nonce1, tag1)
 assert pt1 == msg1, "Error en descifrado"
-print(f"  ✓ OK: {msg1} -> {len(ct1)} bytes cifrados -> descifrado OK")
+print(f"  [OK] {msg1} -> {len(ct1)} bytes cifrados -> descifrado OK")
 
 # Test 2: JSON típico de features
 print("\nTest 2: JSON de features (típico ESP32->RPi)")
@@ -33,7 +37,7 @@ ct2, tag2 = encrypt(features_msg, ASCON_KEY, nonce2)
 pt2 = decrypt(ct2, ASCON_KEY, nonce2, tag2)
 assert pt2 == features_msg
 recovered = json.loads(pt2.decode('utf-8'))
-print(f"  ✓ OK: JSON {len(features_msg)} bytes -> cifrado -> descifrado")
+print(f"  [OK] JSON {len(features_msg)} bytes -> cifrado -> descifrado")
 print(f"  client_id recuperado: {recovered['client_id']}")
 
 # Test 3: Tag inválido (debe fallar)
@@ -42,7 +46,7 @@ bad_tag = bytearray(tag2)
 bad_tag[0] ^= 0xFF
 pt3 = decrypt(ct2, ASCON_KEY, nonce2, bytes(bad_tag))
 assert pt3 is None, "Debería rechazar tag inválido"
-print("  ✓ OK: Tag corrupto detectado y rechazado")
+print("  [OK] Tag corrupto detectado y rechazado")
 
 # Test 4: Payload de pesos (típico RPi->PC)
 print("\nTest 4: JSON de pesos (típico RPi->PC)")
@@ -59,9 +63,9 @@ nonce4 = generate_nonce(3000, 3)
 ct4, tag4 = encrypt(weights_msg, ASCON_KEY, nonce4)
 pt4 = decrypt(ct4, ASCON_KEY, nonce4, tag4)
 assert pt4 == weights_msg
-print(f"  ✓ OK: Payload de pesos {len(weights_msg)} bytes -> cifrado -> descifrado")
+print(f"  [OK] Payload de pesos {len(weights_msg)} bytes -> cifrado -> descifrado")
 
 print("\n" + "="*60)
-print("TODOS LOS TESTS PASARON ✓")
+print("TODOS LOS TESTS PASARON [OK]")
 print("ASCON-128 está funcionando correctamente")
 print("="*60)

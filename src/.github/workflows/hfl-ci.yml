@@ -1,0 +1,46 @@
+name: HFL CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - "codex/**"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate-and-analyze:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CI dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pandas matplotlib scikit-learn joblib m2cgen nbformat
+
+      - name: Validate Python syntax
+        run: python .github/scripts/validate_python.py
+
+      - name: Validate notebooks
+        run: python .github/scripts/validate_notebooks.py
+
+      - name: Run ASCON regression test
+        run: python hfl_v7-RN/test_ascon.py
+
+      - name: Build SRE analysis artifacts
+        run: python "Analisis de Modelos/RN/sre_hfl_rn_analysis.py"
+
+      - name: Upload SRE analysis artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sre-results-3-11
+          path: "Analisis de Modelos/RN/analysis_outputs/sre_results_3_11"

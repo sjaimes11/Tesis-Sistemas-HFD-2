@@ -79,9 +79,39 @@ class PlainMetrics:
             f"{elapsed_ms:.3f}ms | payload={payload_size}B"
         )
 
+    def print_live_summary(self):
+        if not self.records:
+            return
+
+        from collections import defaultdict
+
+        summary = defaultdict(lambda: {"ops": 0, "times": [], "payloads": []})
+        for record in self.records:
+            key = (record["channel"], record["operation"])
+            summary[key]["ops"] += 1
+            summary[key]["times"].append(float(record["elapsed_ms"]))
+            summary[key]["payloads"].append(float(record["payload_bytes"]))
+
+        uptime = time.time() - self.start_time
+        print(f"\n{'━'*70}")
+        print(
+            f" METRICAS PLAIN EN VIVO | {self.device_name}:{self.device_suffix} "
+            f"| intento {self.run_id} | {len(self.records)} ops | uptime: {uptime:.0f}s"
+        )
+        print(f"{'━'*70}")
+        print(f" {'Canal':<22} {'Operacion':<12} {'#Ops':>5} {'Avg(ms)':>9} {'Avg(bytes)':>11}")
+        print(f"{'─'*70}")
+        for (channel, operation), data in sorted(summary.items()):
+            avg_ms = sum(data["times"]) / len(data["times"])
+            avg_bytes = sum(data["payloads"]) / len(data["payloads"])
+            print(f" {channel:<22} {operation:<12} {data['ops']:>5} {avg_ms:>8.3f} {avg_bytes:>10.1f}")
+        print(f"{'━'*70}")
+
     def export_summary(self):
         if not self.records:
             return
+
+        self.print_live_summary()
 
         fieldnames = []
         for record in self.records:

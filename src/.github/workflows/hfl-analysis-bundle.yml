@@ -1,0 +1,39 @@
+name: HFL Analysis Bundle
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-bundle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install bundle dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pandas matplotlib scikit-learn joblib m2cgen nbformat
+
+      - name: Generate SRE analysis
+        run: python "Analisis de Modelos/RN/sre_hfl_rn_analysis.py"
+
+      - name: Prepare distribution bundle
+        run: |
+          mkdir -p dist
+          tar -czf dist/hfl-rn-sre-bundle.tar.gz \
+            "Analisis de Modelos/RN/analisis_sre_rn_3_11.ipynb" \
+            "Analisis de Modelos/RN/sre_hfl_rn_analysis.py" \
+            "Analisis de Modelos/RN/analysis_outputs/sre_results_3_11"
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hfl-rn-sre-bundle
+          path: dist/hfl-rn-sre-bundle.tar.gz

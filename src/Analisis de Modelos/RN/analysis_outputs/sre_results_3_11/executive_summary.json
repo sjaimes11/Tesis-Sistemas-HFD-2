@@ -1,0 +1,21 @@
+{
+  "attempts_analyzed": 9,
+  "attempt_range": [
+    3,
+    11
+  ],
+  "avg_gateway_transport_p95_ms": 4.679919444444444,
+  "avg_server_decrypt_p95_ms": 20.349655555555554,
+  "avg_payload_overhead_bytes": 1044.407149700151,
+  "avg_local_accuracy": 0.9318304970072061,
+  "avg_local_loss": 0.19072833879933246,
+  "avg_global_last_accuracy": 0.9462962222222221,
+  "avg_global_last_loss": 0.14146155555555553,
+  "avg_round_completion_rate": 0.7037037037037037,
+  "avg_round_duration_sec": 61.25489009881024,
+  "class_labels_observed": [
+    "mqtt_bruteforce",
+    "normal",
+    "scan_A"
+  ]
+}

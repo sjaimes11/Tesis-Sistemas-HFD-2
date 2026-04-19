@@ -26,8 +26,10 @@ from model_results_logger import ModelResultsLogger
 # ====================== CONFIGURACIÓN ======================
 GATEWAY_ID = "gateway_A"
 IP_PC = "192.168.40.95"
-PORT_PC = "8001"
-url_servidor = f"http://{IP_PC}:{PORT_PC}/aggregate-from-gateway"
+PORT_PC = "8002"
+PLAIN_AGGREGATE_PATH = "/aggregate-from-gateway-plain"
+PLAIN_DEPLOY_PATH = "/deploy-model-plain"
+url_servidor = f"http://{IP_PC}:{PORT_PC}{PLAIN_AGGREGATE_PATH}"
 
 metrics = PlainMetrics("gateway", suffix=GATEWAY_ID)
 model_results = ModelResultsLogger("gateway", suffix=GATEWAY_ID)
@@ -99,7 +101,7 @@ mqtt_client = None
 class DeployModelHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         global current_round
-        if self.path == "/deploy-model":
+        if self.path == PLAIN_DEPLOY_PATH:
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
             t0 = time.perf_counter()
@@ -220,9 +222,15 @@ def train_local_model():
     serialize_ms = (time.perf_counter() - t0) * 1000
     metrics.record("RPi->PC", "serialize", len(payload_json.encode('utf-8')), serialize_ms, current_round)
     
-    print("[PLAIN] Pesos serializados. Enviando al servidor PC...")
+    print(f"[PLAIN] Pesos serializados. Enviando al servidor PC en {url_servidor} ...")
     try:
         resp = requests.post(url_servidor, json=payload, timeout=5)
+        if resp.status_code == 422 and all(token in resp.text for token in ["ct", "tag", "nonce"]):
+            print(
+                "-> ERROR: el servidor remoto sigue esperando ASCON. "
+                f"Ejecuta hfl_v7-no-ascon/server_hfl.py en el puerto {PORT_PC}."
+            )
+            return
         print(f"-> Respuesta PC: {resp.json()}")
     except Exception as e:
         print(f"-> ERROR contactando PC: {e}")
@@ -293,7 +301,7 @@ if __name__ == "__main__":
         print(f"ERROR: Mosquitto no disponible en {MQTT_BROKER}:{MQTT_PORT}. Por favor inicia 'sudo systemctl start mosquitto'")
 
     server = HTTPServer(("0.0.0.0", 5000), DeployModelHandler)
-    print("\n[HTTP] Servidor listo en puerto 5000 para recibir de PC")
+    print(f"\n[HTTP] Servidor listo en puerto 5000 para recibir de PC en {PLAIN_DEPLOY_PATH}")
     print("[MQTT] Esperando características de Nodos ESP32...\n")
     server.serve_forever()
 
