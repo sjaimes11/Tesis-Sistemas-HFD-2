@@ -1,4 +1,0 @@
-numpy
-joblib
-scikit-learn
-paho-mqtt

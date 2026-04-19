@@ -26,13 +26,13 @@
 // ==========================================
 // CONFIG WiFi y MQTT GATEWAY
 // ==========================================
-// const char* STA_SSID = "JAIMES_PUERTO 2.4"; // Reemplaza por el WiFi de tu casa
-// const char* STA_PASS = "Anderson123";
+const char* STA_SSID = "JAIMES_PUERTO 2.4"; // Reemplaza por el WiFi de tu casa
+const char* STA_PASS = "Anderson123";
 
-const char* STA_SSID = "TP-Link_AADB";       // <-- CAMBIAR
-const char* STA_PASS = "55707954";            // <-- CAMBIAR
+// const char* STA_SSID = "TP-Link_AADB";       // <-- CAMBIAR
+// const char* STA_PASS = "55707954";            // <-- CAMBIAR
 
-const char* GATEWAY_MQTT_SERVER = "192.168.1.14"; // <-- IP Raspberry Pi 4 Gateway
+const char* GATEWAY_MQTT_SERVER = "192.168.40.40"; // <-- IP Raspberry Pi 4 Gateway
 const int GATEWAY_MQTT_PORT = 1883;
 
 // ==========================================

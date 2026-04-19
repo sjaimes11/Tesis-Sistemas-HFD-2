@@ -12,7 +12,7 @@
 =============================================================================
 """
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -20,9 +20,12 @@ import numpy as np
 import requests
 import json
 import logging
+import csv as csv_module
 import base64
 import time
+import atexit
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
 from ascon128 import encrypt as ascon_encrypt, decrypt as ascon_decrypt, generate_nonce
 from ascon_metrics import AsconMetrics
@@ -37,6 +40,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+RESULTS_DIR = Path(__file__).resolve().parent / "Results"
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ====================== ARQUITECTURA ======================
 FEATURE_COUNT = 13
@@ -71,10 +77,21 @@ MIN_UPDATES_PER_ROUND = 2
 history = []
 round_in_progress = True
 
+GLOBAL_HISTORY_COLUMNS = [
+    "round",
+    "time",
+    "accuracy",
+    "loss",
+    "w3_mag",
+    "w4_normal",
+    "w4_brute",
+    "w4_scan",
+]
+
 # ====================== IPs de GATEWAYS ======================
 GATEWAYS = [
-    "http://192.168.1.19:5000",
-    "http://192.168.1.14:5000"
+    "http://192.168.40.40:5000",
+    "http://192.168.40.41:5000"
 ]
 
 # Clave ASCON pre-compartida (misma que ESP32 y Gateway)
@@ -87,6 +104,67 @@ class EncryptedPayload(BaseModel):
     ct: str
     tag: str
     nonce: str
+
+
+def next_results_csv_path(prefix: str) -> Path:
+    indices = []
+    for path in RESULTS_DIR.glob(f"{prefix}_*.csv"):
+        suffix = path.stem.replace(f"{prefix}_", "")
+        if suffix.isdigit():
+            indices.append(int(suffix))
+
+    next_index = (max(indices) + 1) if indices else 1
+    return RESULTS_DIR / f"{prefix}_{next_index}.csv"
+
+
+CURRENT_HISTORY_CSV_PATH = next_results_csv_path("global_weights_history")
+
+
+def history_rows_for_export():
+    rows = []
+    for row in history:
+        rows.append(
+            {
+                "round": row["round"],
+                "time": row["time"],
+                "accuracy": round(float(row["accuracy"]), 6),
+                "loss": round(float(row["loss"]), 6),
+                "w3_mag": round(float(row["w3_mag"]), 6),
+                "w4_normal": round(float(row["w4_normal"]), 6),
+                "w4_brute": round(float(row["w4_brute"]), 6),
+                "w4_scan": round(float(row["w4_scan"]), 6),
+            }
+        )
+    return rows
+
+
+def export_global_history_csv() -> Path | None:
+    if not history:
+        return None
+
+    rows = history_rows_for_export()
+    with CURRENT_HISTORY_CSV_PATH.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv_module.DictWriter(handle, fieldnames=GLOBAL_HISTORY_COLUMNS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    return CURRENT_HISTORY_CSV_PATH
+
+
+atexit.register(export_global_history_csv)
+
+
+def list_results_csv_files():
+    files = [path for path in RESULTS_DIR.glob("*.csv") if path.is_file()]
+    files.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    return files
+
+
+def resolve_results_csv(filename: str) -> Path:
+    path = (RESULTS_DIR / filename).resolve()
+    if path.parent != RESULTS_DIR.resolve() or not path.exists() or not path.is_file():
+        raise FileNotFoundError(filename)
+    return path
 
 
 def distribute_global_model():
@@ -204,6 +282,7 @@ async def receive_gateway_model(envelope: EncryptedPayload):
             "w4_brute": class_mags[1],
             "w4_scan": class_mags[2]
         })
+        export_global_history_csv()
 
         W3_update_sum.fill(0); b3_update_sum.fill(0)
         W4_update_sum.fill(0); b4_update_sum.fill(0)
@@ -241,6 +320,50 @@ def get_status():
 @app.get("/api/history")
 def get_history():
     return {"history": history}
+
+
+@app.get("/api/history/export")
+def export_history():
+    csv_path = export_global_history_csv()
+    if csv_path is None:
+        return JSONResponse(status_code=404, content={"error": "Todavia no hay rondas para exportar"})
+
+    return FileResponse(
+        path=csv_path,
+        media_type="text/csv",
+        filename=csv_path.name,
+    )
+
+
+@app.get("/api/results-files")
+def get_results_files():
+    files = list_results_csv_files()
+    return {
+        "files": [
+            {
+                "name": path.name,
+                "size_bytes": path.stat().st_size,
+                "modified": datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            for path in files
+        ]
+    }
+
+
+@app.get("/api/results-csv/{filename}")
+def get_results_csv(filename: str):
+    try:
+        csv_path = resolve_results_csv(filename)
+    except FileNotFoundError:
+        return JSONResponse(status_code=404, content={"error": "CSV no encontrado"})
+
+    with csv_path.open("r", encoding="utf-8", newline="") as handle:
+        rows = list(csv_module.DictReader(handle))
+
+    return {
+        "filename": csv_path.name,
+        "rows": rows,
+    }
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -337,6 +460,37 @@ def dashboard():
         th, td { padding: 14px; border-bottom: 1px solid #334155; }
         th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; position: sticky; top: 0; background: var(--panel-bg); z-index: 10;}
         tbody tr:hover { background-color: #334155; }
+
+        .csv-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-top: 8px;
+            margin-bottom: 20px;
+        }
+        .csv-control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .csv-label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .csv-input {
+            background: #0f172a;
+            color: var(--text-main);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .csv-info {
+            color: var(--text-muted);
+            margin: 6px 0 0 0;
+            font-size: 0.9rem;
+        }
         
         .status-dot {
             height: 14px; width: 14px; border-radius: 50%; display: inline-block; margin-right: 10px;
@@ -382,7 +536,13 @@ def dashboard():
     </div>
 
     <div class="table-container">
-        <div class="card-title" style="text-align:left; margin-bottom: 15px; color:white; font-size: 1rem;">Historial Dinámico de Pesos Globales</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom: 15px;">
+            <div class="card-title" style="text-align:left; margin-bottom: 0; color:white; font-size: 1rem;">Historial Dinámico de Pesos Globales</div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <button class="button" onclick="exportHistoryCsv()">Exportar historial actual CSV</button>
+                <span id="history-export-info" class="csv-info" style="margin:0;">Autosave en Results por cada ronda completada.</span>
+            </div>
+        </div>
         <table>
             <thead>
                 <tr>
@@ -402,6 +562,30 @@ def dashboard():
         </table>
     </div>
 
+    <div class="table-container" style="margin-top: 20px;">
+        <div class="card-title" style="text-align:left; margin-bottom: 15px; color:white; font-size: 1rem;">Explorador de CSV ASCON</div>
+        <div class="csv-controls">
+            <div class="csv-control-group">
+                <label class="csv-label" for="csv-file-input">Cargar CSV local</label>
+                <input id="csv-file-input" class="csv-input" type="file" accept=".csv" />
+                <button class="button" onclick="loadLocalCsv()">Visualizar CSV local</button>
+            </div>
+            <div class="csv-control-group">
+                <label class="csv-label" for="results-file-select">Abrir desde Results</label>
+                <select id="results-file-select" class="csv-input"></select>
+                <button class="button" onclick="loadSelectedResultsFile()">Visualizar CSV guardado</button>
+            </div>
+        </div>
+        <p id="csv-info" class="csv-info">Selecciona un CSV local o uno guardado en la carpeta Results.</p>
+        <div class="chart-box" style="margin-bottom: 20px;">
+            <canvas id="csvMetricsChart"></canvas>
+        </div>
+        <table>
+            <thead id="csv-preview-head"></thead>
+            <tbody id="csv-preview-body"></tbody>
+        </table>
+    </div>
+
     <script>
         Chart.defaults.color = '#94a3b8';
         Chart.defaults.font.family = 'Inter';
@@ -411,14 +595,86 @@ def dashboard():
         const accChart = new Chart(ctxAcc, {
             type: 'line',
             data: { labels: [], datasets: [{ label: 'Global Accuracy', data: [], borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 3, tension: 0.4, fill: true, pointRadius: 4 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#f8fafc', font: {size: 14} } } }, scales: { x: { grid:{color:'#334155'}, ticks: { color: '#94a3b8' } }, y: { grid:{color:'#334155'}, min: 0, max: 1, ticks: { color: '#94a3b8', callback: v => (v*100).toFixed(0) + '%' } } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#f8fafc', font: {size: 14} } } },
+                scales: {
+                    x: {
+                        grid:{color:'#334155'},
+                        ticks: { color: '#94a3b8' },
+                        title: { display: true, text: 'Ronda federada', color: '#f8fafc' }
+                    },
+                    y: {
+                        grid:{color:'#334155'},
+                        min: 0,
+                        max: 1,
+                        ticks: { color: '#94a3b8', callback: v => (v*100).toFixed(0) + '%' },
+                        title: { display: true, text: 'Accuracy global', color: '#f8fafc' }
+                    }
+                }
+            }
         });
 
         const ctxLoss = document.getElementById('lossChart').getContext('2d');
         const lossChart = new Chart(ctxLoss, {
             type: 'line',
             data: { labels: [], datasets: [{ label: 'Global Loss', data: [], borderColor: '#f43f5e', backgroundColor: 'rgba(244, 63, 94, 0.1)', borderWidth: 3, tension: 0.4, fill: true, pointRadius: 4 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#f8fafc', font: {size: 14} } } }, scales: { x: { grid:{color:'#334155'}, ticks: { color: '#94a3b8' } }, y: { grid:{color:'#334155'}, ticks: { color: '#94a3b8' } } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#f8fafc', font: {size: 14} } } },
+                scales: {
+                    x: {
+                        grid:{color:'#334155'},
+                        ticks: { color: '#94a3b8' },
+                        title: { display: true, text: 'Ronda federada', color: '#f8fafc' }
+                    },
+                    y: {
+                        grid:{color:'#334155'},
+                        ticks: { color: '#94a3b8' },
+                        title: { display: true, text: 'Loss global', color: '#f8fafc' }
+                    }
+                }
+            }
+        });
+
+        const ctxCsv = document.getElementById('csvMetricsChart').getContext('2d');
+        const csvMetricsChart = new Chart(ctxCsv, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'elapsed_ms', data: [], borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.15)', borderWidth: 3, tension: 0.25, fill: false, yAxisID: 'y' },
+                    { label: 'overhead_bytes', data: [], borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.15)', borderWidth: 3, tension: 0.25, fill: false, yAxisID: 'y1' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#f8fafc', font: { size: 14 } } } },
+                scales: {
+                    x: {
+                        grid: { color: '#334155' },
+                        ticks: { color: '#94a3b8' },
+                        title: { display: true, text: 'Índice de registro / ronda', color: '#f8fafc' }
+                    },
+                    y: {
+                        type: 'linear',
+                        position: 'left',
+                        grid: { color: '#334155' },
+                        ticks: { color: '#94a3b8' },
+                        title: { display: true, text: 'Tiempo ASCON (ms)', color: '#f8fafc' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: { color: '#f59e0b' },
+                        title: { display: true, text: 'Overhead (bytes)', color: '#f59e0b' }
+                    }
+                }
+            }
         });
 
         function populateTable(history) {
@@ -442,6 +698,102 @@ def dashboard():
                 `;
                 tb.appendChild(tr);
             });
+        }
+
+        function parseCsvText(text) {
+            const lines = text.trim().split(/\\r?\\n/).filter(Boolean);
+            if (!lines.length) return [];
+
+            const headers = lines[0].split(',').map(v => v.trim());
+            return lines.slice(1).map(line => {
+                const cols = line.split(',');
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = (cols[index] ?? '').trim();
+                });
+                return row;
+            });
+        }
+
+        function renderCsvPreview(rows, sourceName) {
+            const info = document.getElementById('csv-info');
+            const head = document.getElementById('csv-preview-head');
+            const body = document.getElementById('csv-preview-body');
+
+            if (!rows.length) {
+                info.innerText = `No se encontraron filas en ${sourceName}.`;
+                head.innerHTML = '';
+                body.innerHTML = '';
+                csvMetricsChart.data.labels = [];
+                csvMetricsChart.data.datasets[0].data = [];
+                csvMetricsChart.data.datasets[1].data = [];
+                csvMetricsChart.update();
+                return;
+            }
+
+            const headers = Object.keys(rows[0]);
+            info.innerText = `${sourceName}: ${rows.length} filas cargadas.`;
+            head.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+            body.innerHTML = rows.slice(0, 25).map(row => `
+                <tr>${headers.map(h => `<td>${row[h] ?? ''}</td>`).join('')}</tr>
+            `).join('');
+
+            const labels = rows.map((row, index) => row.fl_round || row.round || `${index + 1}`);
+            const elapsed = rows.map(row => Number(row.elapsed_ms || 0));
+            const overhead = rows.map(row => Number(row.overhead_bytes || 0));
+
+            csvMetricsChart.data.labels = labels;
+            csvMetricsChart.data.datasets[0].data = elapsed;
+            csvMetricsChart.data.datasets[1].data = overhead;
+            csvMetricsChart.update();
+        }
+
+        async function loadResultsFiles() {
+            try {
+                const response = await fetch('/api/results-files');
+                const payload = await response.json();
+                const select = document.getElementById('results-file-select');
+                const files = payload.files || [];
+
+                if (!files.length) {
+                    select.innerHTML = '<option value="">No hay CSV guardados</option>';
+                    return;
+                }
+
+                select.innerHTML = files.map(file => `
+                    <option value="${file.name}">${file.name} | ${file.modified}</option>
+                `).join('');
+            } catch (err) {
+                console.error('No se pudo cargar el listado de Results:', err);
+            }
+        }
+
+        async function loadSelectedResultsFile() {
+            const select = document.getElementById('results-file-select');
+            const filename = select.value;
+            if (!filename) return;
+
+            try {
+                const response = await fetch(`/api/results-csv/${encodeURIComponent(filename)}`);
+                const payload = await response.json();
+                renderCsvPreview(payload.rows || [], filename);
+            } catch (err) {
+                console.error('No se pudo cargar el CSV guardado:', err);
+            }
+        }
+
+        function loadLocalCsv() {
+            const input = document.getElementById('csv-file-input');
+            const file = input.files && input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = event => {
+                const text = event.target.result || '';
+                const rows = parseCsvText(text);
+                renderCsvPreview(rows, file.name);
+            };
+            reader.readAsText(file);
         }
 
         async function fetchDashboard() {
@@ -497,9 +849,40 @@ def dashboard():
             fetch('/start-round').then(() => fetchDashboard());
         }
 
+        async function exportHistoryCsv() {
+            const info = document.getElementById('history-export-info');
+            try {
+                const response = await fetch('/api/history/export');
+                if (!response.ok) {
+                    const payload = await response.json();
+                    info.innerText = payload.error || 'No se pudo exportar el historial.';
+                    return;
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const disposition = response.headers.get('content-disposition') || '';
+                const match = disposition.match(/filename="?([^"]+)"?/i);
+                const filename = match ? match[1] : 'global_weights_history.csv';
+                const anchor = document.createElement('a');
+                anchor.href = url;
+                anchor.download = filename;
+                document.body.appendChild(anchor);
+                anchor.click();
+                anchor.remove();
+                window.URL.revokeObjectURL(url);
+                info.innerText = `Historial exportado: ${filename}`;
+                loadResultsFiles();
+            } catch (err) {
+                console.error('No se pudo exportar el historial:', err);
+                info.innerText = 'No se pudo exportar el historial.';
+            }
+        }
+
         // Auto-refresh via AJAX sin parpadeos cada 2.5 segundos
         setInterval(fetchDashboard, 2500);
         fetchDashboard();
+        loadResultsFiles();
     </script>
 </body>
 </html>"""
