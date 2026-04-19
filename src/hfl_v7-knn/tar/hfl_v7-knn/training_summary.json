@@ -1,0 +1,37 @@
+{
+  "model_kind": "knn",
+  "display_name": "K-Nearest Neighbors",
+  "bundle_dir": "/home/sajaimesp/Tesis_Sistemas/Data_Sets/hfl_v7-knn",
+  "teacher_path": "/home/sajaimesp/Tesis_Sistemas/Data_Sets/hfl_v7-knn/teacher_knn.joblib",
+  "h5_path": "/home/sajaimesp/Tesis_Sistemas/Data_Sets/hfl_v7-knn/ids_3class.h5",
+  "keras_path": "/home/sajaimesp/Tesis_Sistemas/Data_Sets/hfl_v7-knn/ids_3class.keras",
+  "header_path": "/home/sajaimesp/Tesis_Sistemas/Data_Sets/hfl_v7-knn/model_weights.h",
+  "teacher_metrics": {
+    "accuracy": 0.9120833333333334,
+    "f1_macro": 0.9124128627503462,
+    "f1_weighted": 0.9124128627503463,
+    "precision_macro": 0.9161299730972736,
+    "recall_macro": 0.9120833333333334,
+    "mcc": 0.8698093404112921
+  },
+  "student_metrics": {
+    "accuracy": 0.8997777777777778,
+    "f1_macro": 0.8985246698477999,
+    "f1_weighted": 0.8985246698477998,
+    "precision_macro": 0.9109400308184742,
+    "recall_macro": 0.8997777777777779,
+    "mcc": 0.8554505825807183
+  },
+  "config": {
+    "random_state": 42,
+    "test_size": 0.2,
+    "max_samples_per_class": 30000,
+    "learning_rate": 0.003,
+    "soft_epochs": 16,
+    "hard_epochs": 8,
+    "save_native_keras": true,
+    "distill_samples": 15000,
+    "teacher_eval_samples": 12000
+  },
+  "retraining_note": "KNN exacto no encaja bien en FL por intercambio de pesos. Se reentrena por rondas la MLP estudiante."
+}
