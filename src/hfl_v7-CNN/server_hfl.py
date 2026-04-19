@@ -1,12 +1,12 @@
 """
 =============================================================================
- server_hfl.py — PC Servidor Federado (Cloud / Global) — HFL v7 (3 Clases)
+ server_hfl.py — PC Servidor Federado (Cloud / Global) — HFL v7-CNN
 =============================================================================
  Topología: PC (Servidor) <-> 2 x Raspberry Pi 4 (Edge Gateways)
- Modelo: 13 -> 32 -> 16 -> 8 -> 3 (softmax)
- Capas FL: W3(16,8) + b3(8) + W4(8,3) + b4(3)
+ Modelo: CNN-1D  (13,1)->Conv32->BN->Conv16->BN->GAP->Dense8->Dense3
+ Capas FL: W_dense1(16,8) + b_dense1(8) + W_dense_out(8,3) + b_dense_out(3)
  Seguridad: ASCON-128 en comunicación con Gateways
- 
+
  Ejecutar: python server_hfl.py
  Dashboard: http://localhost:8001/
 =============================================================================
@@ -44,26 +44,28 @@ app.add_middleware(
 RESULTS_DIR = Path(__file__).resolve().parent / "Results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-# ====================== ARQUITECTURA ======================
+# ====================== ARQUITECTURA CNN-1D ======================
+# Conv1: 32 filtros  |  Conv2: 16 filtros  |  GAP output: 16
+# Dense1: GAP(16) -> 8   <- capa federada (equiv. W3 en MLP)
+# Dense_out: 8 -> 3      <- capa federada (equiv. W4 en MLP)
 FEATURE_COUNT = 13
-L1_UNITS = 32
-L2_UNITS = 16
-L3_UNITS = 8
+GAP_OUT      = 16   # = num filtros Conv2
+DENSE1_UNITS = 8
 OUTPUT_UNITS = 3
 
 CLASS_NAMES = ["normal", "mqtt_bruteforce", "scan_A"]
 
 # ====================== MODELO GLOBAL ======================
-W3_global = np.zeros((L2_UNITS, L3_UNITS), dtype=np.float32)
-b3_global = np.zeros(L3_UNITS, dtype=np.float32)
-W4_global = np.zeros((L3_UNITS, OUTPUT_UNITS), dtype=np.float32)
-b4_global = np.zeros(OUTPUT_UNITS, dtype=np.float32)
+Wd1_global = np.zeros((GAP_OUT,      DENSE1_UNITS), dtype=np.float32)
+bd1_global = np.zeros(DENSE1_UNITS,               dtype=np.float32)
+Wdo_global = np.zeros((DENSE1_UNITS, OUTPUT_UNITS), dtype=np.float32)
+bdo_global = np.zeros(OUTPUT_UNITS,               dtype=np.float32)
 
 # ====================== FEDAVG ACUMULADORES ======================
-W3_update_sum = np.zeros((L2_UNITS, L3_UNITS), dtype=np.float32)
-b3_update_sum = np.zeros(L3_UNITS, dtype=np.float32)
-W4_update_sum = np.zeros((L3_UNITS, OUTPUT_UNITS), dtype=np.float32)
-b4_update_sum = np.zeros(OUTPUT_UNITS, dtype=np.float32)
+Wd1_update_sum = np.zeros((GAP_OUT,      DENSE1_UNITS), dtype=np.float32)
+bd1_update_sum = np.zeros(DENSE1_UNITS,               dtype=np.float32)
+Wdo_update_sum = np.zeros((DENSE1_UNITS, OUTPUT_UNITS), dtype=np.float32)
+bdo_update_sum = np.zeros(OUTPUT_UNITS,               dtype=np.float32)
 
 # Acumuladores de métricas
 accuracy_sum = 0.0
@@ -90,8 +92,8 @@ GLOBAL_HISTORY_COLUMNS = [
 
 # ====================== IPs de GATEWAYS ======================
 GATEWAYS = [
-    "http://192.168.40.40:5000",
-    "http://192.168.40.41:5000"
+    "http://192.168.1.15:5000",
+    "http://192.168.1.12:5000"
 ]
 
 # Clave ASCON pre-compartida (misma que ESP32 y Gateway)
@@ -170,10 +172,10 @@ def resolve_results_csv(filename: str) -> Path:
 def distribute_global_model():
     global round_in_progress, msg_counter
     payload = {
-        "W3": W3_global.tolist(),
-        "b3": b3_global.tolist(),
-        "W4": W4_global.tolist(),
-        "b4": b4_global.tolist(),
+        "W_dense1":    Wd1_global.tolist(),
+        "b_dense1":    bd1_global.tolist(),
+        "W_dense_out": Wdo_global.tolist(),
+        "b_dense_out": bdo_global.tolist(),
         "round": current_round
     }
     payload_bytes = json.dumps(payload).encode('utf-8')
@@ -207,94 +209,95 @@ def distribute_global_model():
 
 @app.post("/aggregate-from-gateway")
 async def receive_gateway_model(envelope: EncryptedPayload):
-    global W3_global, b3_global, W4_global, b4_global
-    global W3_update_sum, b3_update_sum, W4_update_sum, b4_update_sum
+    global Wd1_global, bd1_global, Wdo_global, bdo_global
+    global Wd1_update_sum, bd1_update_sum, Wdo_update_sum, bdo_update_sum
     global accuracy_sum, loss_sum
     global total_samples_this_round, updates_received
     global current_round, round_in_progress
 
-    ct = base64.b64decode(envelope.ct)
-    tag = base64.b64decode(envelope.tag)
+    ct    = base64.b64decode(envelope.ct)
+    tag   = base64.b64decode(envelope.tag)
     nonce = base64.b64decode(envelope.nonce)
-    
+
     t0 = time.perf_counter()
     plaintext = ascon_decrypt(ct, ASCON_KEY, nonce, tag)
     dec_ms = (time.perf_counter() - t0) * 1000
-    
+
     if plaintext is None:
         print("[ERROR] ASCON: Tag inválido desde Gateway. Mensaje rechazado.")
         return JSONResponse(status_code=403, content={"error": "Invalid ASCON tag"})
-    
+
     enc_size = len(envelope.ct) + len(envelope.tag) + len(envelope.nonce) + 50
     metrics.record("RPi->PC", "decrypt", len(plaintext), enc_size, dec_ms, current_round)
-    
-    data = json.loads(plaintext.decode('utf-8'))
-    gateway_id = data["gateway_id"]
+
+    data        = json.loads(plaintext.decode('utf-8'))
+    gateway_id  = data["gateway_id"]
     num_samples = data["num_samples"]
-    accuracy = data.get("accuracy", 0.0)
-    loss = data.get("loss", 0.0)
-    
-    print(f"\n[SERVIDOR] Pesos recibidos (ASCON OK) de '{gateway_id}' | {num_samples} muestras | Acc: {accuracy:.2%}")
+    accuracy    = data.get("accuracy", 0.0)
+    loss        = data.get("loss", 0.0)
 
-    W3_np = np.array(data["W3"], dtype=np.float32)
-    b3_np = np.array(data["b3"], dtype=np.float32)
-    W4_np = np.array(data["W4"], dtype=np.float32)
-    b4_np = np.array(data["b4"], dtype=np.float32)
+    print(f"\n[SERVIDOR-CNN] Pesos recibidos (ASCON OK) de '{gateway_id}' | {num_samples} muestras | Acc: {accuracy:.2%}")
 
-    W3_update_sum += W3_np * num_samples
-    b3_update_sum += b3_np * num_samples
-    W4_update_sum += W4_np * num_samples
-    b4_update_sum += b4_np * num_samples
-    
+    Wd1_np = np.array(data["W_dense1"],   dtype=np.float32)
+    bd1_np = np.array(data["b_dense1"],   dtype=np.float32)
+    Wdo_np = np.array(data["W_dense_out"], dtype=np.float32)
+    bdo_np = np.array(data["b_dense_out"], dtype=np.float32)
+
+    # FedAvg ponderado por número de muestras
+    Wd1_update_sum += Wd1_np * num_samples
+    bd1_update_sum += bd1_np * num_samples
+    Wdo_update_sum += Wdo_np * num_samples
+    bdo_update_sum += bdo_np * num_samples
+
     accuracy_sum += accuracy * num_samples
-    loss_sum += loss * num_samples
+    loss_sum     += loss     * num_samples
 
     total_samples_this_round += num_samples
-    updates_received += 1
+    updates_received         += 1
 
     print(f"  Acumulado: {updates_received} / {MIN_UPDATES_PER_ROUND} gateways")
 
     if updates_received >= MIN_UPDATES_PER_ROUND:
         current_round += 1
-        
-        W3_global = W3_update_sum / total_samples_this_round
-        b3_global = b3_update_sum / total_samples_this_round
-        W4_global = W4_update_sum / total_samples_this_round
-        b4_global = b4_update_sum / total_samples_this_round
-        
-        acc_global = accuracy_sum / total_samples_this_round
-        loss_global = loss_sum / total_samples_this_round
+
+        Wd1_global = Wd1_update_sum / total_samples_this_round
+        bd1_global = bd1_update_sum / total_samples_this_round
+        Wdo_global = Wdo_update_sum / total_samples_this_round
+        bdo_global = bdo_update_sum / total_samples_this_round
+
+        acc_global  = accuracy_sum / total_samples_this_round
+        loss_global = loss_sum     / total_samples_this_round
 
         print(f"\n{'='*60}")
-        print(f" FEDAVG GLOBAL - Ronda {current_round} completada ({total_samples_this_round} muestras)")
+        print(f" FEDAVG CNN-1D - Ronda {current_round} completada ({total_samples_this_round} muestras)")
         print(f" Global Accuracy: {acc_global:.2%} | Global Loss: {loss_global:.4f}")
         print(f"{'='*60}")
 
-        class_mags = [float(np.mean(np.abs(W4_global[:, j]))) for j in range(OUTPUT_UNITS)]
-        
+        class_mags = [float(np.mean(np.abs(Wdo_global[:, j]))) for j in range(OUTPUT_UNITS)]
+
         history.append({
-            "round": current_round,
-            "time": datetime.now().strftime("%H:%M:%S"),
-            "accuracy": float(acc_global),
-            "loss": float(loss_global),
-            "w3_mag": float(np.mean(np.abs(W3_global))),
+            "round":     current_round,
+            "time":      datetime.now().strftime("%H:%M:%S"),
+            "accuracy":  float(acc_global),
+            "loss":      float(loss_global),
+            "w3_mag":    float(np.mean(np.abs(Wd1_global))),   # dense_1 (equiv. W3)
             "w4_normal": class_mags[0],
-            "w4_brute": class_mags[1],
-            "w4_scan": class_mags[2]
+            "w4_brute":  class_mags[1],
+            "w4_scan":   class_mags[2],
         })
         export_global_history_csv()
 
-        W3_update_sum.fill(0); b3_update_sum.fill(0)
-        W4_update_sum.fill(0); b4_update_sum.fill(0)
+        Wd1_update_sum.fill(0); bd1_update_sum.fill(0)
+        Wdo_update_sum.fill(0); bdo_update_sum.fill(0)
         accuracy_sum = 0.0
-        loss_sum = 0.0
-        updates_received = 0
+        loss_sum     = 0.0
+        updates_received         = 0
         total_samples_this_round = 0
-        round_in_progress = False
+        round_in_progress        = False
 
         distribute_global_model()
         metrics.print_live_summary()
-        
+
     return {"status": "ok", "ack_gateway": gateway_id}
 
 
@@ -891,7 +894,8 @@ def dashboard():
 if __name__ == "__main__":
     import uvicorn
     print("=" * 60)
-    print(" SERVIDOR CENTRAL FEDERADO HFL v7 - ANALYTICS DASHBOARD")
+    print(" SERVIDOR CENTRAL FEDERADO HFL v7-CNN - ANALYTICS DASHBOARD")
+    print(" Modelo: CNN-1D  FedAvg sobre dense_1 + dense_out")
     print(" Seguridad: ASCON-128 Authenticated Encryption")
     print(" -> Dashboard Gráfico: http://localhost:8001/")
     print("=" * 60)

@@ -14,17 +14,50 @@ import time
 import csv
 import os
 import atexit
+import re
+import socket
 from datetime import datetime
+from pathlib import Path
+
+
+RESULTS_DIR = Path(__file__).resolve().parent / "Results"
+
+
+def _slug(value: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", str(value).strip())
+    cleaned = re.sub(r"_+", "_", cleaned).strip("_")
+    return cleaned or "unknown"
+
+
+def _next_results_csv_path(device_name: str, suffix: str | None = None) -> Path:
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    prefix = f"ascon_metrics_{_slug(device_name)}_"
+    if suffix:
+        prefix += f"{_slug(suffix)}_"
+    indices = []
+
+    for path in RESULTS_DIR.glob(f"{prefix}*.csv"):
+        suffix = path.stem.replace(prefix, "")
+        if suffix.isdigit():
+            indices.append(int(suffix))
+
+    next_index = (max(indices) + 1) if indices else 1
+    return RESULTS_DIR / f"{prefix}{next_index}.csv"
 
 class AsconMetrics:
-    def __init__(self, device_name="unknown"):
-        self.device_name = device_name
+    def __init__(self, device_name="unknown", suffix: str | None = None):
+        hostname = _slug(socket.gethostname())
+        env_suffix = os.environ.get("GATEWAY_ID") or os.environ.get("HOSTNAME")
+        self.device_name = _slug(device_name)
+        self.device_suffix = _slug(suffix or env_suffix or hostname)
+        self.hostname = hostname
         self.records = []
         self.start_time = time.time()
-        self.csv_path = f"ascon_metrics_{device_name}.csv"
+        self.csv_path = _next_results_csv_path(self.device_name, self.device_suffix)
+        self.run_id = self.csv_path.stem.replace(f"ascon_metrics_{self.device_name}_{self.device_suffix}_", "")
         atexit.register(self.export_summary)
     
-    def record(self, channel, operation, pt_size, enc_size, elapsed_ms, fl_round):
+    def record(self, channel, operation, pt_size, enc_size, elapsed_ms, fl_round, **extra_fields):
         """
         channel:   "ESP32->RPi", "RPi->PC", "PC->RPi", "RPi->ESP32"
         operation: "encrypt" o "decrypt"
@@ -36,6 +69,10 @@ class AsconMetrics:
         entry = {
             "timestamp": datetime.now().strftime("%H:%M:%S.%f")[:-3],
             "uptime_s": round(time.time() - self.start_time, 1),
+            "device_name": self.device_name,
+            "device_suffix": self.device_suffix,
+            "hostname": self.hostname,
+            "run_id": self.run_id,
             "channel": channel,
             "operation": operation,
             "pt_bytes": pt_size,
@@ -44,6 +81,7 @@ class AsconMetrics:
             "elapsed_ms": round(elapsed_ms, 3),
             "fl_round": fl_round,
         }
+        entry.update(extra_fields)
         self.records.append(entry)
         
         tag = "ENC" if operation == "encrypt" else "DEC"
@@ -73,7 +111,10 @@ class AsconMetrics:
         uptime = time.time() - self.start_time
         
         print(f"\n{'━'*70}")
-        print(f" MÉTRICAS ASCON EN VIVO | {self.device_name} | {total} ops | uptime: {uptime:.0f}s")
+        print(
+            f" MÉTRICAS ASCON EN VIVO | {self.device_name}:{self.device_suffix} "
+            f"| intento {self.run_id} | {total} ops | uptime: {uptime:.0f}s"
+        )
         print(f"{'━'*70}")
         print(f" {'Canal':<22} {'#Enc':>5} {'Enc(ms)':>9} {'#Dec':>5} {'Dec(ms)':>9} {'Overhead':>9}")
         print(f"{'─'*70}")
@@ -102,9 +143,15 @@ class AsconMetrics:
             return
         
         self.print_live_summary()
+
+        fieldnames = []
+        for record in self.records:
+            for key in record.keys():
+                if key not in fieldnames:
+                    fieldnames.append(key)
         
-        with open(self.csv_path, 'w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=self.records[0].keys())
+        with open(self.csv_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(self.records)
         
