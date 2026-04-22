@@ -29,6 +29,7 @@ import json
 import logging
 import base64
 import time
+import os
 from datetime import datetime
 import threading
 from ascon128 import encrypt as ascon_encrypt, decrypt as ascon_decrypt, generate_nonce
@@ -77,14 +78,29 @@ updates_received = 0
 # Con arquitectura Fog, el servidor recibe de fog clusters (no gateways individuales).
 # Si hay 1 solo cluster Fog (2 RPis pre-agregando), MIN_UPDATES = 1.
 # Si hubiera 2 clusters Fog independientes, MIN_UPDATES = 2.
-MIN_UPDATES_PER_ROUND = 1
+def _env_int(name: str, default: int) -> int:
+    value = os.environ.get(name)
+    if value is None or value == "":
+        return default
+    return int(value)
+
+
+def _env_list(name: str, default: list[str]) -> list[str]:
+    value = os.environ.get(name)
+    if value is None or value.strip() == "":
+        return default
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+SERVER_PORT = _env_int("SERVER_PORT", 8001)
+MIN_UPDATES_PER_ROUND = _env_int("MIN_UPDATES_PER_ROUND", 1)
 
 history = []
 round_in_progress = True
 
 # ====================== IPs de FOG LEADERS ======================
 FOG_LEADERS = [
-    "http://192.168.40.120:5000",
+    *_env_list("FOG_LEADERS", ["http://192.168.40.120:5000"]),
 ]
 
 ASCON_KEY = bytes([0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x18,
@@ -453,7 +469,7 @@ if __name__ == "__main__":
     print(f" Fog Leaders: {FOG_LEADERS}")
     print(" Seguridad: ASCON-128 Authenticated Encryption")
     print(" Arquitectura: ESP32 → RPi ↔ RPi → PC (3-tier)")
-    print(f" Dashboard: http://localhost:8001/")
+    print(f" Dashboard: http://localhost:{SERVER_PORT}/")
     print("=" * 60)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-    uvicorn.run(app, host="0.0.0.0", port=8001, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=SERVER_PORT, log_level="warning")

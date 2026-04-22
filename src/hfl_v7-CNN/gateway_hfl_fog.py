@@ -46,30 +46,44 @@ _counter_lock = threading.Lock()
 # =============================================================================
 #  CONFIGURACIÓN — EDITAR SEGÚN EL ROL DE ESTA RASPBERRY PI
 # =============================================================================
-FOG_ROLE = os.environ.get("FOG_ROLE", "leader")  # "leader" o "peer"
+def _env_int(name: str, default: int) -> int:
+    value = os.environ.get(name)
+    if value is None or value == "":
+        return default
+    return int(value)
+
+
+def _env_list(name: str, default: list[str]) -> list[str]:
+    value = os.environ.get(name)
+    if value is None or value.strip() == "":
+        return default
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+FOG_ROLE = os.environ.get("FOG_ROLE", "leader").strip().lower()  # "leader" o "peer"
 GATEWAY_ID = os.environ.get("GATEWAY_ID", f"gateway_fog_{FOG_ROLE}")
 
 # IPs — ajustar a tu red
-IP_PC = "192.168.40.95"
-PORT_PC = "8001"
-FOG_LEADER_IP = "192.168.40.120"   # IP de la RPi líder (broker Fog MQTT)
-FOG_PEER_IPS = ["192.168.40.124"]  # IPs de las RPi peers (solo el líder las necesita)
+IP_PC = os.environ.get("IP_PC", "192.168.40.95")
+PORT_PC = os.environ.get("PORT_PC", "8001")
+FOG_LEADER_IP = os.environ.get("FOG_LEADER_IP", "192.168.40.120")   # IP de la RPi líder (broker Fog MQTT)
+FOG_PEER_IPS = _env_list("FOG_PEER_IPS", ["192.168.40.124"])  # IPs de las RPi peers (solo el líder las necesita)
 
-url_servidor = f"http://{IP_PC}:{PORT_PC}/aggregate-from-fog"
+url_servidor = os.environ.get("FOG_SERVER_URL", f"http://{IP_PC}:{PORT_PC}/aggregate-from-fog")
 
 # MQTT local (para ESP32s de ESTE gateway)
-MQTT_LOCAL_BROKER = "localhost"
-MQTT_LOCAL_PORT = 1883
+MQTT_LOCAL_BROKER = os.environ.get("MQTT_LOCAL_BROKER", "localhost")
+MQTT_LOCAL_PORT = _env_int("MQTT_LOCAL_PORT", 1883)
 TOPIC_FEATURES = "fl/features"
 TOPIC_GLOBAL_MODEL = "fl/global_model"
 
 # MQTT Fog (intercomunicación entre gateways)
-MQTT_FOG_PORT = 1883
+MQTT_FOG_PORT = _env_int("MQTT_FOG_PORT", 1883)
 TOPIC_FOG_WEIGHTS = "fog/weights"
 TOPIC_FOG_GLOBAL = "fog/global_model"
 TOPIC_FOG_READY = "fog/ready"
 
-FOG_EXPECTED_PEERS = 1  # Cuántos peers espera el líder antes de agregar
+FOG_EXPECTED_PEERS = _env_int("FOG_EXPECTED_PEERS", 1)  # Cuántos peers espera el líder antes de agregar
 
 ASCON_KEY = bytes([0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x18,
                    0x29, 0x3A, 0x4B, 0x5C, 0x6D, 0x7E, 0x8F, 0x90])
@@ -87,7 +101,7 @@ MIN_PKTS_FOR_ML = 1
 
 X_train_buffer = []
 Y_train_buffer = []
-SAMPLES_PER_UPDATE = 40
+SAMPLES_PER_UPDATE = _env_int("SAMPLES_PER_UPDATE", 40)
 
 current_round = 0
 node_stats = {}

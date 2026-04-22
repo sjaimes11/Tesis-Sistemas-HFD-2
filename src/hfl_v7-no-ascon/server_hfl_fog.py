@@ -27,6 +27,7 @@ import requests
 import json
 import logging
 import time
+import os
 from datetime import datetime
 from plain_metrics import PlainMetrics
 
@@ -69,14 +70,29 @@ updates_received = 0
 # Con arquitectura Fog, el servidor recibe de fog clusters (no gateways individuales).
 # Si hay 1 solo cluster Fog (2 RPis pre-agregando), MIN_UPDATES = 1.
 # Si hubiera 2 clusters Fog independientes, MIN_UPDATES = 2.
-MIN_UPDATES_PER_ROUND = 1
+def _env_int(name: str, default: int) -> int:
+    value = os.environ.get(name)
+    if value is None or value == "":
+        return default
+    return int(value)
+
+
+def _env_list(name: str, default: list[str]) -> list[str]:
+    value = os.environ.get(name)
+    if value is None or value.strip() == "":
+        return default
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+SERVER_PORT = _env_int("SERVER_PORT", 8001)
+MIN_UPDATES_PER_ROUND = _env_int("MIN_UPDATES_PER_ROUND", 1)
 
 history = []
 round_in_progress = True
 
 # ====================== IPs de FOG LEADERS ======================
 FOG_LEADERS = [
-    "http://192.168.40.120:5000",
+    *_env_list("FOG_LEADERS", ["http://192.168.40.120:5000"]),
 ]
 
 # ====================== FUNCIONES DE TRANSPORTE PLANO ======================
@@ -408,7 +424,7 @@ if __name__ == "__main__":
     print(f" Fog Leaders: {FOG_LEADERS}")
     print(" Modo baseline sin ASCON: JSON plano")
     print(" Arquitectura: ESP32 → RPi ↔ RPi → PC (3-tier)")
-    print(f" Dashboard: http://localhost:8001/")
+    print(f" Dashboard: http://localhost:{SERVER_PORT}/")
     print("=" * 60)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-    uvicorn.run(app, host="0.0.0.0", port=8001, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=SERVER_PORT, log_level="warning")

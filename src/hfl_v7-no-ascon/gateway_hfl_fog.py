@@ -29,6 +29,7 @@ import json
 import threading
 import time
 import os
+from pathlib import Path
 
 import paho.mqtt.client as mqtt
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -40,30 +41,44 @@ from model_results_logger import ModelResultsLogger
 # =============================================================================
 #  CONFIGURACIÓN — EDITAR SEGÚN EL ROL DE ESTA RASPBERRY PI
 # =============================================================================
-FOG_ROLE = os.environ.get("FOG_ROLE", "leader")  # "leader" o "peer"
+def _env_int(name: str, default: int) -> int:
+    value = os.environ.get(name)
+    if value is None or value == "":
+        return default
+    return int(value)
+
+
+def _env_list(name: str, default: list[str]) -> list[str]:
+    value = os.environ.get(name)
+    if value is None or value.strip() == "":
+        return default
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+FOG_ROLE = os.environ.get("FOG_ROLE", "leader").strip().lower()  # "leader" o "peer"
 GATEWAY_ID = os.environ.get("GATEWAY_ID", f"gateway_fog_{FOG_ROLE}")
 
 # IPs — ajustar a tu red
-IP_PC = "192.168.40.95"
-PORT_PC = "8001"
-FOG_LEADER_IP = "192.168.40.120"   # IP de la RPi líder (broker Fog MQTT)
-FOG_PEER_IPS = ["192.168.40.124"]  # IPs de las RPi peers (solo el líder las necesita)
+IP_PC = os.environ.get("IP_PC", "192.168.40.95")
+PORT_PC = os.environ.get("PORT_PC", "8001")
+FOG_LEADER_IP = os.environ.get("FOG_LEADER_IP", "192.168.40.120")   # IP de la RPi líder (broker Fog MQTT)
+FOG_PEER_IPS = _env_list("FOG_PEER_IPS", ["192.168.40.124"])  # IPs de las RPi peers (solo el líder las necesita)
 
-url_servidor = f"http://{IP_PC}:{PORT_PC}/aggregate-from-fog"
+url_servidor = os.environ.get("FOG_SERVER_URL", f"http://{IP_PC}:{PORT_PC}/aggregate-from-fog")
 
 # MQTT local (para ESP32s de ESTE gateway)
-MQTT_LOCAL_BROKER = "localhost"
-MQTT_LOCAL_PORT = 1883
+MQTT_LOCAL_BROKER = os.environ.get("MQTT_LOCAL_BROKER", "localhost")
+MQTT_LOCAL_PORT = _env_int("MQTT_LOCAL_PORT", 1883)
 TOPIC_FEATURES = "fl/features_plain"
 TOPIC_GLOBAL_MODEL = "fl/global_model_plain"
 
 # MQTT Fog (intercomunicación entre gateways)
-MQTT_FOG_PORT = 1883
+MQTT_FOG_PORT = _env_int("MQTT_FOG_PORT", 1883)
 TOPIC_FOG_WEIGHTS = "fog/weights_plain"
 TOPIC_FOG_GLOBAL = "fog/global_model_plain"
 TOPIC_FOG_READY = "fog/ready"
 
-FOG_EXPECTED_PEERS = 1  # Cuántos peers espera el líder antes de agregar
+FOG_EXPECTED_PEERS = _env_int("FOG_EXPECTED_PEERS", 1)  # Cuántos peers espera el líder antes de agregar
 
 metrics = PlainMetrics("gateway", suffix=GATEWAY_ID)
 model_results = ModelResultsLogger("gateway", suffix=GATEWAY_ID)
@@ -77,7 +92,7 @@ MIN_PKTS_FOR_ML = 1
 
 X_train_buffer = []
 Y_train_buffer = []
-SAMPLES_PER_UPDATE = 40
+SAMPLES_PER_UPDATE = _env_int("SAMPLES_PER_UPDATE", 40)
 
 current_round = 0
 node_stats = {}
@@ -86,17 +101,7 @@ node_stats = {}
 fog_weights_buffer = {}
 fog_weights_lock = threading.Lock()
 
-# =============================================================================
-#  MODELO KERAS
-# =============================================================================
-print(f"[FOG-{FOG_ROLE.upper()}] Cargando modelo base ids_3class.keras...")
-try:
-    model = tf.keras.models.load_model("ids_3class.keras")
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
-                  loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-    print(f"[FOG-{FOG_ROLE.upper()}] Modelo cargado exitosamente.")
-except Exception as e:
-    print(f"[FOG-{FOG_ROLE.upper()}] Creando modelo desde cero: {e}")
+def build_mlp_model():
     model = tf.keras.Sequential([
         tf.keras.layers.Dense(32, activation='relu', input_shape=(FEATURE_COUNT,), name='dense_0'),
         tf.keras.layers.Dense(16, activation='relu', name='dense_1'),
@@ -105,6 +110,46 @@ except Exception as e:
     ])
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
                   loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    return model
+
+
+def load_base_mlp_model():
+    base_dir = Path(__file__).resolve().parent
+    h5_path = base_dir / "ids_3class.h5"
+    keras_path = base_dir / "ids_3class.keras"
+    weights_path = base_dir / "ids_3class.weights.h5"
+
+    if h5_path.exists():
+        print(f"[FOG-{FOG_ROLE.upper()}] Intentando cargar fallback compatible: {h5_path.name}")
+        model = tf.keras.models.load_model(str(h5_path), compile=False)
+        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
+                      loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        return model
+
+    if keras_path.exists():
+        print(f"[FOG-{FOG_ROLE.upper()}] Intentando cargar modelo nativo Keras: {keras_path.name}")
+        model = tf.keras.models.load_model(str(keras_path), compile=False)
+        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
+                      loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        return model
+
+    model = build_mlp_model()
+    if weights_path.exists():
+        print(f"[FOG-{FOG_ROLE.upper()}] Cargando pesos manualmente desde {weights_path.name}")
+        model.load_weights(str(weights_path))
+    return model
+
+
+# =============================================================================
+#  MODELO KERAS
+# =============================================================================
+print(f"[FOG-{FOG_ROLE.upper()}] Cargando modelo base ids_3class.* ...")
+try:
+    model = load_base_mlp_model()
+    print(f"[FOG-{FOG_ROLE.upper()}] Modelo cargado exitosamente.")
+except Exception as e:
+    print(f"[FOG-{FOG_ROLE.upper()}] Creando modelo desde cero: {e}")
+    model = build_mlp_model()
 
 # =============================================================================
 #  UTILIDADES DE TRANSPORTE PLANO
