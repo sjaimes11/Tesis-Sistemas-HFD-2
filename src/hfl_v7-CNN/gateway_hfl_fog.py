@@ -30,6 +30,7 @@ import threading
 import time
 import base64
 import os
+from pathlib import Path
 
 import paho.mqtt.client as mqtt
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -95,17 +96,8 @@ node_stats = {}
 fog_weights_buffer = {}
 fog_weights_lock = threading.Lock()
 
-# =============================================================================
-#  MODELO KERAS
-# =============================================================================
-print(f"[FOG-{FOG_ROLE.upper()}] Cargando modelo base ids_3class.keras...")
-try:
-    model = tf.keras.models.load_model("ids_3class.keras")
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
-                  loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-    print(f"[FOG-{FOG_ROLE.upper()}] Modelo cargado exitosamente.")
-except Exception as e:
-    print(f"[FOG-{FOG_ROLE.upper()}] Creando modelo desde cero: {e}")
+
+def build_cnn_model():
     model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(FEATURE_COUNT, 1)),
         tf.keras.layers.Conv1D(32, kernel_size=3, activation='relu', padding='same', name='conv_1'),
@@ -116,8 +108,56 @@ except Exception as e:
         tf.keras.layers.Dense(8, activation='relu', name='dense_1'),
         tf.keras.layers.Dense(3, activation='softmax', name='dense_out'),
     ])
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
-                  loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
+        loss='sparse_categorical_crossentropy',
+        metrics=['accuracy'],
+    )
+    return model
+
+
+def load_base_cnn_model():
+    base_dir = Path(__file__).resolve().parent
+    h5_path = base_dir / "ids_3class.h5"
+    keras_path = base_dir / "ids_3class.keras"
+    weights_path = base_dir / "ids_3class.weights.h5"
+
+    if h5_path.exists():
+        print(f"[FOG-{FOG_ROLE.upper()}] Intentando cargar fallback compatible: {h5_path.name}")
+        model = tf.keras.models.load_model(str(h5_path), compile=False)
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
+            loss='sparse_categorical_crossentropy',
+            metrics=['accuracy'],
+        )
+        return model
+
+    if keras_path.exists():
+        print(f"[FOG-{FOG_ROLE.upper()}] Intentando cargar modelo nativo Keras: {keras_path.name}")
+        model = tf.keras.models.load_model(str(keras_path), compile=False)
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
+            loss='sparse_categorical_crossentropy',
+            metrics=['accuracy'],
+        )
+        return model
+
+    model = build_cnn_model()
+    if weights_path.exists():
+        print(f"[FOG-{FOG_ROLE.upper()}] Cargando pesos manualmente desde {weights_path.name}")
+        model.load_weights(str(weights_path))
+    return model
+
+# =============================================================================
+#  MODELO KERAS
+# =============================================================================
+print(f"[FOG-{FOG_ROLE.upper()}] Cargando modelo base ids_3class.keras...")
+try:
+    model = load_base_cnn_model()
+    print(f"[FOG-{FOG_ROLE.upper()}] Modelo cargado exitosamente.")
+except Exception as e:
+    print(f"[FOG-{FOG_ROLE.upper()}] Creando modelo desde cero: {e}")
+    model = build_cnn_model()
 
 # =============================================================================
 #  UTILIDADES ASCON

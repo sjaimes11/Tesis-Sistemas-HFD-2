@@ -165,6 +165,7 @@ model.compile(
     optimizer=keras.optimizers.Adam(learning_rate=1e-3),
     loss="sparse_categorical_crossentropy",
     metrics=["accuracy"],
+    jit_compile=False,
 )
 
 model.summary()
@@ -371,13 +372,21 @@ with open(os.path.join(os.path.dirname(__file__), "scaler_params.json"), "w") as
 with open(os.path.join(os.path.dirname(__file__), "label_map.json"), "w") as f:
     json.dump({name: i for i, name in enumerate(CLASS_NAMES)}, f, indent=2)
 
-model.save(os.path.join(os.path.dirname(__file__), "ids_3class.keras"))
+keras_path = os.path.join(os.path.dirname(__file__), "ids_3class.keras")
+h5_path = os.path.join(os.path.dirname(__file__), "ids_3class.h5")
+weights_path = os.path.join(os.path.dirname(__file__), "ids_3class.weights.h5")
+
+model.save(keras_path)
+model.save(h5_path, include_optimizer=False)
+model.save_weights(weights_path)
 
 print("\nExportación completa:")
 print(f"  model_weights.h     - C header para ESP32 (Conv1D + Dense)")
 print(f"  scaler_params.json  - Parámetros de normalización")
 print(f"  label_map.json      - Mapa de etiquetas")
-print(f"  ids_3class.keras    - Modelo Keras completo (para gateway)")
+print(f"  ids_3class.keras    - Modelo Keras 3 (Colab / entornos nuevos)")
+print(f"  ids_3class.h5       - Modelo compatible con TensorFlow/Keras legacy")
+print(f"  ids_3class.weights.h5 - Pesos para carga manual en gateway")
 print(f"  confusion_matrix.png")
 print(f"  training_curves.png")
 print(f"\n{'='*50}")

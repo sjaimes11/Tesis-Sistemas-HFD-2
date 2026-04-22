@@ -27,6 +27,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import tensorflow as tf
 import base64
 import time
+from pathlib import Path
 from ascon128 import encrypt as ascon_encrypt, decrypt as ascon_decrypt, generate_nonce
 from ascon_metrics import AsconMetrics
 from model_results_logger import ModelResultsLogger
@@ -87,16 +88,19 @@ def print_node_summary():
     print(f"{'─'*60}")
 
 # ====================== MODELO KERAS (CNN-1D) =======================
-print("[GATEWAY-CNN] Cargando modelo base ids_3class.keras (CNN-1D)...")
+print("[GATEWAY-CNN] Cargando modelo base CNN-1D...")
 try:
-    model = tf.keras.models.load_model("ids_3class.keras")
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
+    model = load_base_cnn_model()
     print("[GATEWAY-CNN] Modelo CNN-1D cargado exitosamente.")
 except Exception as e:
-    print(f"[ERROR] No se pudo cargar ids_3class.keras: {e}")
+    print(f"[ERROR] No se pudo cargar ningun artefacto del modelo CNN: {e}")
     print("[GATEWAY-CNN] Creando modelo CNN-1D desde cero...")
+    model = build_cnn_model()
+
+mqtt_client = None
+
+
+def build_cnn_model():
     model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(FEATURE_COUNT, 1)),
         tf.keras.layers.Conv1D(32, kernel_size=3, activation='relu', padding='same', name='conv_1'),
@@ -107,11 +111,45 @@ except Exception as e:
         tf.keras.layers.Dense(8, activation='relu', name='dense_1'),
         tf.keras.layers.Dense(3, activation='softmax', name='dense_out'),
     ])
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
+        loss='sparse_categorical_crossentropy',
+        metrics=['accuracy'],
+    )
+    return model
 
-mqtt_client = None
+
+def load_base_cnn_model():
+    base_dir = Path(__file__).resolve().parent
+    h5_path = base_dir / "ids_3class.h5"
+    keras_path = base_dir / "ids_3class.keras"
+    weights_path = base_dir / "ids_3class.weights.h5"
+
+    if h5_path.exists():
+        print(f"[GATEWAY-CNN] Intentando cargar fallback compatible: {h5_path.name}")
+        model = tf.keras.models.load_model(str(h5_path), compile=False)
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
+            loss='sparse_categorical_crossentropy',
+            metrics=['accuracy'],
+        )
+        return model
+
+    if keras_path.exists():
+        print(f"[GATEWAY-CNN] Intentando cargar modelo nativo Keras: {keras_path.name}")
+        model = tf.keras.models.load_model(str(keras_path), compile=False)
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
+            loss='sparse_categorical_crossentropy',
+            metrics=['accuracy'],
+        )
+        return model
+
+    model = build_cnn_model()
+    if weights_path.exists():
+        print(f"[GATEWAY-CNN] Cargando pesos manualmente desde {weights_path.name}")
+        model.load_weights(str(weights_path))
+    return model
 
 # ====================== HTTP SERVER (Recibe global cifrado del PC) ======================
 class DeployModelHandler(BaseHTTPRequestHandler):
