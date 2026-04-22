@@ -1,0 +1,74 @@
+# SRE Observability Spec - hfl_v7-no-ascon
+
+Generado a partir de `Results/#16` a `#29` sin modificar los CSV fuente.
+
+## Executive Summary
+
+- Intentos analizados: `14`
+- Rango de intentos: `16` a `29`
+- p95 promedio ESP32->RPi deserialize: `0.167 ms`
+- p95 promedio RPi->PC deserialize: `0.000 ms`
+- Payload promedio: `2881.881 bytes`
+- Accuracy local promedio: `0.9167`
+- Loss local promedio: `0.2310`
+- Accuracy global final promedio: `0.9298`
+- Loss global final promedio: `0.1581`
+- Completion rate promedio: `0.6881`
+
+## Metric Catalog
+
+| metric_name | exactness | source | aggregation | purpose |
+| --- | --- | --- | --- | --- |
+| transport.edge_rpi.deserialize.p95_ms | exact_from_csv | plain_metrics_gateway_* | p95(elapsed_ms) WHERE channel='ESP32->RPi' AND operation='deserialize' | SLI de latencia de ingreso al gateway por muestra. |
+| transport.rpi_pc.deserialize.p95_ms | exact_from_csv | plain_metrics_server_* | p95(elapsed_ms) WHERE channel='RPi->PC' AND operation='deserialize' | SLI de latencia de deserializacion en servidor para actualizaciones de gateways. |
+| transport.pc_rpi.serialize.p95_ms | exact_from_csv | plain_metrics_server_* | p95(elapsed_ms) WHERE channel='PC->RPi' AND operation='serialize' | SLI de despliegue del modelo global desde el servidor. |
+| transport.payload.avg_bytes | exact_from_csv | plain_metrics_gateway_*, plain_metrics_server_* | avg(payload_bytes) | Tamano promedio del payload transmitido sin cifrado ASCON. |
+| training.local.accuracy.avg | exact_from_csv | model_metrics_gateway_* | avg(accuracy) WHERE stage='local_train' | Calidad media del entrenamiento local por gateway. |
+| training.local.loss.avg | exact_from_csv | model_metrics_gateway_* | avg(loss) WHERE stage='local_train' | Estabilidad promedio del entrenamiento local. |
+| training.gateway.accuracy.skew.avg | exact_from_csv | model_metrics_gateway_A/B | avg(abs(acc_gateway_A - acc_gateway_B)) por round | Desalineacion entre gateways por ronda. |
+| training.gateway.loss.skew.avg | exact_from_csv | model_metrics_gateway_A/B | avg(abs(loss_gateway_A - loss_gateway_B)) por round | Desalineacion de optimizacion entre gateways. |
+| round.global.accuracy.last | exact_from_csv | global_weights_history_* | last(accuracy) por intento | Resultado final del modelo global por corrida. |
+| round.global.loss.last | exact_from_csv | global_weights_history_* | last(loss) por intento | Punto final de convergencia del modelo global. |
+| round.duration.avg_sec | exact_from_csv | global_weights_history_* | avg(diff(time)) por intento | Duracion promedio de ronda federada. |
+| round.weight_drift.avg | exact_from_csv | global_weights_history_* | avg(abs(delta(w3_mag))+abs(delta(w4_*))) por round | Movimiento medio de los pesos globales por ronda. |
+| reliability.round_completion.rate | exact_from_csv_with_assumption | global_weights_history_* | observed_rounds / expected_rounds_per_attempt | Disponibilidad experimental por corrida. |
+| reliability.gateway_participation.rate | exact_from_csv | model_metrics_gateway_* | local_train_rounds / global_rounds_observed | Tasa de participacion efectiva por gateway. |
+
+## Log Catalog
+
+| log_event | status | source | fields | notes |
+| --- | --- | --- | --- | --- |
+| transport.plain.gateway | reconstructed_from_csv | plain_metrics_gateway_* | timestamp_dt, attempt_id, gateway_id, channel, operation, elapsed_ms, payload_bytes, client_id, sample_label_name | Log normalizado derivado sin tocar el CSV original. |
+| transport.plain.server | reconstructed_from_csv | plain_metrics_server_* | timestamp_dt, attempt_id, channel, operation, elapsed_ms, payload_bytes, round_ref | No contiene gateway_id explicito en los datos actuales. |
+| model.local_train | reconstructed_from_csv | model_metrics_gateway_* | timestamp_dt, attempt_id, gateway_id, fl_round, round_ref, num_samples, accuracy, loss, buffer_target | Representa el fin del entrenamiento local por gateway. |
+| model.global_round | reconstructed_from_csv | global_weights_history_* | timestamp_dt, attempt_id, round_ref, accuracy, loss, w3_mag, w4_normal, w4_brute, w4_scan | Evento canonico de cierre de ronda global. |
+| fedavg.compute | live_stdout_only | server_hfl.py | trace_id, ts_start, ts_end, round_ref, gateways_received, fedavg_ms | No reconstruible con CSV actuales; recomendado solo a consola JSON. |
+| model.deploy.gateway | live_stdout_only | gateway_hfl.py | trace_id, ts, gateway_id, round_ref, payload_bytes, apply_ms, status | Hoy solo puede estimarse desde transport serialize del servidor. |
+
+## Trace Catalog
+
+| trace_name | status | trace_id_pattern | spans | notes |
+| --- | --- | --- | --- | --- |
+| round_trace | reconstructed_from_csv | attempt:{attempt_id}:round:{round_ref} | gateway_A.local_train, gateway_B.local_train, server.deserialize_batch, server.serialize_global, global_round_commit | Traza exacta a nivel de ronda basada en CSV ya capturados. |
+| gateway_round_trace | reconstructed_from_csv | attempt:{attempt_id}:round:{round_ref}:gateway:{gateway_id} | esp32_to_rpi_deserialize_batch, local_train_done | Traza util para diagnosticar carga y skew por gateway. |
+| sample_trace | live_stdout_only | attempt:{attempt_id}:round:{round_ref}:sample:{client_id}:{sample_seq} | esp32.publish, gateway.deserialize, gateway.buffer, gateway.train_enqueue | No reconstruible con precision usando solo CSV actuales. |
+| fedavg_trace | live_stdout_only | attempt:{attempt_id}:round:{round_ref}:fedavg | server.wait_updates, server.fedavg_compute, server.serialize_global, server.deploy | Requiere logging efimero en tiempo real si se quiere exactitud completa. |
+
+## Dashboard Panels
+
+| panel_group | panel_name | chart_type | source | metric |
+| --- | --- | --- | --- | --- |
+| System Health | Round completion rate | gauge/bar | global_weights_history_* | reliability.round_completion.rate |
+| System Health | Gateway participation | bar | model_metrics_gateway_* | reliability.gateway_participation.rate |
+| Transport | Latency p95 by channel | bar | plain_metrics_* | transport.*.p95_ms |
+| Transport | Payload bytes by channel | bar | plain_metrics_* | transport.payload.avg_bytes |
+| Local Training | Local accuracy by gateway | line | model_metrics_gateway_* | training.local.accuracy.avg |
+| Local Training | Gateway skew | line | model_metrics_gateway_* | training.gateway.*.skew.avg |
+| Global Convergence | Global accuracy and loss | line | global_weights_history_* | round.global.* |
+| Global Convergence | Weight drift | line | global_weights_history_* | round.weight_drift.avg |
+| Data Quality | Class mix by gateway | stacked_bar | plain_metrics_gateway_* | data.class_mix.share |
+
+## Scope
+
+- Reconstruible ahora: metricas, logs canonicos y trazas de ronda a partir de CSV historicos.
+- Solo live stdout: spans internos de FedAvg, aplicacion del modelo en gateway y trazas por muestra.

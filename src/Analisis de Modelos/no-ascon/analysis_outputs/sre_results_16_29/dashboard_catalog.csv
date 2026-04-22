@@ -1,0 +1,10 @@
+panel_group,panel_name,chart_type,source,metric
+System Health,Round completion rate,gauge/bar,global_weights_history_*,reliability.round_completion.rate
+System Health,Gateway participation,bar,model_metrics_gateway_*,reliability.gateway_participation.rate
+Transport,Latency p95 by channel,bar,plain_metrics_*,transport.*.p95_ms
+Transport,Payload bytes by channel,bar,plain_metrics_*,transport.payload.avg_bytes
+Local Training,Local accuracy by gateway,line,model_metrics_gateway_*,training.local.accuracy.avg
+Local Training,Gateway skew,line,model_metrics_gateway_*,training.gateway.*.skew.avg
+Global Convergence,Global accuracy and loss,line,global_weights_history_*,round.global.*
+Global Convergence,Weight drift,line,global_weights_history_*,round.weight_drift.avg
+Data Quality,Class mix by gateway,stacked_bar,plain_metrics_gateway_*,data.class_mix.share
