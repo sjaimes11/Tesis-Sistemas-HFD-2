@@ -29,7 +29,7 @@ import base64
 import time
 from pathlib import Path
 from ascon128 import encrypt as ascon_encrypt, decrypt as ascon_decrypt, generate_nonce
-from ascon_metrics import AsconMetrics
+from ascon_metrics_gateway import AsconMetrics
 from model_results_logger import ModelResultsLogger
 
 # ====================== CONFIGURACIÓN ======================
@@ -88,18 +88,6 @@ def print_node_summary():
     print(f"{'─'*60}")
 
 # ====================== MODELO KERAS (CNN-1D) =======================
-print("[GATEWAY-CNN] Cargando modelo base CNN-1D...")
-try:
-    model = load_base_cnn_model()
-    print("[GATEWAY-CNN] Modelo CNN-1D cargado exitosamente.")
-except Exception as e:
-    print(f"[ERROR] No se pudo cargar ningun artefacto del modelo CNN: {e}")
-    print("[GATEWAY-CNN] Creando modelo CNN-1D desde cero...")
-    model = build_cnn_model()
-
-mqtt_client = None
-
-
 def build_cnn_model():
     model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(FEATURE_COUNT, 1)),
@@ -150,6 +138,18 @@ def load_base_cnn_model():
         print(f"[GATEWAY-CNN] Cargando pesos manualmente desde {weights_path.name}")
         model.load_weights(str(weights_path))
     return model
+
+
+print("[GATEWAY-CNN] Cargando modelo base CNN-1D...")
+try:
+    model = load_base_cnn_model()
+    print("[GATEWAY-CNN] Modelo CNN-1D cargado exitosamente.")
+except Exception as e:
+    print(f"[ERROR] No se pudo cargar ningun artefacto del modelo CNN: {e}")
+    print("[GATEWAY-CNN] Creando modelo CNN-1D desde cero...")
+    model = build_cnn_model()
+
+mqtt_client = None
 
 # ====================== HTTP SERVER (Recibe global cifrado del PC) ======================
 class DeployModelHandler(BaseHTTPRequestHandler):

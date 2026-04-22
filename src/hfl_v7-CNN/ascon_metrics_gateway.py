@@ -50,7 +50,7 @@ def _next_results_csv_path(device_name: str, suffix: str) -> Path:
 
 
 class AsconMetrics:
-    def __init__(self, device_name: str = "gateway", suffix: str | None = None):
+    def __init__(self, device_name: str = "gateway", suffix=None):
         hostname = _slug(socket.gethostname())
         env_suffix = os.environ.get("GATEWAY_ID") or os.environ.get("HOSTNAME")
 
