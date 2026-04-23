@@ -117,7 +117,7 @@ GLOBAL_HISTORY_COLUMNS = [
 
 # ====================== IPs de FOG LEADERS ======================
 FOG_LEADERS = [
-    *_env_list("FOG_LEADERS", ["http://192.168.40.120:5000"]),
+    *_env_list("FOG_LEADERS", ["http://192.168.1.16:5000"]),
 ]
 
 
@@ -275,15 +275,23 @@ async def receive_fog_model(envelope: EncryptedPayload):
     print(f"\n[SERVER] Pesos FOG-AGREGADOS recibidos de '{fog_id}' "
           f"| {num_samples} muestras | Acc: {accuracy:.2%}")
 
-    W3_np = np.array(data["W3"], dtype=np.float32)
-    b3_np = np.array(data["b3"], dtype=np.float32)
-    W4_np = np.array(data["W4"], dtype=np.float32)
-    b4_np = np.array(data["b4"], dtype=np.float32)
+    try:
+        W3_np = np.array(data["W3"], dtype=np.float32)
+        b3_np = np.array(data["b3"], dtype=np.float32)
+        W4_np = np.array(data["W4"], dtype=np.float32)
+        b4_np = np.array(data["b4"], dtype=np.float32)
+    except KeyError as e:
+        print(f"[ERROR] Clave faltante en payload: {e}. Claves recibidas: {list(data.keys())}")
+        return JSONResponse(status_code=400, content={"error": f"Missing key: {e}"})
 
-    W3_update_sum += W3_np * num_samples
-    b3_update_sum += b3_np * num_samples
-    W4_update_sum += W4_np * num_samples
-    b4_update_sum += b4_np * num_samples
+    try:
+        W3_update_sum += W3_np * num_samples
+        b3_update_sum += b3_np * num_samples
+        W4_update_sum += W4_np * num_samples
+        b4_update_sum += b4_np * num_samples
+    except ValueError as e:
+        print(f"[ERROR] Shape incompatible: W3={W3_np.shape}, W4={W4_np.shape}. Error: {e}")
+        return JSONResponse(status_code=400, content={"error": f"Shape mismatch: {e}"})
 
     accuracy_sum += accuracy * num_samples
     loss_sum += loss * num_samples
@@ -735,7 +743,7 @@ def dashboard():
         }
 
         function parseCsvText(text) {
-            const lines = text.trim().split(/\r?\n/).filter(Boolean);
+            const lines = text.trim().split(/\\r?\\n/).filter(Boolean);
             if (!lines.length) return [];
 
             const headers = lines[0].split(',').map(v => v.trim());
@@ -858,17 +866,15 @@ def dashboard():
                     const accData = hist.map(h => h.accuracy);
                     const lossData = hist.map(h => h.loss);
 
-                    if(accChart.data.labels.length !== labels.length) {
-                        accChart.data.labels = labels;
-                        accChart.data.datasets[0].data = accData;
-                        accChart.update();
+                    accChart.data.labels = labels;
+                    accChart.data.datasets[0].data = accData;
+                    accChart.update();
 
-                        lossChart.data.labels = labels;
-                        lossChart.data.datasets[0].data = lossData;
-                        lossChart.update();
+                    lossChart.data.labels = labels;
+                    lossChart.data.datasets[0].data = lossData;
+                    lossChart.update();
 
-                        populateTable(hist);
-                    }
+                    populateTable(hist);
                 }
 
             } catch (err) {
