@@ -1,0 +1,21 @@
+timestamp,device_name,device_suffix,hostname,run_id,stage,fl_round,num_samples,accuracy,loss,buffer_target
+2026-04-22 10:49:32,gateway,gateway_B,gatewayB,31,local_train,0,30,0.9666666388511658,0.436668336391449,30
+2026-04-22 10:50:25,gateway,gateway_B,gatewayB,31,local_train,1,30,1.0,0.17243103682994843,30
+2026-04-22 10:51:22,gateway,gateway_B,gatewayB,31,local_train,2,30,1.0,0.05651773139834404,30
+2026-04-22 10:52:21,gateway,gateway_B,gatewayB,31,local_train,3,30,1.0,0.02902747318148613,30
+2026-04-22 10:53:20,gateway,gateway_B,gatewayB,31,local_train,4,30,1.0,0.03455614298582077,30
+2026-04-22 10:54:20,gateway,gateway_B,gatewayB,31,local_train,5,30,1.0,0.01316030416637659,30
+2026-04-22 10:55:21,gateway,gateway_B,gatewayB,31,local_train,6,30,1.0,0.007426476571708918,30
+2026-04-22 10:56:20,gateway,gateway_B,gatewayB,31,local_train,7,30,1.0,0.007779194042086601,30
+2026-04-22 10:57:19,gateway,gateway_B,gatewayB,31,local_train,8,30,1.0,0.0024847318418323994,30
+2026-04-22 10:58:17,gateway,gateway_B,gatewayB,31,local_train,9,30,1.0,0.0031274037901312113,30
+2026-04-22 10:59:16,gateway,gateway_B,gatewayB,31,local_train,10,30,1.0,0.0015823176363483071,30
+2026-04-22 11:00:15,gateway,gateway_B,gatewayB,31,local_train,11,30,1.0,0.002209783298894763,30
+2026-04-22 11:01:13,gateway,gateway_B,gatewayB,31,local_train,12,30,1.0,0.0018591547850519419,30
+2026-04-22 11:02:13,gateway,gateway_B,gatewayB,31,local_train,13,30,1.0,0.002580945147201419,30
+2026-04-22 11:03:12,gateway,gateway_B,gatewayB,31,local_train,14,30,1.0,0.0009671758161857724,30
+2026-04-22 11:04:10,gateway,gateway_B,gatewayB,31,local_train,15,30,1.0,0.0020617032423615456,30
+2026-04-22 11:05:09,gateway,gateway_B,gatewayB,31,local_train,16,30,1.0,0.0011282836785539985,30
+2026-04-22 11:06:08,gateway,gateway_B,gatewayB,31,local_train,17,30,1.0,0.0008448747103102505,30
+2026-04-22 11:07:07,gateway,gateway_B,gatewayB,31,local_train,18,30,1.0,0.0006385996821336448,30
+2026-04-22 11:08:06,gateway,gateway_B,gatewayB,31,local_train,19,30,1.0,0.0005905439611524343,30
