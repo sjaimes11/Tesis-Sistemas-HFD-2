@@ -1,0 +1,21 @@
+timestamp,device_name,device_suffix,hostname,run_id,stage,fl_round,num_samples,accuracy,loss,fog_role,buffer_target
+2026-04-23 14:42:43,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,0,30,0.6333333253860474,0.8978769779205322,peer,30
+2026-04-23 14:43:37,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,1,30,0.9333333373069763,0.17276307940483093,peer,30
+2026-04-23 14:44:36,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,2,30,0.9666666388511658,0.12885715067386627,peer,30
+2026-04-23 14:45:35,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,3,30,1.0,0.014516070485115051,peer,30
+2026-04-23 14:46:35,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,4,30,1.0,0.0093838544562459,peer,30
+2026-04-23 14:50:45,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,5,30,0.800000011920929,0.8285817503929138,peer,30
+2026-04-23 14:51:44,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,6,30,0.8666666746139526,0.31999728083610535,peer,30
+2026-04-23 14:52:44,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,7,30,0.8999999761581421,0.33677488565444946,peer,30
+2026-04-23 14:53:45,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,8,30,0.8999999761581421,0.3308326005935669,peer,30
+2026-04-23 14:54:44,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,9,30,0.7333333492279053,0.5601838231086731,peer,30
+2026-04-23 14:55:44,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,10,30,0.800000011920929,0.40730565786361694,peer,30
+2026-04-23 14:56:43,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,11,30,0.9666666388511658,0.2833302915096283,peer,30
+2026-04-23 14:57:43,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,12,30,0.9333333373069763,0.3512415289878845,peer,30
+2026-04-23 14:58:42,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,13,30,0.8666666746139526,0.37977364659309387,peer,30
+2026-04-23 14:59:42,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,14,30,0.8666666746139526,0.25850144028663635,peer,30
+2026-04-23 15:00:41,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,15,30,1.0,0.0449254997074604,peer,30
+2026-04-23 15:01:41,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,16,30,0.9666666388511658,0.05950054153800011,peer,30
+2026-04-23 15:02:40,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,17,30,0.9333333373069763,0.12774300575256348,peer,30
+2026-04-23 15:03:39,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,18,30,0.9666666388511658,0.08581220358610153,peer,30
+2026-04-23 15:04:39,gateway,gateway_B,gatewayB,RN_FOG_2,local_train,19,30,1.0,0.06583784520626068,peer,30
