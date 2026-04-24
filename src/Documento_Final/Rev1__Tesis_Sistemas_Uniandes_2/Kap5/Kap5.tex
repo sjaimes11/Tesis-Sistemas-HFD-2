@@ -1,7 +1,7 @@
 \chapter{Resultados}
 \label{chap:resu}
 
-En este capítulo se presentan los resultados experimentales del sistema de detección de intrusiones desplegado en hardware real, organizados en torno a las tres preguntas de investigación formuladas en el Capítulo~\ref{chap:Introduction}. Primero se analiza el desempeño de los modelos clásicos de ML como línea base centralizada (Sección~\ref{sec:res_classic}). Luego se evalúa el sistema de aprendizaje federado jerárquico (Sección~\ref{sec:res_hfl}). Finalmente, se cuantifica el overhead del cifrado ASCON-128 (Sección~\ref{sec:res_ascon}).
+En este capítulo se presentan los resultados experimentales del sistema de detección de intrusiones desplegado en hardware real, organizados en torno a las preguntas de investigación formuladas en el Capítulo~\ref{chap:Introduction}. Primero se analiza el desempeño de los modelos clásicos como línea base centralizada. Luego se comparan los modelos livianos entrenados en el notebook general. Posteriormente se evalúan las variantes HFL implementadas en \texttt{hfl\_v7-RN}, \texttt{hfl\_v7-no-ascon} y \texttt{hfl\_v7-CNN}, incluyendo el modo FOG. Finalmente, se cuantifica el overhead del cifrado ASCON-128.
 
 % ====================================================================
 \section{Desempeño de Modelos Clásicos (Línea Base Centralizada)}
@@ -59,11 +59,35 @@ MLP (propuesto)     & $\sim$4.5\,KB & $< 0.1$  & \textbf{Sí} \\
 
 Esto revela un \emph{trade-off} fundamental: los modelos más precisos (Random Forest, SVM-RBF) son incompatibles con las restricciones de memoria del ESP32-S3 (512\,KB SRAM). El MLP propuesto ($\approx 4.5$\,KB) ofrece un compromiso eficiente entre precisión y viabilidad edge.
 
+\section{Comparación de Modelos Livianos}
+\label{sec:res_modelos_livianos}
+
+El notebook general de entrenamiento comparó cuatro arquitecturas compatibles con el problema triclase y exportó pesos, scaler y mapas de etiquetas para cada alternativa. La Tabla~\ref{tab:light_models_results} resume los resultados offline observados.
+
+\begin{table}[H]
+\centering
+\caption{Comparación offline de modelos livianos sobre las 13 features.}
+\label{tab:light_models_results}
+\small
+\begin{tabular}{l c c l}
+\toprule
+\textbf{Modelo} & \textbf{Accuracy} & \textbf{F1 weighted} & \textbf{Uso en el proyecto} \\
+\midrule
+MLP/RN          & 0.9060 & 0.9049 & Rama principal \texttt{hfl\_v7-RN} \\
+Residual-MLP    & 0.9055 & 0.9044 & Comparación offline \\
+CNN-1D          & 0.9051 & 0.9041 & Rama experimental \texttt{hfl\_v7-CNN} \\
+Tiny Transformer & 0.8903 & 0.8919 & Comparación offline; no desplegado \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Los resultados muestran que las tres arquitecturas compactas basadas en MLP/CNN se ubican alrededor de 90.5\% de accuracy offline. El MLP/RN se seleccionó como implementación principal porque obtiene el mejor resultado marginal y porque su inferencia en C++ es más simple que la CNN-1D. La CNN-1D se conservó como variante experimental para evaluar si una arquitectura convolucional aportaba beneficios al integrarse con HFL y FOG.
+
 % ====================================================================
 \section{Aprendizaje Federado Jerárquico: Convergencia y Precisión}
 \label{sec:res_hfl}
 
-El sistema HFL fue desplegado en hardware real durante sesiones de $\geq 60$ rondas de aprendizaje federado.
+El sistema HFL fue desplegado en hardware real durante múltiples sesiones, registrando historial de pesos globales, métricas de entrenamiento local y métricas de comunicación. Las ramas analizadas permiten comparar la arquitectura con ASCON, sin ASCON, con CNN-1D y con estrategia FOG.
 
 \subsection{Convergencia del Modelo Federado}
 
@@ -77,20 +101,20 @@ El sistema HFL fue desplegado en hardware real durante sesiones de $\geq 60$ ron
 \midrule
 Rondas hasta accuracy $> 70\%$  & $\sim$8--12 \\
 Rondas hasta accuracy $> 85\%$  & $\sim$20--30 \\
-Accuracy global estabilizada     & $\sim$88--92\% \\
-Loss final (Cross-Entropy)       & $\sim$0.25--0.40 \\
+Accuracy global estabilizada     & $\sim$0.90--0.95 \\
+Loss final (Cross-Entropy)       & $\sim$0.14--0.25 \\
 Muestras por ronda (por gateway) & 40 \\
 Épocas locales por ronda         & 5 \\
-Duración por ronda               & $\sim$70--80\,s \\
+Duración por ronda               & $\sim$51--61\,s según variante \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \textbf{Análisis:}
 \begin{enumerate}
-    \item El modelo federado converge en $\sim$20--30 rondas a una accuracy de $\sim$90\%, lo que representa un \textbf{gap de $\sim$10 puntos} respecto a los modelos centralizados (Decision Tree: 99.87\%). Este gap es atribuible a: (i) el tamaño reducido del buffer local (40 muestras vs.\ 256\,276), (ii) la distribución non-IID de los datos entre nodos (un nodo solo genera tráfico normal), y (iii) la función heurística de etiquetado que introduce ruido respecto a las etiquetas reales.
+    \item El modelo federado converge en $\sim$20--30 rondas hacia un rango operativo de $\sim$90--95\% de accuracy, lo que representa un \textbf{gap} frente a los modelos centralizados más precisos. Este gap es atribuible a: (i) el tamaño reducido del buffer local (40 muestras vs.\ 256\,276), (ii) la distribución non-IID de los datos entre nodos, y (iii) la función heurística de etiquetado que introduce ruido respecto a las etiquetas reales.
 
-    \item La convergencia es monótonamente creciente durante las primeras 20 rondas, con oscilaciones menores ($\pm 3\%$) en rondas posteriores, típicas de FL con datos non-IID \cite{imteaj2022}.
+    \item La convergencia mejora durante las primeras rondas y presenta oscilaciones posteriores, típicas de FL con datos non-IID \cite{Imteaj2022_FL_ResourceConstrainedSurvey}.
 
     \item El \textbf{costo de comunicación} por ronda federada completa (ida + vuelta) es de $\approx 7.2$\,KB en JSON plano y $\approx 9.8$\,KB con cifrado ASCON, lo cual es compatible con redes IoT de bajo ancho de banda.
 \end{enumerate}
@@ -116,7 +140,29 @@ Decision Tree centralizado   & 99.87\%       & Todos los flujos      & Ninguna \
 \end{tabular}
 \end{table}
 
-El sistema federado alcanza $\sim$90\% de accuracy compartiendo \textbf{únicamente 163 parámetros del modelo} (652 bytes) en lugar de los datos crudos de tráfico ($\sim$256\,K flujos $\times$ 13 features $= \sim$13.3$\,M valores). Esto representa una \textbf{reducción del $>$99.99\%} en la cantidad de información intercambiada, con una penalización de $\sim$7--10 puntos en accuracy.
+El sistema federado alcanza $\sim$90\% de accuracy compartiendo \textbf{únicamente 163 parámetros del modelo} (652 bytes) en lugar de los datos crudos de tráfico ($\sim$256\,K flujos $\times$ 13 features $\approx$ 13.3\,M valores). Esto representa una \textbf{reducción superior al 99.99\%} en la cantidad de información intercambiada, con una penalización de $\sim$7--10 puntos en accuracy.
+
+\subsection{Comparación entre variantes \texttt{hfl\_v7}}
+
+La Tabla~\ref{tab:variants_results} resume los resultados agregados de las carpetas de análisis y resultados generadas durante las pruebas. Los valores deben interpretarse como promedios de corridas experimentales, no como un único entrenamiento determinista.
+
+\begin{table}[H]
+\centering
+\caption{Resumen comparativo de variantes HFL evaluadas.}
+\label{tab:variants_results}
+\small
+\begin{tabular}{l c c c c}
+\toprule
+\textbf{Variante} & \textbf{Intentos} & \textbf{Accuracy global final} & \textbf{Loss global final} & \textbf{Duración ronda} \\
+\midrule
+RN + ASCON              & 9  & 0.9463 & 0.1415 & 61.25\,s \\
+RN sin ASCON            & 14 & 0.9298 & 0.1581 & 51.01\,s \\
+CNN-1D + FOG + ASCON    & 7  & 0.9750 & 0.0910 & 58.61\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La comparación confirma tres hallazgos. Primero, el cifrado no degrada la convergencia de manera observable; la variante con ASCON mantiene métricas competitivas frente al baseline sin cifrado. Segundo, el modo FOG funciona como extensión de la arquitectura, agregando pesos entre gateways antes de enviar al PC. Tercero, la CNN-1D muestra resultados altos en las corridas FOG, aunque su implementación es más costosa y menos simple que el MLP para inferencia en ESP32.
 
 % ====================================================================
 \section{Overhead del Cifrado ASCON-128}
@@ -205,13 +251,13 @@ El cifrado ASCON-128 introduce un overhead temporal \textbf{despreciable} ($< 0.
 \section{Análisis de las Preguntas de Investigación}
 \label{sec:preguntas}
 
-\subsection{PI-1: ¿Puede TinyML detectar ataques de red en dispositivos IoT con precisión comparable a modelos edge tradicionales?}
+\subsection{PI-1: ¿Puede TinyML detectar ataques de red en dispositivos IoT con precisión operativa?}
 
-El modelo MLP de 1\,139 parámetros ($\sim$4.5\,KB), ejecutado directamente en el ESP32-S3, alcanza una accuracy de $\sim$90\% tras el entrenamiento federado. Si bien existe un gap de $\sim$10 puntos respecto al Random Forest centralizado (99.94\%), este último requiere $\sim$2.5\,MB de memoria y no es desplegable en un microcontrolador con 512\,KB de SRAM. 
+El modelo MLP de 1\,139 parámetros ($\sim$4.5\,KB), ejecutado directamente en el ESP32-S3, alcanza una accuracy operativa alrededor de 90--95\% tras el entrenamiento federado, dependiendo de la corrida y la variante. Si bien existe un gap frente al Random Forest centralizado (99.94\%), este último requiere $\sim$2.5\,MB de memoria y no es desplegable en un microcontrolador con recursos restringidos.
 
 Comparando con modelos viables para edge (Decision Tree: 99.87\% con $\sim$15\,KB), el gap se reduce a $\sim$10 puntos, atribuible principalmente al esquema federado y no a la arquitectura del modelo. Un MLP idéntico entrenado de forma centralizada alcanza $\sim$97\%, situándose a solo 3 puntos del Decision Tree.
 
-\textbf{Conclusión PI-1:} TinyML puede detectar ataques con precisión viable para producción ($>$90\%) en un factor de forma compatible con microcontroladores IoT. La penalización respecto a modelos edge tradicionales es moderada y compensada por ventajas de privacidad (FL) y seguridad (ASCON).
+\textbf{Conclusión PI-1:} TinyML puede detectar ataques MQTT con precisión viable para alerta temprana en un factor de forma compatible con microcontroladores IoT. La penalización respecto a modelos centralizados se compensa con ventajas de privacidad, despliegue distribuido y seguridad de comunicación.
 
 \subsection{PI-2: ¿Reduce el aprendizaje federado el intercambio de datos sensibles sin afectar la precisión del IDS?}
 
@@ -229,3 +275,15 @@ Basado en 182 operaciones criptográficas registradas durante 60 rondas de FL:
 \end{itemize}
 
 \textbf{Conclusión PI-3:} El overhead del cifrado ASCON-128 es \textbf{despreciable en tiempo} y \textbf{moderado en tamaño}, validando su idoneidad como mecanismo de protección para comunicaciones de aprendizaje federado en dispositivos IoT restringidos.
+
+\subsection{PI-4: ¿Qué aporta comparar MLP/RN, CNN-1D, baseline sin ASCON y FOG?}
+
+La comparación de variantes muestra que el proyecto no depende de un único script, sino de una arquitectura replicable donde se pueden intercambiar modelo, seguridad y topología:
+\begin{itemize}
+    \item El \textbf{MLP/RN} es la opción principal por balance entre precisión, tamaño y simplicidad de implementación.
+    \item La \textbf{CNN-1D} valida una alternativa más expresiva, con buenos resultados en modo FOG, pero con mayor complejidad de inferencia.
+    \item La rama \textbf{sin ASCON} permite aislar el costo del cifrado y demostrar que el overhead no invalida el sistema.
+    \item La estrategia \textbf{FOG} prueba una agregación intermedia entre gateways, aproximando escenarios multi-zona.
+\end{itemize}
+
+\textbf{Conclusión PI-4:} La arquitectura HFL v7 es modular: permite cambiar el modelo, activar o desactivar cifrado y añadir agregación fog sin romper el flujo bidireccional Edge--Fog--Cloud.

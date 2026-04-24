@@ -1,7 +1,7 @@
 \chapter{Metodología}
 \label{chap:meth}
 
-La presente investigación sigue un enfoque experimental y cuantitativo, estructurado en cinco fases que se corresponden con los objetivos específicos: (i) construcción del pipeline de datos, (ii) diseño e implementación de la arquitectura jerárquica de aprendizaje federado, (iii) integración de cifrado ligero ASCON-128, (iv) entrenamiento y comparación de modelos clásicos de ML como línea base, y (v) evaluación integral del sistema en hardware real. 
+La presente investigación sigue un enfoque experimental y cuantitativo, estructurado en seis fases: (i) construcción del pipeline de datos, (ii) entrenamiento y comparación offline de modelos livianos, (iii) implementación de la arquitectura jerárquica de aprendizaje federado, (iv) integración de cifrado ligero ASCON-128, (v) construcción de una línea base sin cifrado y (vi) evaluación de variantes con MLP/RN, CNN-1D y estrategia FOG sobre hardware real. 
 % ====================================================================
 \section{Arquitectura del Sistema}
 \label{sec:arquitectura}
@@ -10,34 +10,43 @@ El sistema propuesto se organiza en tres capas jerárquicas que reflejan la topo
 
 \subsection{Capa Edge: Nodos ESP32-S3}
 
-Los nodos de borde se implementan sobre microcontroladores \textbf{ESP32-S3} con 512\,KB de SRAM y conectividad Wi-Fi nativa. Cada nodo cumple tres funciones:
+Los nodos de borde se implementan sobre microcontroladores \textbf{ESP32-S3} con conectividad Wi-Fi nativa. Cada nodo cumple tres funciones:
 \begin{enumerate}
     \item \textbf{Generación y captura de tráfico:} simula flujos de red MQTT con patrones estadísticos calibrados a partir de los datasets reales (Sección~\ref{sec:dataset}).
     \item \textbf{Extracción de características:} computa en tiempo real un vector de 13 features por flujo (Tabla~\ref{tab:features}).
-    \item \textbf{Inferencia local (TinyML):} ejecuta un modelo MLP de 4 capas directamente en la SRAM del microcontrolador, clasificando cada flujo en tres categorías: \texttt{normal}, \texttt{mqtt\_bruteforce} y \texttt{scan\_A}.
+    \item \textbf{Inferencia local (TinyML):} ejecuta un modelo compacto directamente en el microcontrolador, clasificando cada flujo en tres categorías: \texttt{normal}, \texttt{mqtt\_bruteforce} y \texttt{scan\_A}.
 \end{enumerate}
 
-Se despliegan dos nodos diferenciados: un nodo \emph{normal} que genera exclusivamente tráfico benigno, y un nodo \emph{simulado} que genera una mezcla de 40\% normal, 30\% bruteforce y 30\% scan\_A, reproduciendo las distribuciones estadísticas reales de los datasets.
+Se despliegan dos nodos diferenciados: un nodo \emph{normal} que genera exclusivamente tráfico benigno, y un nodo \emph{simulado} que genera una mezcla de 40\% normal, 30\% bruteforce y 30\% scan\_A, reproduciendo las distribuciones estadísticas reales de los datasets. En la rama RN se usa un MLP; en la rama CNN se usa una CNN-1D con capas convolucionales fijas y capas densas federadas.
 
 \subsection{Capa Fog: Gateway Raspberry Pi 4}
 
-La Raspberry Pi 4 (4\,GB RAM, ARM Cortex-A72 a 1.5\,GHz) actúa como \emph{Edge Gateway} y ejecuta el script \texttt{gateway\_hfl.py}. Sus responsabilidades incluyen:
+La Raspberry Pi 4 actúa como \emph{gateway} Fog y ejecuta \texttt{gateway\_hfl.py} o \texttt{gateway\_hfl\_fog.py}, según el escenario experimental. Sus responsabilidades incluyen:
 \begin{itemize}
     \item Actuar como \textbf{broker MQTT} (Mosquitto) para recibir las features de los ESP32.
     \item Mantener un \textbf{buffer de entrenamiento} de $N_s = 40$ muestras etiquetadas mediante una función heurística basada en las distribuciones reales del dataset.
     \item \textbf{Entrenar localmente} un modelo Keras/TensorFlow idéntico al del ESP32 (5 épocas, Adam con $\eta=0.005$, batch=8).
-    \item \textbf{Transmitir los pesos} de las dos últimas capas ($W_3, b_3, W_4, b_4$) al servidor central vía HTTP.
+    \item \textbf{Transmitir los pesos} de las capas federadas al servidor central vía HTTP.
     \item \textbf{Distribuir el modelo global} recibido del servidor a los ESP32 vía MQTT.
+    \item En modo FOG, \textbf{agregar pesos entre gateways Raspberry Pi} antes de enviar una actualización preagregada al PC.
 \end{itemize}
 
 \subsection{Capa Cloud: Servidor PC}
 
-Un PC convencional ejecuta \texttt{server\_hfl.py} (FastAPI + Uvicorn) y coordina el aprendizaje federado global:
+Un PC convencional ejecuta \texttt{server\_hfl.py} o \texttt{server\_hfl\_fog.py} (FastAPI + Uvicorn) y coordina el aprendizaje federado global:
 \begin{itemize}
     \item Recibe los pesos locales de $K$ gateways (en esta implementación, $K=2$).
     \item Aplica el algoritmo \textbf{FedAvg} (Sección~\ref{sec:fedavg}) ponderado por número de muestras.
     \item Distribuye el modelo global actualizado a todos los gateways.
     \item Proporciona un \textbf{dashboard analítico} en tiempo real con gráficas de accuracy y loss por ronda.
+\end{itemize}
+
+\subsection{Modos de operación}
+
+La versión \texttt{hfl\_v7} fue implementada en dos modos:
+\begin{itemize}
+    \item \textbf{Modo estándar:} cada Raspberry Pi actúa como gateway independiente. El servidor PC espera actualizaciones de $K=2$ gateways y aplica FedAvg global.
+    \item \textbf{Modo FOG:} una Raspberry Pi líder recibe pesos de una Raspberry Pi par mediante MQTT, calcula FedAvg local de la capa fog y envía al PC una actualización preagregada. El modelo global retorna al líder y se redistribuye a los peers y a los ESP32.
 \end{itemize}
 
 % ====================================================================
@@ -128,16 +137,40 @@ Con 1\,139 parámetros en punto flotante de 32 bits, el modelo completo ocupa $\
 
 En el esquema de aprendizaje federado, solo las \textbf{dos últimas capas} ($W_3, b_3, W_4, b_4$, 163 parámetros) son intercambiadas entre nodos, reduciendo el costo de comunicación a $\approx 652$\,bytes por actualización (sin serialización JSON).
 
+\section{Modelos livianos evaluados}
+\label{sec:modelos_livianos}
+
+Antes del despliegue federado se ejecutó un notebook general de entrenamiento con cuatro familias de modelos sobre las mismas 13 características y las mismas tres clases. El objetivo fue seleccionar una arquitectura viable para ESP32-S3 y, al mismo tiempo, documentar alternativas para comparación experimental:
+
+\begin{table}[H]
+\centering
+\caption{Modelos livianos entrenados y artefactos exportados.}
+\label{tab:modelos_livianos}
+\small
+\begin{tabular}{l l l}
+\toprule
+\textbf{Modelo} & \textbf{Arquitectura} & \textbf{Artefactos exportados} \\
+\midrule
+MLP/RN & $13 \to 32 \to 16 \to 8 \to 3$ & \texttt{model\_weights.h}, \texttt{ids\_3class.keras}, scaler \\
+CNN-1D & Conv1D(32) $\to$ Conv1D(16) $\to$ GAP $\to$ Dense8 $\to$ Dense3 & Pesos Conv fusionados + capas densas federadas \\
+Residual-MLP & MLP compacto con conexión residual & Pesos, scaler y modelo Keras \\
+Tiny Transformer & Auto-atención tabular liviana & Pesos y modelo Keras para análisis offline \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El despliegue principal selecciona el MLP/RN porque ofrece el mejor balance entre precisión offline, tamaño y simplicidad de implementación en C++ sobre ESP32-S3. La variante CNN-1D se implementa como rama experimental: las capas convolucionales permanecen fijas en el edge y solo se federan las capas densas \texttt{dense\_1} y \texttt{dense\_out}, equivalentes funcionalmente a las capas federadas del MLP.
+
 % ====================================================================
 \section{Protocolo de Aprendizaje Federado Jerárquico}
 \label{sec:fedavg}
 
-Se implementa un esquema de aprendizaje federado jerárquico (HFL) con tres niveles de agregación:
+Se implementa un esquema de aprendizaje federado jerárquico (HFL) con flujo bidireccional:
 
 \begin{enumerate}
     \item \textbf{Nivel Edge (ESP32 $\to$ RPi):} Los nodos ESP32 envían vectores de features al gateway cada 5 segundos vía MQTT (\texttt{fl/features}). El gateway acumula $N_s = 40$ muestras etiquetadas heurísticamente.
 
-    \item \textbf{Nivel Fog (RPi $\to$ PC):} Tras llenar el buffer, el gateway entrena localmente durante $E = 5$ épocas y envía los pesos $\{W_3, b_3, W_4, b_4\}$ junto con la accuracy local y el número de muestras al servidor central vía HTTP POST.
+    \item \textbf{Nivel Fog (RPi $\to$ PC o RPi $\to$ RPi líder):} Tras llenar el buffer, el gateway entrena localmente durante $E = 5$ épocas y envía las capas federadas junto con la accuracy local y el número de muestras.
 
     \item \textbf{Nivel Cloud (Agregación FedAvg):} El servidor espera recibir actualizaciones de $K = 2$ gateways y aplica FedAvg ponderado por número de muestras:
 \end{enumerate}
@@ -149,11 +182,13 @@ W_{\text{global}}^{(t+1)} = \frac{\sum_{k=1}^{K} n_k \cdot W_k^{(t)}}{\sum_{k=1}
 
 donde $n_k$ es el número de muestras usadas para el entrenamiento local del gateway $k$ y $W_k^{(t)}$ sus pesos locales en la ronda $t$.
 
-El modelo global resultante es distribuido de vuelta a los gateways (HTTP POST a \texttt{/deploy-model}), quienes a su vez lo publican a los ESP32 por MQTT (\texttt{fl/global\_model}). De esta forma, el flujo bidireccional completo es:
+El modelo global resultante es distribuido de vuelta a los gateways (HTTP POST a \texttt{/deploy-model}), quienes a su vez lo publican a los ESP32 por MQTT (\texttt{fl/global\_model}). En la rama sin ASCON se usan topics y endpoints con sufijo \texttt{\_plain}, por ejemplo \texttt{fl/features\_plain}, \texttt{fl/global\_model\_plain}, \texttt{/aggregate-from-gateway-plain} y \texttt{/deploy-model-plain}. De esta forma, el flujo bidireccional completo es:
 
 \begin{center}
 ESP32 $\xrightarrow{\text{features (MQTT)}}$ RPi $\xrightarrow{\text{pesos (HTTP)}}$ PC $\xrightarrow{\text{modelo global (HTTP)}}$ RPi $\xrightarrow{\text{modelo global (MQTT)}}$ ESP32
 \end{center}
+
+En modo FOG, el flujo agrega dos canales adicionales: \texttt{fog/weights} para que los peers envíen pesos al líder y \texttt{fog/global\_model} para que el líder redistribuya el modelo global a los peers.
 
 El etiquetado en el gateway se realiza mediante una \textbf{función heurística} calibrada con las distribuciones estadísticas reales de los datasets:
 
@@ -216,7 +251,28 @@ Para cuantificar el overhead de ASCON, se instrumentan todas las operaciones de 
     \item Ronda de FL asociada.
 \end{itemize}
 
-Adicionalmente, se mantiene una \textbf{rama sin cifrado} (\texttt{hfl\_v7-no-ascon}) del repositorio con idéntica funcionalidad pero sin ASCON, permitiendo la comparación directa de tiempos de comunicación como línea base.
+Adicionalmente, se mantiene una \textbf{rama sin cifrado} (\texttt{hfl\_v7-no-ascon}) del repositorio con idéntica funcionalidad pero sin ASCON, permitiendo la comparación directa de tiempos de comunicación como línea base. En esta rama los mensajes se serializan como JSON plano y se registran mediante \texttt{plain\_metrics.py}.
+
+\section{Variantes implementadas en \texttt{hfl\_v7}}
+\label{sec:variantes}
+
+\begin{table}[H]
+\centering
+\caption{Variantes de arquitectura evaluadas.}
+\label{tab:variantes_hfl}
+\small
+\begin{tabular}{l l l l}
+\toprule
+\textbf{Carpeta} & \textbf{Modelo} & \textbf{Seguridad} & \textbf{Topología} \\
+\midrule
+\texttt{hfl\_v7-RN} & MLP/RN & ASCON-128 & Estándar y FOG \\
+\texttt{hfl\_v7-no-ascon} & MLP/RN & JSON plano & Estándar y FOG \\
+\texttt{hfl\_v7-CNN} & CNN-1D & ASCON-128 & Estándar y FOG \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Estas variantes permiten aislar tres efectos: el impacto del cifrado, el impacto de cambiar el modelo y el impacto de introducir una agregación fog intermedia.
 
 % ====================================================================
 \section{Modelos Clásicos de ML como Línea Base}
@@ -245,7 +301,7 @@ Todos los modelos se evalúan con validación cruzada estratificada ($k=5$) usan
 \section{Protocolo Experimental}
 \label{sec:protocolo}
 
-La evaluación se organiza en dos escenarios experimentales:
+La evaluación se organiza en cinco escenarios experimentales:
 
 \subsection{Escenario 1: Sistema HFL Completo con ASCON}
 
@@ -264,7 +320,15 @@ Se ejecutan $\geq 50$ rondas de aprendizaje federado, registrando accuracy globa
 
 Idéntico al Escenario 1 pero con ASCON deshabilitado, utilizando la rama \texttt{hfl\_v7-no-ascon}. La comunicación se realiza en JSON plano. Se miden los mismos indicadores para calcular el overhead atribuible exclusivamente al cifrado.
 
-\subsection{Escenario 3: Modelos Clásicos Centralizados}
+\subsection{Escenario 3: Sistema HFL con CNN-1D}
+
+Se ejecuta la misma arquitectura HFL, pero sustituyendo el MLP por una CNN-1D. En este caso, las capas Conv1D y BatchNorm fusionadas permanecen fijas en el ESP32, mientras que las capas densas finales se actualizan mediante FL.
+
+\subsection{Escenario 4: Estrategia FOG}
+
+Se despliega \texttt{gateway\_hfl\_fog.py} con roles \texttt{leader} y \texttt{peer}. El líder agrega pesos locales y pesos de peers mediante FedAvg fog, envía una actualización preagregada al PC y redistribuye el modelo global hacia peers y ESP32.
+
+\subsection{Escenario 5: Modelos Clásicos Centralizados}
 
 Los modelos clásicos (Sección~\ref{sec:ml_classic}) se entrenan de forma centralizada en el PC usando la totalidad del dataset, con partición 80/20 estratificada. Esto establece un techo de rendimiento (\emph{upper bound}) contra el cual comparar la precisión del sistema federado.
 
@@ -275,4 +339,5 @@ Los modelos clásicos (Sección~\ref{sec:ml_classic}) se entrenan de forma centr
     \item \textbf{Overhead criptográfico:} Tiempo de cifrado/descifrado (ms), incremento de tamaño (bytes, \%), overhead como porcentaje del ciclo total de FL.
     \item \textbf{Eficiencia federada:} Número de rondas hasta convergencia, accuracy por ronda, costo de comunicación por ronda.
     \item \textbf{Viabilidad edge:} Huella de memoria del modelo (KB), tiempo de inferencia en ESP32 ($\mu$s), consumo de SRAM.
+    \item \textbf{Efecto de variantes:} comparación entre MLP/RN, CNN-1D, baseline sin ASCON y topología FOG.
 \end{itemize}

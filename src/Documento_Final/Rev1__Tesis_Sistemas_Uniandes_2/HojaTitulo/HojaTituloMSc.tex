@@ -6,7 +6,7 @@
 \epsfig{file=HojaTitulo/LogoUniandes,scale=0.45}%
 \end{figure}
 \thispagestyle{empty} \vspace*{1.0cm} \textbf{\Large
-Sistema de detección y respuesta temprana para redes IIoT en el borde (Edge) usando modelos livianos (TinyML), aprendizaje federado y cifrado ligero, desplegado en Raspberry Pi 5 }\\[4.0cm]
+Sistema de detección de intrusiones para redes IoT mediante TinyML, aprendizaje federado jerárquico y cifrado ligero ASCON-128 en una arquitectura Edge--Fog--Cloud}\\[4.0cm]
 \Large\textbf{Santiago Alejandro Jaimes Puerto}\\
 \Large\textbf{Nicolas Casas Ibarra}\\[5.0cm]
 \small Universidad de Los Andes\\
@@ -19,7 +19,7 @@ Bogotá, Colombia\\
 
 \newpage
 \begin{center}
-\thispagestyle{empty} \vspace*{0cm} \textbf{\Large Sistema de detección y respuesta temprana para redes IIoT en el borde (Edge) usando modelos livianos (TinyML), aprendizaje federado y cifrado ligero, desplegado en Raspberry Pi 5. }\\[3.0cm]
+\thispagestyle{empty} \vspace*{0cm} \textbf{\Large Sistema de detección de intrusiones para redes IoT mediante TinyML, aprendizaje federado jerárquico y cifrado ligero ASCON-128 en una arquitectura Edge--Fog--Cloud.}\\[3.0cm]
 \Large\textbf{Santiago Alejandro Jaimes Puerto}\\
 \Large\textbf{Nicolas Casas Ibarra}\\[3.0cm]
 \small University de Los Andes\\
@@ -67,13 +67,13 @@ Bogotá, Colombia\\
 
 \textbf{\LARGE Resumen}\\
 
-Este documento presenta el diseño, implementación y evaluación de un sistema de detección de intrusiones (IDS) para redes IoT/IIoT desplegado en una arquitectura jerárquica Edge--Fog--Cloud. El sistema combina modelos livianos de \textit{machine learning} (TinyML) ejecutados en microcontroladores ESP32-S3, aprendizaje federado jerárquico (HFL) coordinado desde una Raspberry Pi 4 y un servidor central, y cifrado ligero \textbf{ASCON-128} para proteger todas las comunicaciones del ciclo de aprendizaje. La investigación aborda tres preguntas clave: la viabilidad de TinyML para detección de ataques en dispositivos restringidos, el impacto del aprendizaje federado en la privacidad y precisión del IDS, y el overhead del cifrado ASCON en la comunicación de modelos federados.\\
+Este documento presenta el diseño, implementación y evaluación de un sistema de detección de intrusiones (IDS) para redes IoT/MQTT desplegado en una arquitectura jerárquica Edge--Fog--Cloud. El sistema combina modelos livianos de \textit{machine learning} ejecutados en microcontroladores ESP32-S3, aprendizaje federado jerárquico (HFL) coordinado desde gateways Raspberry Pi 4 y un servidor PC, y cifrado ligero \textbf{ASCON-128} para proteger el ciclo de aprendizaje. La investigación evalúa cuatro dimensiones: viabilidad de TinyML en el borde, reducción de transferencia de datos mediante HFL, overhead criptográfico de ASCON y comparación entre variantes de arquitectura y modelo.\\
 
-Se diseñó un perceptrón multicapa (MLP) compacto de 1\,139 parámetros ($\approx$4.5\,KB) con arquitectura $13 \to 32 \to 16 \to 8 \to 3$, capaz de clasificar flujos de red en tres categorías (\texttt{normal}, \texttt{mqtt\_bruteforce}, \texttt{scan\_A}) utilizando 13 características extraídas de flujos de red. El modelo fue entrenado de forma distribuida mediante FedAvg sobre un dataset de 256\,276 flujos, alcanzando $\sim$90\% de accuracy tras 20--30 rondas federadas compartiendo únicamente 163 parámetros por ronda.\\
+Se diseñó un perceptrón multicapa (MLP) compacto de 1\,139 parámetros ($\approx$4.5\,KB) con arquitectura $13 \to 32 \to 16 \to 8 \to 3$, capaz de clasificar flujos de red en tres categorías (\texttt{normal}, \texttt{mqtt\_bruteforce}, \texttt{scan\_A}) utilizando 13 características extraídas de flujos. El sistema federado comparte únicamente las dos últimas capas del modelo (163 parámetros) y fue evaluado en las ramas \texttt{hfl\_v7-RN}, \texttt{hfl\_v7-no-ascon} y \texttt{hfl\_v7-CNN}, incluyendo modo estándar y modo FOG.\\
 
-Como línea base, se entrenaron y compararon cuatro modelos clásicos de ML (Decision Tree, Random Forest, Logistic Regression, SVM) de forma centralizada, alcanzando hasta 99.94\% de accuracy (Random Forest), pero con requerimientos de memoria incompatibles con microcontroladores. La cuantificación del overhead de ASCON-128 sobre 182 operaciones criptográficas reveló un costo temporal despreciable ($\sim$14\,ms por operación, $<$0.1\% del ciclo federado) y un overhead de tamaño moderado ($\sim$36\% por mensaje), sin impacto observable en la convergencia del modelo.\\
+Como línea base, se entrenaron modelos clásicos centralizados, alcanzando hasta 99.94\% de accuracy con Random Forest, aunque con requerimientos de memoria incompatibles con microcontroladores. El notebook general de entrenamiento comparó además MLP/RN, CNN-1D, Residual-MLP y Tiny Transformer; el MLP/RN obtuvo el mejor balance entre precisión offline ($\approx$90.6\%), tamaño e implementación en ESP32. La cuantificación del overhead de ASCON-128 mostró costo temporal bajo frente a la duración de las rondas federadas y un incremento moderado del tamaño de los mensajes, sin degradación observable de convergencia.\\
 
 Los resultados validan que la combinación de TinyML, aprendizaje federado y cifrado ligero constituye una solución viable y segura para detección de intrusiones en el borde de redes IoT, ofreciendo un compromiso efectivo entre precisión, privacidad, seguridad y eficiencia computacional.\\
 
 
-{\small \textbf{Keywords}: Detección de Intrusiones, IoT, TinyML, Aprendizaje Federado, ASCON-128, Criptografía Ligera, Edge Computing, ESP32, Raspberry Pi, MLP, Seguridad de Redes.}
+{\small \textbf{Keywords}: Detección de Intrusiones, IoT, TinyML, Aprendizaje Federado Jerárquico, ASCON-128, Criptografía Ligera, Edge--Fog--Cloud, ESP32-S3, Raspberry Pi, CNN-1D, MLP, Seguridad de Redes.}

@@ -3,13 +3,13 @@
 
 \section{Conclusiones}
 
-Esta investigación diseñó, implementó y evaluó un prototipo funcional de Sistema de Detección de Intrusiones (IDS) para redes IoT, desplegado en una arquitectura jerárquica Edge--Fog--Cloud compuesta por microcontroladores ESP32-S3, una Raspberry Pi 4 y un servidor PC. El sistema integra aprendizaje federado jerárquico (HFL) con cifrado ligero ASCON-128 y modelos TinyML, validando su viabilidad sobre hardware real. A continuación se detallan las conclusiones principales, organizadas según los objetivos específicos planteados.
+Esta investigación diseñó, implementó y evaluó un prototipo funcional de Sistema de Detección de Intrusiones (IDS) para redes IoT/MQTT, desplegado en una arquitectura jerárquica Edge--Fog--Cloud compuesta por microcontroladores ESP32-S3, gateways Raspberry Pi 4 y un servidor PC. El sistema integra aprendizaje federado jerárquico (HFL), cifrado ligero ASCON-128 y modelos TinyML. Además, se compararon variantes con MLP/RN, CNN-1D, baseline sin ASCON y estrategia FOG. A continuación se detallan las conclusiones principales.
 
 \subsection{Sobre la viabilidad de TinyML para IDS en IoT}
 
-Se demostró que un modelo MLP compacto de 1\,139 parámetros ($\approx$4.5\,KB) es capaz de ejecutarse en la SRAM de un ESP32-S3 y clasificar tráfico de red IoT en tres categorías (\texttt{normal}, \texttt{mqtt\_bruteforce}, \texttt{scan\_A}) con una accuracy de $\sim$90\% tras el entrenamiento federado. Esta cifra sitúa al modelo a $\sim$10 puntos del techo teórico establecido por los modelos centralizados (Decision Tree: 99.87\%, Random Forest: 99.94\%), pero dentro de un rango operativo viable para sistemas de alerta temprana.
+Se demostró que un modelo MLP compacto de 1\,139 parámetros ($\approx$4.5\,KB) es capaz de ejecutarse en el ESP32-S3 y clasificar tráfico de red IoT en tres categorías (\texttt{normal}, \texttt{mqtt\_bruteforce}, \texttt{scan\_A}) con accuracy operativa en el rango de 90--95\% tras el entrenamiento federado. Esta cifra se sitúa por debajo del techo centralizado establecido por Decision Tree (99.87\%) y Random Forest (99.94\%), pero dentro de un rango útil para sistemas de alerta temprana.
 
-El análisis comparativo con modelos clásicos reveló que los algoritmos más precisos (Random Forest, SVM-RBF) requieren del orden de megabytes de memoria y son incompatibles con microcontroladores. El MLP propuesto ofrece el mejor compromiso entre precisión, tamaño y viabilidad de despliegue, validando que TinyML es una alternativa factible para detección de intrusiones en el borde.
+El análisis comparativo con modelos clásicos reveló que los algoritmos más precisos (Random Forest, SVM-RBF) requieren del orden de megabytes de memoria y son incompatibles con microcontroladores. El notebook general mostró que MLP/RN, CNN-1D y Residual-MLP tienen desempeños offline similares alrededor de 90.5\%, pero el MLP/RN ofrece el mejor compromiso entre precisión, tamaño y simplicidad de despliegue.
 
 \subsection{Sobre el aprendizaje federado y la privacidad}
 
@@ -17,7 +17,7 @@ El esquema de aprendizaje federado jerárquico (HFL) logró entrenar el modelo d
 
 La penalización en accuracy del enfoque federado respecto al centralizado fue de $\sim$7 puntos porcentuales ($\sim$90\% vs.\ $\sim$97\% para el mismo modelo MLP). Esta brecha es consistente con los resultados reportados en la literatura para FL con datos non-IID \cite{Imteaj2022_FL_ResourceConstrainedSurvey, Albanbay2025} y se atribuye a la heterogeneidad de distribución entre nodos (el nodo normal genera solo tráfico benigno) y al etiquetado heurístico en el gateway.
 
-Se concluye que el aprendizaje federado es un mecanismo efectivo para actualizar modelos de IDS IoT preservando la privacidad de los datos de red, con una penalización de accuracy moderada y aceptable para entornos donde la confidencialidad de los datos es prioritaria.
+Se concluye que el aprendizaje federado es un mecanismo efectivo para actualizar modelos de IDS IoT preservando la privacidad de los datos de red, con una penalización de accuracy moderada y aceptable para entornos donde la confidencialidad de los datos es prioritaria. La variante FOG confirmó que el sistema puede introducir una capa de agregación intermedia entre gateways sin cambiar el contrato principal del ciclo federado.
 
 \subsection{Sobre el overhead del cifrado ASCON-128}
 
@@ -26,7 +26,7 @@ La cuantificación exhaustiva del overhead de ASCON-128 sobre 182 operaciones cr
 \begin{itemize}
     \item El \textbf{overhead temporal} es de $\sim$14\,ms por operación ($\sim$42\,ms por ronda), lo que representa apenas el $\sim$0.06\% del tiempo total de una ronda federada ($\sim$73\,s). Este costo es prácticamente imperceptible en la operación del sistema.
     \item El \textbf{overhead de comunicación} es de $\sim$36\% por mensaje ($\sim$1.3\,KB adicionales sobre un payload de $\sim$3.6\,KB), atribuible al tag de autenticación de 16 bytes, el nonce de 16 bytes, la codificación Base64 ($\times 4/3$) y la estructura del envelope JSON. En términos absolutos, esto representa $\sim$3.9\,KB adicionales por ronda.
-    \item No se observó \textbf{degradación en la convergencia} ni en la accuracy del modelo federado al habilitar ASCON; las métricas son indistinguibles entre las ramas con y sin cifrado.
+    \item No se observó \textbf{degradación relevante en la convergencia} ni en la accuracy del modelo federado al habilitar ASCON; la comparación contra \texttt{hfl\_v7-no-ascon} muestra que el cifrado no invalida el ciclo HFL.
 \end{itemize}
 
 Estos resultados validan que ASCON-128 es un mecanismo criptográfico idóneo para proteger las comunicaciones de aprendizaje federado en dispositivos IoT restringidos, con un costo operacional despreciable que no justifica prescindir de la protección.
@@ -37,7 +37,8 @@ A nivel sistémico, la arquitectura Edge--Fog--Cloud propuesta demostró ser fun
 \begin{itemize}
     \item La \textbf{separación de capas} permite que cada componente opere dentro de sus restricciones: los ESP32 manejan la inferencia local ($< 0.1$\,ms, $\sim$4.5\,KB), la Raspberry Pi gestiona el entrenamiento local y la coordinación MQTT, y el PC agrega y distribuye el modelo global.
     \item La \textbf{comunicación bidireccional completa} (ESP32 $\leftrightarrow$ RPi $\leftrightarrow$ PC) fue validada con cifrado ASCON end-to-end en los cuatro canales, sin puntos ciegos de seguridad.
-    \item El \textbf{ciclo completo} de una ronda federada (recolección de features, entrenamiento local, envío de pesos, agregación FedAvg, distribución del modelo global) se completa en $\sim$70--80\,s, lo que permite $\sim$50 rondas por hora en condiciones operativas.
+    \item El \textbf{ciclo completo} de una ronda federada (recolección de features, entrenamiento local, envío de pesos, agregación FedAvg, distribución del modelo global) se completa típicamente en el orden de $\sim$50--65\,s según la variante y la carga del experimento.
+    \item La \textbf{modularidad experimental} permitió probar tres ejes de cambio: modelo (MLP/RN vs.\ CNN-1D), seguridad (ASCON vs.\ JSON plano) y topología (estándar vs.\ FOG).
 \end{itemize}
 
 % ====================================================================
