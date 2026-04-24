@@ -1,0 +1,8 @@
+log_event,status,source,fields,notes
+transport.crypto.gateway,reconstructed_from_csv,ascon_metrics_CNN_FOG_gateway_*,"timestamp_dt, attempt_id, gateway_id, channel, operation, elapsed_ms, pt_bytes, enc_bytes, overhead_bytes, client_id, sample_label_name",Incluye trafico ESP32<->RPi y trafico Fog RPi_peer<->RPi_leader sin tocar el CSV original.
+transport.crypto.server,reconstructed_from_csv,ascon_metrics_server_fog_*,"timestamp_dt, attempt_id, channel, operation, elapsed_ms, pt_bytes, enc_bytes, overhead_bytes, round_ref",Representa el intercambio cifrado entre leader Fog y PC. No contiene gateway_id explicito.
+model.local_train,reconstructed_from_csv,model_metrics_gateway_*,"timestamp_dt, attempt_id, gateway_id, fl_round, round_ref, num_samples, accuracy, loss, buffer_target",Representa el fin del entrenamiento local por gateway.
+model.fog_fedavg,reconstructed_from_csv,model_metrics_gateway_*,"timestamp_dt, attempt_id, gateway_id, fl_round, round_ref, num_samples, accuracy, loss, fog_role, peer_count",Representa el pre-FedAvg ejecutado por el leader Fog antes de enviar al servidor.
+model.global_round,reconstructed_from_csv,global_weights_history_*,"timestamp_dt, attempt_id, round_ref, accuracy, loss, w3_mag, w4_normal, w4_brute, w4_scan, fog_samples",Evento canonico de cierre de ronda global agregada desde Fog.
+fedavg.compute,live_stdout_only,server_hfl_fog.py,"trace_id, ts_start, ts_end, round_ref, fog_clusters_received, fedavg_ms",No reconstruible con CSV actuales; recomendado solo a consola JSON del servidor Fog.
+model.deploy.gateway,live_stdout_only,gateway_hfl_fog.py,"trace_id, ts, gateway_id, round_ref, payload_bytes, apply_ms, status",Hoy solo puede estimarse desde los eventos de cifrado del leader Fog y del servidor.

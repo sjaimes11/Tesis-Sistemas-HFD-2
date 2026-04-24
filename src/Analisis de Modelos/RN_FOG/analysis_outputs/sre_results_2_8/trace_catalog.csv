@@ -1,0 +1,5 @@
+trace_name,status,trace_id_pattern,spans,notes
+round_trace,reconstructed_from_csv,attempt:{attempt_id}:round:{round_ref},"gateway_A.local_train, gateway_B.local_train, leader.fog_fedavg, server.decrypt_batch, server.encrypt_global, global_round_commit",Traza exacta a nivel de ronda Fog basada en CSV ya capturados.
+gateway_round_trace,reconstructed_from_csv,attempt:{attempt_id}:round:{round_ref}:gateway:{gateway_id},"esp32_to_rpi_decrypt_batch, local_train_done, rpi_peer_to_leader_exchange","Traza util para diagnosticar carga, skew y trafico intra-Fog por gateway."
+sample_trace,live_stdout_only,attempt:{attempt_id}:round:{round_ref}:sample:{client_id}:{sample_seq},"esp32.publish, gateway.decrypt, gateway.buffer, gateway.train_enqueue",No reconstruible con precision usando solo CSV actuales.
+fedavg_trace,live_stdout_only,attempt:{attempt_id}:round:{round_ref}:fedavg,"leader.wait_peer, leader.fog_fedavg, server.wait_fog_clusters, server.fedavg_compute, server.encrypt_global, server.deploy",Requiere logging efimero en tiempo real si se quiere exactitud completa de la jerarquia Fog.
