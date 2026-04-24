@@ -1,0 +1,18 @@
+metric_name,exactness,source,aggregation,purpose
+transport.edge_rpi.decrypt.p95_ms,exact_from_csv,ascon_metrics_CNN_FOG_gateway_*,p95(elapsed_ms) WHERE channel='ESP32->RPi' AND operation='decrypt',SLI de latencia de ingreso al gateway por muestra.
+transport.rpi_pc.decrypt.p95_ms,exact_from_csv,ascon_metrics_server_*,p95(elapsed_ms) WHERE channel='RPi->PC' AND operation='decrypt',SLI de latencia de descifrado en servidor para actualizaciones de gateways.
+transport.pc_rpi.encrypt.p95_ms,exact_from_csv,ascon_metrics_server_*,p95(elapsed_ms) WHERE channel='PC->RPi' AND operation='encrypt',SLI de despliegue del modelo global desde el servidor.
+transport.payload.overhead.avg_bytes,exact_from_csv,"ascon_metrics_CNN_FOG_gateway_*, ascon_metrics_server_fog_*",avg(overhead_bytes),Costo promedio en bytes introducido por el envelope de ASCON.
+transport.payload.expansion.avg_ratio,exact_from_csv,"ascon_metrics_CNN_FOG_gateway_*, ascon_metrics_server_fog_*",avg(enc_bytes / pt_bytes),Factor de expansion promedio del payload transmitido.
+training.local.accuracy.avg,exact_from_csv,model_metrics_gateway_*,avg(accuracy) WHERE stage='local_train',Calidad media del entrenamiento local por gateway.
+training.local.loss.avg,exact_from_csv,model_metrics_gateway_*,avg(loss) WHERE stage='local_train',Estabilidad promedio del entrenamiento local.
+fog.preaggregation.accuracy.avg,exact_from_csv,model_metrics_gateway_*,avg(accuracy) WHERE stage='fog_fedavg',Calidad media del pre-FedAvg realizado por el leader Fog.
+fog.preaggregation.loss.avg,exact_from_csv,model_metrics_gateway_*,avg(loss) WHERE stage='fog_fedavg',Estabilidad media del pre-FedAvg realizado por el leader Fog.
+training.gateway.accuracy.skew.avg,exact_from_csv,model_metrics_gateway_A/B,avg(abs(acc_gateway_A - acc_gateway_B)) por round,Desalineacion entre gateways por ronda.
+training.gateway.loss.skew.avg,exact_from_csv,model_metrics_gateway_A/B,avg(abs(loss_gateway_A - loss_gateway_B)) por round,Desalineacion de optimizacion entre gateways.
+round.global.accuracy.last,exact_from_csv,global_weights_history_*,last(accuracy) por intento,Resultado final del modelo global por corrida.
+round.global.loss.last,exact_from_csv,global_weights_history_*,last(loss) por intento,Punto final de convergencia del modelo global.
+round.duration.avg_sec,exact_from_csv,global_weights_history_*,avg(diff(time)) por intento,Duracion promedio de ronda federada.
+round.weight_drift.avg,exact_from_csv,global_weights_history_*,avg(abs(delta(w3_mag))+abs(delta(w4_*))) por round,Movimiento medio de los pesos globales por ronda.
+reliability.round_completion.rate,exact_from_csv_with_assumption,global_weights_history_*,observed_rounds / expected_rounds_per_attempt,Disponibilidad experimental por corrida.
+reliability.gateway_participation.rate,exact_from_csv,model_metrics_gateway_*,local_train_rounds / global_rounds_observed,Tasa de participacion efectiva por gateway.
