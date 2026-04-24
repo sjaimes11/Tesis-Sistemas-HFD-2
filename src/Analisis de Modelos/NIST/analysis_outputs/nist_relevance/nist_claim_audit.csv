@@ -1,0 +1,6 @@
+claim,status,evidence,source
+ASCON was selected by NIST for lightweight cryptography standardization.,supported_by_nist,NIST selected the Ascon family in 2023 and later finalized an Ascon-based lightweight cryptography standard.,NIST LWC / SP 800-232
+SP 800-22 validates n>=30 FL experiment runs.,needs_correction,"SP 800-22 is a statistical test suite for random and pseudorandom number generators, not a guideline for FL accuracy/loss experiments.",NIST SP 800-22
+At least 1000 ASCON operations were observed.,data_supported,See ascon_threshold_summary_by_experiment.csv.,project CSV metrics
+At least 30 independent full experiment executions were captured.,not_supported,"Current datasets have fewer than 30 independent attempts per experiment. Round rows can be analyzed as repeated measures, not independent executions.",project CSV metrics
+Average ASCON overhead stays below 50%.,not_supported_or_partial,Small JSON payloads plus base64 envelope can exceed 50% overhead. See threshold tables.,project CSV metrics

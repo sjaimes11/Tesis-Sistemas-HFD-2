@@ -1,0 +1,4 @@
+experiment,independent_attempts,observed_round_rows,recommended_independent_attempts,passes_30_independent_attempts,round_rows_at_least_30,note
+CNN_FOG_ASCON,7,120,30,False,True,"Round rows are repeated measures, not fully independent experimental executions."
+RN_ASCON,9,190,30,False,True,"Round rows are repeated measures, not fully independent experimental executions."
+RN_NO_ASCON,14,289,30,False,True,"Round rows are repeated measures, not fully independent experimental executions."

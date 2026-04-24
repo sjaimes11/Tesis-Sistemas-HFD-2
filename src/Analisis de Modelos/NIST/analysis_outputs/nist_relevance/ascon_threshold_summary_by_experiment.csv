@@ -1,0 +1,3 @@
+experiment,architecture,attempts,total_ascon_ops,min_ops_per_attempt,attempts_passing_1000_ops,mean_p95_latency_ms,max_p95_latency_ms,mean_overhead_pct,mean_expansion_ratio,passes_total_ops_1000,passes_all_attempts_1000_ops,passes_p95_latency_50ms,passes_avg_overhead_50pct
+CNN_FOG_ASCON,CNN_FOG,7.0,8493.0,40.0,6.0,36.78844285714285,42.108199999999925,84.53195569111267,1.8453195569111267,True,False,True,False
+RN_ASCON,RN,9.0,13154.0,1380.0,9.0,34.36425,34.941250000000004,92.57072786527428,1.925707278652743,True,True,True,False
