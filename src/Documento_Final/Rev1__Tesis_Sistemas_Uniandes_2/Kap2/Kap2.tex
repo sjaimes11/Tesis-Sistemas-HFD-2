@@ -29,17 +29,15 @@ El modo FOG extiende la arquitectura estándar con comunicación entre gateways 
 \section{Estado del Arte}
 \label{sec:antecedentes}
 
-La literatura revisada se agrupa en cuatro líneas. La primera aborda IDS para IoT/IIoT y destaca que los modelos de alta precisión no siempre son desplegables en el borde. Trabajos recientes sobre TinyML e IDS enfatizan que la memoria, la latencia y el costo energético deben reportarse junto con las métricas de clasificación \cite{Tekin2023_OnDeviceEnergy, Alwaisi2024, Amuthadevi2025}.
+La literatura revisada se agrupa en tres líneas. La primera aborda IDS para IoT/IIoT y destaca que los modelos de alta precisión no siempre son desplegables en el borde. Trabajos recientes sobre TinyML e IDS enfatizan que la memoria, la latencia y el costo energético deben reportarse junto con las métricas de clasificación \cite{Tekin2023_OnDeviceEnergy, Alwaisi2024, Amuthadevi2025}.
 
 La segunda línea corresponde al aprendizaje federado aplicado a seguridad IoT. FL permite entrenar modelos sin centralizar datos, pero introduce retos de comunicación, datos \textit{non-IID} y participación parcial. Estudios recientes sobre FL para IDS muestran que la precisión puede degradarse frente al entrenamiento centralizado, pero que la reducción de datos compartidos puede justificar el intercambio en escenarios con restricciones de privacidad \cite{Imteaj2022_FL_ResourceConstrainedSurvey, Albanbay2025, Hajj2023_CrossLayerFL_IDS}.
 
 La tercera línea es criptografía ligera. ASCON y otros esquemas de bajo costo buscan proteger dispositivos restringidos sin introducir overhead prohibitivo. Para un IDS federado, esta línea es especialmente relevante porque las actualizaciones de modelo son parte del activo de seguridad y deben protegerse durante el tránsito \cite{NISTSP8002322025, Gusita2025_LWC_Survey}.
 
-La cuarta línea cubre modelos secuenciales y Transformers para logs. Enfoques como LogBERT muestran que los logs pueden modelarse como secuencias para detectar anomalías \cite{Guo2021LogBERT, LogBERT2021}. En este proyecto se exploraron variantes tipo Tiny Transformer en el notebook de entrenamiento, pero el despliegue final se delimitó a features numéricas de flujo por costo y madurez de implementación. La integración de NLP se mantiene como trabajo futuro.
-
 \section{Síntesis de la Brecha}
 
-Los trabajos existentes suelen cubrir por separado TinyML, FL, cifrado ligero o análisis de logs. La brecha abordada en esta tesis es la integración y medición de un ciclo completo Edge--Fog--Cloud sobre hardware real, con inferencia en ESP32-S3, entrenamiento local en Raspberry Pi, agregación global en PC, protección ASCON-128, línea base sin cifrado, variante CNN y modo FOG. Esta evaluación conjunta permite discutir el sistema como una arquitectura operativa y no solo como un clasificador aislado.
+Los trabajos existentes suelen cubrir por separado TinyML, FL o cifrado ligero. La brecha abordada en esta tesis es la integración y medición de un ciclo completo Edge--Fog--Cloud sobre hardware real, con inferencia en ESP32-S3, entrenamiento local en Raspberry Pi, agregación global en PC, protección ASCON-128, línea base sin cifrado, variante CNN y modo FOG. Esta evaluación conjunta permite discutir el sistema como una arquitectura operativa y no solo como un clasificador aislado.
 
 \begin{longtable}{@{}p{0.2\textwidth} p{0.25\textwidth} p{0.45\textwidth}@{}}
 \caption{Relación entre literatura y decisiones de diseño.}
@@ -55,7 +53,6 @@ Los trabajos existentes suelen cubrir por separado TinyML, FL, cifrado ligero o 
 TinyML/IDS IoT & \cite{Tekin2023_OnDeviceEnergy, Amuthadevi2025, Alwaisi2024} & Selección de modelos compactos y reporte de viabilidad en ESP32-S3. \\
 FL/HFL & \cite{McMahan2017FedAvg, Imteaj2022_FL_ResourceConstrainedSurvey, Albanbay2025} & Diseño de FedAvg jerárquico y discusión de datos \textit{non-IID}. \\
 Criptografía ligera & \cite{NISTSP8002322025, Gusita2025_LWC_Survey} & Integración de ASCON-128 y comparación contra baseline sin cifrado. \\
-Logs/NLP & \cite{Guo2021LogBERT, LogBERT2021, NDSS2022_FedTransLog} & Justificación de exploración futura con logs; no forma parte del despliegue final. \\
 \bottomrule
 \end{longtable}
 

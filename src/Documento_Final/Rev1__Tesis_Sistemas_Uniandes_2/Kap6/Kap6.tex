@@ -52,8 +52,6 @@ A partir de las limitaciones identificadas y las oportunidades emergentes, se pr
 
     \item \textbf{Datos de tráfico real:} Sustituir la simulación de tráfico en los ESP32 por captura y análisis de tráfico MQTT real en un entorno IoT operativo, validando el sistema con distribuciones de tráfico genuinas y eliminando la dependencia de la función heurística de etiquetado.
 
-    \item \textbf{Integración de NLP para análisis de logs:} Desarrollar el componente de NLP planteado en los objetivos originales, utilizando modelos tipo LogBERT \cite{Guo2021LogBERT} o Transformers ligeros para analizar secuencias de eventos derivadas del tráfico. Evaluar su complementariedad con el MLP basado en features numéricas y su viabilidad de ejecución en la Raspberry Pi.
-
     \item \textbf{Evaluación energética y de larga duración:} Medir el consumo energético de los nodos ESP32 durante la inferencia continua y la comunicación cifrada, y ejecutar el sistema durante períodos prolongados (semanas) para evaluar la estabilidad y la deriva del modelo (\emph{concept drift}).
 
     \item \textbf{Escalabilidad multi-gateway:} Extender el despliegue a múltiples Raspberry Pi actuando como gateways independientes con datasets locales distintos, evaluando el impacto de una topología HFL más realista con mayor heterogeneidad.

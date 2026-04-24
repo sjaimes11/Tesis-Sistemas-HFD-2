@@ -119,6 +119,27 @@ Duración por ronda               & $\sim$51--61\,s según variante \\
     \item El \textbf{costo de comunicación} por ronda federada completa (ida + vuelta) es de $\approx 7.2$\,KB en JSON plano y $\approx 9.8$\,KB con cifrado ASCON, lo cual es compatible con redes IoT de bajo ancho de banda.
 \end{enumerate}
 
+\subsection{Evolución temporal de accuracy, loss y pesos}
+\label{subsec:curvas_convergencia}
+
+Las Figuras~\ref{fig:hfl_v7_accuracy_loss_matrix} y~\ref{fig:hfl_v7_weight_magnitude_matrix} comparan las curvas temporales de cuatro variantes con salidas equivalentes en las carpetas de análisis: \texttt{RN}, \texttt{no-ascon}, \texttt{CNN} y \texttt{CNN\_FOG}. La primera matriz muestra la evolución conjunta de \textit{accuracy} y \textit{loss} global a través de las rondas federadas; la segunda resume la magnitud de los pesos agregados, útil para verificar si las actualizaciones se mantienen acotadas o si aparece deriva durante el entrenamiento.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{images/Resultados/hfl_v7_accuracy_loss_matrix.png}
+    \caption{Matriz comparativa 2$\times$2 de accuracy y loss global para variantes HFL v7: RN con ASCON, RN sin ASCON, CNN-1D y CNN-1D con FOG.}
+    \label{fig:hfl_v7_accuracy_loss_matrix}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{images/Resultados/hfl_v7_weight_magnitude_matrix.png}
+    \caption{Matriz comparativa 2$\times$2 de magnitud promedio de pesos globales para variantes HFL v7: RN con ASCON, RN sin ASCON, CNN-1D y CNN-1D con FOG.}
+    \label{fig:hfl_v7_weight_magnitude_matrix}
+\end{figure}
+
+Estas curvas complementan la Tabla~\ref{tab:hfl_convergence}: el sistema no solo reporta métricas finales, sino trayectorias de entrenamiento comparables entre modelos y configuraciones. En general, las variantes muestran incremento de accuracy, reducción de loss y magnitudes de pesos acotadas. Las curvas CNN y CNN\_FOG exhiben una tendencia ascendente más marcada en los pesos de salida, mientras que RN y no-ASCON se mantienen en rangos más estables; esto sugiere que la arquitectura convolucional aprende representaciones con mayor desplazamiento de magnitud, sin observar divergencia en las rondas analizadas.
+
 \subsection{Comparación: Federado vs.\ Centralizado}
 
 La Tabla~\ref{tab:fed_vs_central} compara directamente la precisión del modelo federado con los modelos centralizados, considerando que el modelo federado utiliza un MLP idéntico.

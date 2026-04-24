@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -11,9 +12,11 @@ from pptx.util import Inches, Pt
 
 
 ROOT = Path(__file__).resolve().parent
-OUT = ROOT / "Presentacion_Avances_HFL_v7.pptx"
+OUT = Path(os.environ.get("HFL_PPT_OUT", ROOT / "Presentacion_Avances_HFL_v7.pptx"))
 PREVIEW_DIR = ROOT / "presentation_previews"
 LOGO = ROOT / "HojaTitulo" / "LogoUniandes.png"
+MATRIX_ACCURACY_LOSS = ROOT / "images" / "Resultados" / "hfl_v7_accuracy_loss_matrix.png"
+MATRIX_WEIGHTS = ROOT / "images" / "Resultados" / "hfl_v7_weight_magnitude_matrix.png"
 
 
 COLORS = {
@@ -273,6 +276,9 @@ def build_deck():
     chart.value_axis.maximum_scale = 0.92
     chart.chart_title.has_text_frame = True
     chart.chart_title.text_frame.text = "Desempeño offline"
+    for series, color in zip(chart.series, ["blue", "red"]):
+        series.format.fill.solid()
+        series.format.fill.fore_color.rgb = rgb(COLORS[color])
     add_bullets(slide, [
         "MLP/RN queda como rama principal por balance.",
         "CNN-1D se implementa para comparar arquitectura.",
@@ -362,6 +368,9 @@ def build_deck():
     chart.value_axis.maximum_scale = 1.0
     chart.chart_title.has_text_frame = True
     chart.chart_title.text_frame.text = "Accuracy global final promedio"
+    for point, color in zip(chart.series[0].points, ["blue", "red", "green"]):
+        point.format.fill.solid()
+        point.format.fill.fore_color.rgb = rgb(COLORS[color])
     rows = [
         ["Variante", "Intentos", "Loss", "Ronda"],
         ["RN + ASCON", "9", "0.1415", "61.25 s"],
@@ -372,22 +381,50 @@ def build_deck():
     add_text(slide, "Lectura: ASCON no rompe la convergencia; FOG y CNN funcionan, pero el MLP/RN conserva la ruta más simple para defender.", 7.35, 4.55, 4.55, 0.9, 17, True, "blue")
     add_footer(slide, 9)
 
-    # 10 paper updates
+    # 10 accuracy/loss curves
+    slide = prs.slides.add_slide(blank)
+    slide_background(slide)
+    add_slide_title(slide, "Curvas de accuracy y loss", "Comparación temporal 2x2")
+    add_logo(slide)
+    slide.shapes.add_picture(str(MATRIX_ACCURACY_LOSS), Inches(0.55), Inches(1.28), height=Inches(5.7))
+    add_bullets(slide, [
+        "RN + ASCON y no-ASCON mantienen accuracy alto con oscilaciones controladas.",
+        "CNN y CNN_FOG muestran recuperación progresiva después de las primeras rondas.",
+        "La lectura temporal evita depender solo del último punto de cada corrida."
+    ], 9.0, 1.7, 3.6, 2.25, size=17)
+    add_text(slide, "La matriz compara dinámica, no solo promedio final.", 9.05, 5.45, 3.35, 0.5, 18, True, "blue")
+    add_footer(slide, 10)
+
+    # 11 weight curves
+    slide = prs.slides.add_slide(blank)
+    slide_background(slide)
+    add_slide_title(slide, "Magnitud de pesos", "Estabilidad de actualizaciones")
+    add_logo(slide)
+    slide.shapes.add_picture(str(MATRIX_WEIGHTS), Inches(0.55), Inches(1.28), height=Inches(5.7))
+    add_bullets(slide, [
+        "Las curvas se mantienen acotadas en las cuatro variantes.",
+        "CNN/CNN_FOG desplazan más la magnitud de pesos de salida.",
+        "No se observa divergencia durante las rondas analizadas."
+    ], 9.0, 1.7, 3.6, 2.25, size=17)
+    add_text(slide, "Sirve como evidencia de estabilidad del ciclo HFL.", 9.05, 5.45, 3.35, 0.5, 18, True, "teal")
+    add_footer(slide, 11)
+
+    # 12 paper updates
     slide = prs.slides.add_slide(blank)
     slide_background(slide)
     add_slide_title(slide, "Paper actualizado", "Cambios incorporados")
     add_logo(slide)
     add_bullets(slide, [
         "Introducción y objetivos alineados con v7 real: ESP32-S3, Raspberry Pi 4 y PC.",
-        "Marco teórico depurado: TinyML, HFL, ASCON, FOG y NLP como trabajo futuro.",
+        "Marco teórico depurado: TinyML, HFL, ASCON y FOG.",
         "Metodología ampliada: RN/MLP, CNN, no-ASCON, FOG y notebook de entrenamiento.",
         "Resultados actualizados con comparación offline y métricas de variantes.",
         "Conclusiones ajustadas: arquitectura modular y validación del ciclo bidireccional."
     ], 0.95, 1.65, 11.0, 3.2, size=20)
     add_text(slide, "El PDF ya compila con Tectonic: build/EncabezadoTesisMSc.pdf", 0.95, 5.85, 10.8, 0.35, 18, True, "teal")
-    add_footer(slide, 10)
+    add_footer(slide, 12)
 
-    # 11 next
+    # 13 next
     slide = prs.slides.add_slide(blank)
     slide_background(slide)
     add_slide_title(slide, "Mensaje para la reunión", "Síntesis")
@@ -404,11 +441,11 @@ def build_deck():
         "Mejorar redacción final y uniformar nombres de ramas.",
         "Reducir overfull boxes del LaTeX si se entrega versión final.",
         "Agregar fotos/hardware real si el profesor pide evidencia visual.",
-        "Dejar NLP como futuro, no como implementación actual."
+        "Cerrar pendientes de redacción, tablas y anexos."
     ], 7.1, 2.2, 5.4, 2.0, size=20)
     add_band(slide, 0.0, 6.35, 13.333, 1.15, "ink")
     add_text(slide, "Tesis técnica: un IDS IoT federado, cifrado y modular puede operar sobre hardware de borde real.", 0.9, 6.58, 11.6, 0.4, 20, True, "white", PP_ALIGN.CENTER)
-    add_footer(slide, 11)
+    add_footer(slide, 13)
 
     prs.save(OUT)
     return prs
@@ -455,6 +492,8 @@ def generate_previews():
         ("ASCON-128", "Seguridad con overhead temporal bajo"),
         ("Estrategia FOG", "Leader/peer y FedAvg intermedio"),
         ("Resultados v7", "RN + ASCON, no-ASCON, CNN FOG"),
+        ("Curvas accuracy/loss", "Matriz 2x2 por variante"),
+        ("Magnitud de pesos", "Matriz 2x2 de estabilidad"),
         ("Paper actualizado", "Objetivos, metodología, resultados y conclusiones"),
         ("Mensaje para la reunión", "Arquitectura validada y pendientes honestos"),
     ]
@@ -477,9 +516,9 @@ def generate_previews():
                 d.text((x + 72, 452), label, font=sub_font, fill="#" + ("151515" if label == "Fog" else "FFFFFF"))
                 if k < 2:
                     d.line([x + 255, 467, x + 390, 467], fill="#" + COLORS["muted"], width=5)
-        elif idx in (5, 9):
-            vals = [0.906, 0.905, 0.905, 0.890] if idx == 5 else [0.946, 0.930, 0.975]
-            labels = ["MLP", "Residual", "CNN", "Transf"] if idx == 5 else ["RN", "Plain", "CNN FOG"]
+        elif idx in (5, 9, 10, 11):
+            vals = [0.906, 0.905, 0.905, 0.890] if idx == 5 else ([0.946, 0.930, 0.975] if idx == 9 else [0.93, 0.95, 0.91, 0.97])
+            labels = ["MLP", "Residual", "CNN", "Transf"] if idx == 5 else (["RN", "Plain", "CNN FOG"] if idx == 9 else ["RN", "Plain", "CNN", "FOG"])
             for k, v in enumerate(vals):
                 x = 180 + k * 260
                 h = int((v - 0.86) / 0.14 * 280)
@@ -494,9 +533,9 @@ def generate_previews():
                 y += 58
         img.save(PREVIEW_DIR / f"slide_{idx:02d}.png")
 
-    montage = Image.new("RGB", (1600, 990), "#" + COLORS["white"])
+    montage = Image.new("RGB", (1600, 1320), "#" + COLORS["white"])
     thumbs = []
-    for idx in range(1, 12):
+    for idx in range(1, len(slide_titles) + 1):
         im = Image.open(PREVIEW_DIR / f"slide_{idx:02d}.png").resize((400, 225))
         thumbs.append(im)
     for idx, im in enumerate(thumbs):

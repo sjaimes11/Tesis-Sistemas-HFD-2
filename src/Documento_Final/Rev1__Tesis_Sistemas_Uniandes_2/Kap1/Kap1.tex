@@ -25,8 +25,6 @@ La solución propuesta aporta una validación práctica de un IDS federado para 
 
 El proyecto también justifica la comparación entre variantes. La rama con ASCON-128 permite medir el costo de proteger todos los canales; la rama sin ASCON sirve como línea base para aislar el overhead criptográfico; la variante CNN-1D evalúa si una arquitectura más expresiva mejora el desempeño sin romper la viabilidad edge; y el modo FOG introduce una agregación intermedia entre Raspberry Pi antes del servidor central.
 
-El componente de NLP sobre logs, considerado en objetivos tempranos del proyecto, no forma parte del despliegue final de \texttt{hfl\_v7}. En esta versión se deja como línea futura, mientras que el aporte implementado se concentra en características numéricas de flujo, TinyML, HFL y cifrado ligero. Esta delimitación es importante para mantener consistencia entre código, resultados y conclusiones.
-
 El documento está estructurado de la siguiente manera: el Capítulo~\ref{chap:Introduction} presenta el problema y los objetivos; el Capítulo~\ref{chap:theo} resume el marco conceptual y el estado del arte; el Capítulo~\ref{chap:meth} describe la arquitectura y el protocolo experimental; el Capítulo~\ref{chap:resu} presenta resultados; el Capítulo~\ref{chap:conc} concluye y plantea trabajos futuros; y los anexos resumen archivos y artefactos del sistema.
 
 \section{Objetivos}
