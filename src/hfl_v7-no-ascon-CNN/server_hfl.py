@@ -1,21 +1,14 @@
 """
 =============================================================================
- server_hfl_fog.py — PC Servidor Federado — HFL v7 + Fog Layer
+ server_hfl.py — PC Servidor Federado (Cloud / Global) — HFL v7-CNN (3 Clases)
 =============================================================================
- Servidor central adaptado para la arquitectura con capa Fog.
- Recibe pesos PRE-AGREGADOS de fog clusters (no de gateways individuales).
-
- Diferencias con server_hfl.py:
-   - Endpoint: /aggregate-from-fog (en lugar de /aggregate-from-gateway)
-   - MIN_UPDATES_PER_ROUND = número de fog clusters (default 1)
-   - Solo distribuye al líder de cada fog cluster
-   - Dashboard muestra info de fog clusters
-
- Flujo:
-   RPi_leader ─HTTP(JSON)→ PC (FedAvg entre clusters) ─HTTP(JSON)→ RPi_leader
+ Topología: PC (Servidor) <-> 2 x Raspberry Pi 4 (Edge Gateways)
+ Modelo CNN-1D: 13 features -> Conv1D(32) -> Conv1D(16) -> GAP -> Dense(8) -> Dense(3)
+ Capas FL: W_dense1(16,8) + b_dense1(8) + W_dense_out(8,3) + b_dense_out(3)
+ Modo baseline sin ASCON: JSON plano con Gateways
  
- Ejecutar: python server_hfl_fog.py
- Dashboard: http://localhost:8001/
+ Ejecutar: python server_hfl.py
+ Dashboard: http://localhost:8002/
 =============================================================================
 """
 from fastapi import FastAPI
@@ -28,14 +21,16 @@ import json
 import logging
 import csv as csv_module
 import time
-import os
 import atexit
 from datetime import datetime
 from pathlib import Path
-import plain_metrics
 from plain_metrics import PlainMetrics
 
-app = FastAPI(title="Servidor HFL v7 + Fog - Analytics Dashboard")
+metrics = PlainMetrics("server")
+PLAIN_AGGREGATE_PATH = "/aggregate-from-gateway-plain"
+PLAIN_DEPLOY_PATH = "/deploy-model-plain"
+
+app = FastAPI(title="Servidor HFL v7-CNN - Analytics Dashboard")
 
 app.add_middleware(
     CORSMiddleware,
@@ -44,55 +39,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-RESULTS_DIR = Path(__file__).resolve().parent / "Results_FOG"
+RESULTS_DIR = Path(__file__).resolve().parent / "Results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-plain_metrics.RESULTS_DIR = RESULTS_DIR
-metrics = PlainMetrics("server_fog")
 
-# ====================== ARQUITECTURA ======================
+# ====================== ARQUITECTURA CNN-1D ======================
 FEATURE_COUNT = 13
-L2_UNITS = 16
-L3_UNITS = 8
+GAP_OUT      = 16
+DENSE1_UNITS = 8
 OUTPUT_UNITS = 3
+
 CLASS_NAMES = ["normal", "mqtt_bruteforce", "scan_A"]
 
 # ====================== MODELO GLOBAL ======================
-W3_global = np.zeros((L2_UNITS, L3_UNITS), dtype=np.float32)
-b3_global = np.zeros(L3_UNITS, dtype=np.float32)
-W4_global = np.zeros((L3_UNITS, OUTPUT_UNITS), dtype=np.float32)
-b4_global = np.zeros(OUTPUT_UNITS, dtype=np.float32)
+Wd1_global = np.zeros((GAP_OUT,      DENSE1_UNITS), dtype=np.float32)
+bd1_global = np.zeros(DENSE1_UNITS,               dtype=np.float32)
+Wdo_global = np.zeros((DENSE1_UNITS, OUTPUT_UNITS), dtype=np.float32)
+bdo_global = np.zeros(OUTPUT_UNITS,               dtype=np.float32)
 
 # ====================== FEDAVG ACUMULADORES ======================
-W3_update_sum = np.zeros((L2_UNITS, L3_UNITS), dtype=np.float32)
-b3_update_sum = np.zeros(L3_UNITS, dtype=np.float32)
-W4_update_sum = np.zeros((L3_UNITS, OUTPUT_UNITS), dtype=np.float32)
-b4_update_sum = np.zeros(OUTPUT_UNITS, dtype=np.float32)
+Wd1_update_sum = np.zeros((GAP_OUT,      DENSE1_UNITS), dtype=np.float32)
+bd1_update_sum = np.zeros(DENSE1_UNITS,               dtype=np.float32)
+Wdo_update_sum = np.zeros((DENSE1_UNITS, OUTPUT_UNITS), dtype=np.float32)
+bdo_update_sum = np.zeros(OUTPUT_UNITS,               dtype=np.float32)
 
+# Acumuladores de métricas
 accuracy_sum = 0.0
 loss_sum = 0.0
+
 total_samples_this_round = 0
 current_round = 0
 updates_received = 0
-
-# Con arquitectura Fog, el servidor recibe de fog clusters (no gateways individuales).
-# Si hay 1 solo cluster Fog (2 RPis pre-agregando), MIN_UPDATES = 1.
-# Si hubiera 2 clusters Fog independientes, MIN_UPDATES = 2.
-def _env_int(name: str, default: int) -> int:
-    value = os.environ.get(name)
-    if value is None or value == "":
-        return default
-    return int(value)
-
-
-def _env_list(name: str, default: list[str]) -> list[str]:
-    value = os.environ.get(name)
-    if value is None or value.strip() == "":
-        return default
-    return [item.strip() for item in value.split(",") if item.strip()]
-
-
-SERVER_PORT = _env_int("SERVER_PORT", 8001)
-MIN_UPDATES_PER_ROUND = _env_int("MIN_UPDATES_PER_ROUND", 1)
+MIN_UPDATES_PER_ROUND = 2
 
 history = []
 round_in_progress = True
@@ -106,14 +83,13 @@ GLOBAL_HISTORY_COLUMNS = [
     "w4_normal",
     "w4_brute",
     "w4_scan",
-    "fog_samples",
 ]
 
-# ====================== IPs de FOG LEADERS ======================
-FOG_LEADERS = [
-    *_env_list("FOG_LEADERS", ["http://192.168.40.120:5000"]),
+# ====================== IPs de GATEWAYS ======================
+GATEWAYS = [
+    "http://192.168.1.6:5000",
+    "http://192.168.1.5:5000"
 ]
-
 
 def next_results_csv_path(prefix: str) -> Path:
     indices = []
@@ -142,7 +118,6 @@ def history_rows_for_export():
                 "w4_normal": round(float(row["w4_normal"]), 6),
                 "w4_brute": round(float(row["w4_brute"]), 6),
                 "w4_scan": round(float(row["w4_scan"]), 6),
-                "fog_samples": int(row.get("fog_samples", 0)),
             }
         )
     return rows
@@ -176,36 +151,26 @@ def resolve_results_csv(filename: str) -> Path:
         raise FileNotFoundError(filename)
     return path
 
-# ====================== FUNCIONES DE TRANSPORTE PLANO ======================
-def serialize_payload(payload_dict, direction, round_num):
-    t0 = time.perf_counter()
-    payload_json = json.dumps(payload_dict)
-    serialize_ms = (time.perf_counter() - t0) * 1000
-    metrics.record(direction, "serialize", len(payload_json.encode("utf-8")), serialize_ms, round_num)
-    return payload_dict
 
-
-def parse_payload(payload_dict, direction, round_num):
-    payload_json = json.dumps(payload_dict)
-    metrics.record(direction, "deserialize", len(payload_json.encode("utf-8")), 0.0, round_num)
-    return payload_dict
-
-
-# ====================== DISTRIBUCIÓN GLOBAL ======================
 def distribute_global_model():
     global round_in_progress
-
     payload = {
-        "W3": W3_global.tolist(), "b3": b3_global.tolist(),
-        "W4": W4_global.tolist(), "b4": b4_global.tolist(),
+        "W_dense1":    Wd1_global.tolist(),
+        "b_dense1":    bd1_global.tolist(),
+        "W_dense_out": Wdo_global.tolist(),
+        "b_dense_out": bdo_global.tolist(),
         "round": current_round
     }
-    payload_dict = serialize_payload(payload, "PC->RPi_leader", current_round)
-
-    print(f"\n[SERVER] Distribuyendo Modelo Global plano a Fog Leaders (Ronda {current_round})...")
-    for gw_url in FOG_LEADERS:
+    t0 = time.perf_counter()
+    payload_json = json.dumps(payload)
+    serialize_ms = (time.perf_counter() - t0) * 1000
+    metrics.record("PC->RPi", "serialize", len(payload_json.encode('utf-8')), serialize_ms, current_round)
+    
+    print(f"\n[SERVIDOR-CNN] Distribuyendo Modelo Global plano a Gateways (Ronda {current_round})...")
+    
+    for gw_url in GATEWAYS:
         try:
-            resp = requests.post(f"{gw_url}/deploy-model", json=payload_dict, timeout=10)
+            resp = requests.post(f"{gw_url}{PLAIN_DEPLOY_PATH}", json=payload, timeout=5)
             print(f"  -> {gw_url} OK")
         except Exception as e:
             print(f"  -> ERROR publicando a {gw_url}: {e}")
@@ -213,90 +178,89 @@ def distribute_global_model():
     round_in_progress = True
 
 
-# ====================== ENDPOINT: recibir de Fog cluster ======================
-@app.post("/aggregate-from-fog")
-async def receive_fog_model(data: dict):
-    global W3_global, b3_global, W4_global, b4_global
-    global W3_update_sum, b3_update_sum, W4_update_sum, b4_update_sum
+@app.post(PLAIN_AGGREGATE_PATH)
+async def receive_gateway_model(data: dict):
+    global Wd1_global, bd1_global, Wdo_global, bdo_global
+    global Wd1_update_sum, bd1_update_sum, Wdo_update_sum, bdo_update_sum
     global accuracy_sum, loss_sum
     global total_samples_this_round, updates_received
     global current_round, round_in_progress
 
-    data = parse_payload(data, "RPi_leader->PC", current_round)
-
-    fog_id = data["gateway_id"]
+    payload_size = len(json.dumps(data).encode("utf-8"))
+    metrics.record("RPi->PC", "deserialize", payload_size, 0.0, current_round)
+    gateway_id = data["gateway_id"]
     num_samples = data["num_samples"]
     accuracy = data.get("accuracy", 0.0)
     loss = data.get("loss", 0.0)
+    
+    print(f"\n[SERVIDOR-CNN] Pesos planos recibidos de '{gateway_id}' | {num_samples} muestras | Acc: {accuracy:.2%}")
 
-    print(f"\n[SERVER] Pesos FOG-AGREGADOS recibidos de '{fog_id}' "
-          f"| {num_samples} muestras | Acc: {accuracy:.2%}")
+    Wd1_np = np.array(data["W_dense1"],   dtype=np.float32)
+    bd1_np = np.array(data["b_dense1"],   dtype=np.float32)
+    Wdo_np = np.array(data["W_dense_out"], dtype=np.float32)
+    bdo_np = np.array(data["b_dense_out"], dtype=np.float32)
 
-    W3_np = np.array(data["W3"], dtype=np.float32)
-    b3_np = np.array(data["b3"], dtype=np.float32)
-    W4_np = np.array(data["W4"], dtype=np.float32)
-    b4_np = np.array(data["b4"], dtype=np.float32)
-
-    W3_update_sum += W3_np * num_samples
-    b3_update_sum += b3_np * num_samples
-    W4_update_sum += W4_np * num_samples
-    b4_update_sum += b4_np * num_samples
-
+    Wd1_update_sum += Wd1_np * num_samples
+    bd1_update_sum += bd1_np * num_samples
+    Wdo_update_sum += Wdo_np * num_samples
+    bdo_update_sum += bdo_np * num_samples
+    
     accuracy_sum += accuracy * num_samples
     loss_sum += loss * num_samples
+
     total_samples_this_round += num_samples
     updates_received += 1
 
-    print(f"  Acumulado: {updates_received} / {MIN_UPDATES_PER_ROUND} fog clusters")
+    print(f"  Acumulado: {updates_received} / {MIN_UPDATES_PER_ROUND} gateways")
 
     if updates_received >= MIN_UPDATES_PER_ROUND:
         current_round += 1
-
-        W3_global = W3_update_sum / total_samples_this_round
-        b3_global = b3_update_sum / total_samples_this_round
-        W4_global = W4_update_sum / total_samples_this_round
-        b4_global = b4_update_sum / total_samples_this_round
-
+        
+        Wd1_global = Wd1_update_sum / total_samples_this_round
+        bd1_global = bd1_update_sum / total_samples_this_round
+        Wdo_global = Wdo_update_sum / total_samples_this_round
+        bdo_global = bdo_update_sum / total_samples_this_round
+        
         acc_global = accuracy_sum / total_samples_this_round
         loss_global = loss_sum / total_samples_this_round
 
         print(f"\n{'='*60}")
-        print(f" GLOBAL FEDAVG - Ronda {current_round} ({total_samples_this_round} muestras)")
-        print(f" Arquitectura: {len(FOG_LEADERS)} fog cluster(s) con pre-agregación")
+        print(f" FEDAVG GLOBAL CNN-1D - Ronda {current_round} completada ({total_samples_this_round} muestras)")
         print(f" Global Accuracy: {acc_global:.2%} | Global Loss: {loss_global:.4f}")
         print(f"{'='*60}")
 
-        class_mags = [float(np.mean(np.abs(W4_global[:, j]))) for j in range(OUTPUT_UNITS)]
-
+        class_mags = [float(np.mean(np.abs(Wdo_global[:, j]))) for j in range(OUTPUT_UNITS)]
+        
         history.append({
             "round": current_round,
             "time": datetime.now().strftime("%H:%M:%S"),
             "accuracy": float(acc_global),
             "loss": float(loss_global),
-            "w3_mag": float(np.mean(np.abs(W3_global))),
+            "w3_mag": float(np.mean(np.abs(Wd1_global))),
             "w4_normal": class_mags[0],
             "w4_brute": class_mags[1],
-            "w4_scan": class_mags[2],
-            "fog_samples": total_samples_this_round
+            "w4_scan": class_mags[2]
         })
+        export_global_history_csv()
 
-        W3_update_sum.fill(0); b3_update_sum.fill(0)
-        W4_update_sum.fill(0); b4_update_sum.fill(0)
-        accuracy_sum = 0.0; loss_sum = 0.0
+        Wd1_update_sum.fill(0); bd1_update_sum.fill(0)
+        Wdo_update_sum.fill(0); bdo_update_sum.fill(0)
+        accuracy_sum = 0.0
+        loss_sum = 0.0
         updates_received = 0
         total_samples_this_round = 0
         round_in_progress = False
 
-        export_global_history_csv()
         distribute_global_model()
         metrics.print_live_summary()
+        
+    return {"status": "ok", "ack_gateway": gateway_id}
 
-    return {"status": "ok", "ack_fog": fog_id}
 
-
-# ====================== API ENDPOINTS ======================
 @app.get("/start-round")
 def start_round():
+    global current_round
+    # Si presionan forzar, no sumamos ronda pero distribuimos lo que tengamos
     distribute_global_model()
     return {"status": "ok"}
 
@@ -308,8 +272,7 @@ def get_status():
         "current_round": current_round,
         "updates_received": updates_received,
         "min_updates": MIN_UPDATES_PER_ROUND,
-        "class_names": CLASS_NAMES,
-        "fog_leaders": len(FOG_LEADERS)
+        "class_names": CLASS_NAMES
     }
 
 
@@ -362,7 +325,6 @@ def get_results_csv(filename: str):
     }
 
 
-# ====================== DASHBOARD ======================
 @app.get("/", response_class=HTMLResponse)
 def dashboard():
     html = """<!DOCTYPE html>
@@ -370,7 +332,7 @@ def dashboard():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HFL Fog Analytics Dashboard</title>
+    <title>HFL Analytics Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
@@ -383,14 +345,13 @@ def dashboard():
             --success: #10b981;
             --danger: #f43f5e;
             --warning: #f59e0b;
-            --purple: #a78bfa;
         }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 30px;
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg-color); 
+            color: var(--text-main); 
+            margin: 0; 
+            padding: 30px; 
         }
         .header {
             display: flex;
@@ -411,6 +372,7 @@ def dashboard():
             box-shadow: 0 4px 10px rgba(56, 189, 248, 0.4);
         }
         .button:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 6px 15px rgba(56, 189, 248, 0.6);}
+        
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -426,6 +388,7 @@ def dashboard():
         }
         .card-title { color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;}
         .card-value { font-size: 2.2rem; font-weight: 800; }
+        
         .charts-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -439,6 +402,7 @@ def dashboard():
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
             height: 350px;
         }
+
         .table-container {
             background: var(--panel-bg);
             padding: 20px;
@@ -455,6 +419,7 @@ def dashboard():
         th, td { padding: 14px; border-bottom: 1px solid #334155; }
         th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; position: sticky; top: 0; background: var(--panel-bg); z-index: 10;}
         tbody tr:hover { background-color: #334155; }
+
         .csv-controls {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -485,6 +450,7 @@ def dashboard():
             margin: 6px 0 0 0;
             font-size: 0.9rem;
         }
+        
         .status-dot {
             height: 14px; width: 14px; border-radius: 50%; display: inline-block; margin-right: 10px;
         }
@@ -495,8 +461,8 @@ def dashboard():
 <body>
     <div class="header">
         <div>
-            <h1 class="title">🚀 Federated IDS Analytics - FOG (No-ASCON)</h1>
-            <p style="color: var(--purple); margin: 4px 0 0 0; font-size: 0.85rem;">☁️ Edge → Fog → Cloud | 📦 JSON plano | Resultados en Results_FOG</p>
+            <h1 class="title">🚀 Federated IDS Analytics (CNN-1D)</h1>
+            <p style="color: var(--warning); margin: 4px 0 0 0; font-size: 0.85rem;">📡 Baseline sin ASCON - JSON plano</p>
         </div>
         <button class="button" onclick="startRound()">Forzar Sincronización Global</button>
     </div>
@@ -506,7 +472,7 @@ def dashboard():
             <div class="card-title">Estado de Red Federada</div>
             <div class="card-value" style="font-size: 1.2rem; margin-top:20px; display:flex; align-items:center; justify-content:center;">
                 <span id="ui-dot" class="status-dot dot-orange"></span>
-                <span id="ui-status">Esperando Fog Clusters...</span>
+                <span id="ui-status">Esperando Gateways...</span>
             </div>
         </div>
         <div class="card">
@@ -514,8 +480,8 @@ def dashboard():
             <div class="card-value" id="ui-round" style="color: var(--accent);">0</div>
         </div>
         <div class="card">
-            <div class="card-title">Fog Clusters / Aggregation</div>
-            <div class="card-value" id="ui-fog">0 / 1</div>
+            <div class="card-title">Gateways / Aggregation</div>
+            <div class="card-value" id="ui-gateways">0 / 2</div>
         </div>
     </div>
 
@@ -533,7 +499,7 @@ def dashboard():
             <div class="card-title" style="text-align:left; margin-bottom: 0; color:white; font-size: 1rem;">Historial Dinámico de Pesos Globales</div>
             <div style="display:flex; gap:12px; flex-wrap:wrap;">
                 <button class="button" onclick="exportHistoryCsv()">Exportar historial actual CSV</button>
-                <span id="history-export-info" class="csv-info" style="margin:0;">Autosave en Results_FOG por cada ronda completada.</span>
+                <span id="history-export-info" class="csv-info" style="margin:0;">Autosave en Results por cada ronda completada.</span>
             </div>
         </div>
         <table>
@@ -543,19 +509,19 @@ def dashboard():
                     <th>Hora</th>
                     <th>Global Accuracy</th>
                     <th>Global Loss</th>
-                    <th>W3 (General)</th>
-                    <th>W4 Normal</th>
-                    <th>W4 Bruteforce</th>
-                    <th>W4 Scan_A</th>
-                    <th>Fog Samples</th>
+                    <th>Wd1 (General)</th>
+                    <th>Wdo Normal</th>
+                    <th>Wdo Bruteforce</th>
+                    <th>Wdo Scan_A</th>
                 </tr>
             </thead>
-            <tbody id="table-body"></tbody>
+            <tbody id="table-body">
+            </tbody>
         </table>
     </div>
 
     <div class="table-container" style="margin-top: 20px;">
-        <div class="card-title" style="text-align:left; margin-bottom: 15px; color:white; font-size: 1rem;">Explorador de CSV FOG</div>
+        <div class="card-title" style="text-align:left; margin-bottom: 15px; color:white; font-size: 1rem;">Explorador de CSV de Resultados</div>
         <div class="csv-controls">
             <div class="csv-control-group">
                 <label class="csv-label" for="csv-file-input">Cargar CSV local</label>
@@ -563,12 +529,12 @@ def dashboard():
                 <button class="button" onclick="loadLocalCsv()">Visualizar CSV local</button>
             </div>
             <div class="csv-control-group">
-                <label class="csv-label" for="results-file-select">Abrir desde Results_FOG</label>
+                <label class="csv-label" for="results-file-select">Abrir desde Results</label>
                 <select id="results-file-select" class="csv-input"></select>
                 <button class="button" onclick="loadSelectedResultsFile()">Visualizar CSV guardado</button>
             </div>
         </div>
-        <p id="csv-info" class="csv-info">Selecciona un CSV local o uno guardado en la carpeta Results_FOG.</p>
+        <p id="csv-info" class="csv-info">Selecciona un CSV local o uno guardado en la carpeta Results.</p>
         <div class="chart-box" style="margin-bottom: 20px;">
             <canvas id="csvMetricsChart"></canvas>
         </div>
@@ -591,18 +557,8 @@ def dashboard():
                 maintainAspectRatio: false,
                 plugins: { legend: { labels: { color: '#f8fafc', font: {size: 14} } } },
                 scales: {
-                    x: {
-                        grid:{color:'#334155'},
-                        ticks: { color: '#94a3b8' },
-                        title: { display: true, text: 'Ronda federada', color: '#f8fafc' }
-                    },
-                    y: {
-                        grid:{color:'#334155'},
-                        min: 0,
-                        max: 1,
-                        ticks: { color: '#94a3b8', callback: v => (v*100).toFixed(0) + '%' },
-                        title: { display: true, text: 'Accuracy global', color: '#f8fafc' }
-                    }
+                    x: { grid:{color:'#334155'}, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Ronda federada', color: '#f8fafc' } },
+                    y: { grid:{color:'#334155'}, min: 0, max: 1, ticks: { color: '#94a3b8', callback: v => (v*100).toFixed(0) + '%' }, title: { display: true, text: 'Accuracy global', color: '#f8fafc' } }
                 }
             }
         });
@@ -616,16 +572,8 @@ def dashboard():
                 maintainAspectRatio: false,
                 plugins: { legend: { labels: { color: '#f8fafc', font: {size: 14} } } },
                 scales: {
-                    x: {
-                        grid:{color:'#334155'},
-                        ticks: { color: '#94a3b8' },
-                        title: { display: true, text: 'Ronda federada', color: '#f8fafc' }
-                    },
-                    y: {
-                        grid:{color:'#334155'},
-                        ticks: { color: '#94a3b8' },
-                        title: { display: true, text: 'Loss global', color: '#f8fafc' }
-                    }
+                    x: { grid:{color:'#334155'}, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Ronda federada', color: '#f8fafc' } },
+                    y: { grid:{color:'#334155'}, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Loss global', color: '#f8fafc' } }
                 }
             }
         });
@@ -637,7 +585,7 @@ def dashboard():
                 labels: [],
                 datasets: [
                     { label: 'elapsed_ms', data: [], borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.15)', borderWidth: 3, tension: 0.25, fill: false, yAxisID: 'y' },
-                    { label: 'overhead_bytes / payload_bytes', data: [], borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.15)', borderWidth: 3, tension: 0.25, fill: false, yAxisID: 'y1' }
+                    { label: 'overhead_bytes', data: [], borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.15)', borderWidth: 3, tension: 0.25, fill: false, yAxisID: 'y1' }
                 ]
             },
             options: {
@@ -645,25 +593,9 @@ def dashboard():
                 maintainAspectRatio: false,
                 plugins: { legend: { labels: { color: '#f8fafc', font: { size: 14 } } } },
                 scales: {
-                    x: {
-                        grid: { color: '#334155' },
-                        ticks: { color: '#94a3b8' },
-                        title: { display: true, text: 'Índice de registro / ronda', color: '#f8fafc' }
-                    },
-                    y: {
-                        type: 'linear',
-                        position: 'left',
-                        grid: { color: '#334155' },
-                        ticks: { color: '#94a3b8' },
-                        title: { display: true, text: 'Tiempo (ms)', color: '#f8fafc' }
-                    },
-                    y1: {
-                        type: 'linear',
-                        position: 'right',
-                        grid: { drawOnChartArea: false },
-                        ticks: { color: '#f59e0b' },
-                        title: { display: true, text: 'Bytes', color: '#f59e0b' }
-                    }
+                    x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Índice de registro / ronda', color: '#f8fafc' } },
+                    y: { type: 'linear', position: 'left', grid: { color: '#334155' }, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Tiempo de serializacion/parseo (ms)', color: '#f8fafc' } },
+                    y1: { type: 'linear', position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#f59e0b' }, title: { display: true, text: 'Overhead (bytes)', color: '#f59e0b' } }
                 }
             }
         });
@@ -685,7 +617,6 @@ def dashboard():
                     <td>${row.w4_normal.toFixed(5)}</td>
                     <td>${row.w4_brute.toFixed(5)}</td>
                     <td>${row.w4_scan.toFixed(5)}</td>
-                    <td>${row.fog_samples ?? '-'}</td>
                 `;
                 tb.appendChild(tr);
             });
@@ -694,14 +625,11 @@ def dashboard():
         function parseCsvText(text) {
             const lines = text.trim().split(/\\r?\\n/).filter(Boolean);
             if (!lines.length) return [];
-
             const headers = lines[0].split(',').map(v => v.trim());
             return lines.slice(1).map(line => {
                 const cols = line.split(',');
                 const row = {};
-                headers.forEach((header, index) => {
-                    row[header] = (cols[index] ?? '').trim();
-                });
+                headers.forEach((header, index) => { row[header] = (cols[index] ?? '').trim(); });
                 return row;
             });
         }
@@ -710,32 +638,22 @@ def dashboard():
             const info = document.getElementById('csv-info');
             const head = document.getElementById('csv-preview-head');
             const body = document.getElementById('csv-preview-body');
-
             if (!rows.length) {
                 info.innerText = `No se encontraron filas en ${sourceName}.`;
-                head.innerHTML = '';
-                body.innerHTML = '';
-                csvMetricsChart.data.labels = [];
-                csvMetricsChart.data.datasets[0].data = [];
-                csvMetricsChart.data.datasets[1].data = [];
-                csvMetricsChart.update();
+                head.innerHTML = ''; body.innerHTML = '';
+                csvMetricsChart.data.labels = []; csvMetricsChart.data.datasets[0].data = []; csvMetricsChart.data.datasets[1].data = []; csvMetricsChart.update();
                 return;
             }
-
             const headers = Object.keys(rows[0]);
             info.innerText = `${sourceName}: ${rows.length} filas cargadas.`;
             head.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
-            body.innerHTML = rows.slice(0, 25).map(row => `
-                <tr>${headers.map(h => `<td>${row[h] ?? ''}</td>`).join('')}</tr>
-            `).join('');
-
+            body.innerHTML = rows.slice(0, 25).map(row => `<tr>${headers.map(h => `<td>${row[h] ?? ''}</td>`).join('')}</tr>`).join('');
             const labels = rows.map((row, index) => row.fl_round || row.round || `${index + 1}`);
             const elapsed = rows.map(row => Number(row.elapsed_ms || 0));
-            const bytes = rows.map(row => Number(row.overhead_bytes || row.payload_bytes || 0));
-
+            const overhead = rows.map(row => Number(row.overhead_bytes || 0));
             csvMetricsChart.data.labels = labels;
             csvMetricsChart.data.datasets[0].data = elapsed;
-            csvMetricsChart.data.datasets[1].data = bytes;
+            csvMetricsChart.data.datasets[1].data = overhead;
             csvMetricsChart.update();
         }
 
@@ -745,39 +663,26 @@ def dashboard():
                 const payload = await response.json();
                 const select = document.getElementById('results-file-select');
                 const files = payload.files || [];
-
-                if (!files.length) {
-                    select.innerHTML = '<option value="">No hay CSV guardados</option>';
-                    return;
-                }
-
-                select.innerHTML = files.map(file => `
-                    <option value="${file.name}">${file.name} | ${file.modified}</option>
-                `).join('');
-            } catch (err) {
-                console.error('No se pudo cargar el listado de Results_FOG:', err);
-            }
+                if (!files.length) { select.innerHTML = '<option value="">No hay CSV guardados</option>'; return; }
+                select.innerHTML = files.map(file => `<option value="${file.name}">${file.name} | ${file.modified}</option>`).join('');
+            } catch (err) { console.error('No se pudo cargar el listado de Results:', err); }
         }
 
         async function loadSelectedResultsFile() {
             const select = document.getElementById('results-file-select');
             const filename = select.value;
             if (!filename) return;
-
             try {
                 const response = await fetch(`/api/results-csv/${encodeURIComponent(filename)}`);
                 const payload = await response.json();
                 renderCsvPreview(payload.rows || [], filename);
-            } catch (err) {
-                console.error('No se pudo cargar el CSV guardado:', err);
-            }
+            } catch (err) { console.error('No se pudo cargar el CSV guardado:', err); }
         }
 
         function loadLocalCsv() {
             const input = document.getElementById('csv-file-input');
             const file = input.files && input.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = event => {
                 const text = event.target.result || '';
@@ -791,80 +696,48 @@ def dashboard():
             try {
                 const resStatus = await fetch('/api/status');
                 const stat = await resStatus.json();
-                
                 document.getElementById('ui-round').innerText = stat.current_round;
-                document.getElementById('ui-fog').innerText = `${stat.updates_received} / ${stat.min_updates}`;
-                
+                document.getElementById('ui-gateways').innerText = `${stat.updates_received} / ${stat.min_updates}`;
                 const dot = document.getElementById('ui-dot');
                 const txt = document.getElementById('ui-status');
-                
-                if (stat.round_in_progress) {
-                    dot.className = 'status-dot dot-orange';
-                    txt.innerText = 'Entrenamiento Activo...';
-                } else {
-                    dot.className = 'status-dot dot-green';
-                    txt.innerText = 'Actualización Global Distribuida';
-                }
+                if (stat.round_in_progress) { dot.className = 'status-dot dot-orange'; txt.innerText = 'Entrenamiento Activo...'; }
+                else { dot.className = 'status-dot dot-green'; txt.innerText = 'Actualización Global Distribuida'; }
 
                 const resHist = await fetch('/api/history');
                 const dataHist = await resHist.json();
                 const hist = dataHist.history;
-
                 if (hist.length > 0) {
                     const labels = hist.map(h => 'R ' + h.round);
                     const accData = hist.map(h => h.accuracy);
                     const lossData = hist.map(h => h.loss);
-
                     if(accChart.data.labels.length !== labels.length) {
-                        accChart.data.labels = labels;
-                        accChart.data.datasets[0].data = accData;
-                        accChart.update();
-
-                        lossChart.data.labels = labels;
-                        lossChart.data.datasets[0].data = lossData;
-                        lossChart.update();
-
+                        accChart.data.labels = labels; accChart.data.datasets[0].data = accData; accChart.update();
+                        lossChart.data.labels = labels; lossChart.data.datasets[0].data = lossData; lossChart.update();
                         populateTable(hist);
                     }
                 }
-
-            } catch (err) {
-                console.error("Dashboard fetch error (Server may be down):", err);
-            }
+            } catch (err) { console.error("Dashboard fetch error (Server may be down):", err); }
         }
 
-        function startRound() {
-            fetch('/start-round').then(() => fetchDashboard());
-        }
+        function startRound() { fetch('/start-round').then(() => fetchDashboard()); }
 
         async function exportHistoryCsv() {
             const info = document.getElementById('history-export-info');
             try {
                 const response = await fetch('/api/history/export');
-                if (!response.ok) {
-                    const payload = await response.json();
-                    info.innerText = payload.error || 'No se pudo exportar el historial.';
-                    return;
-                }
-
+                if (!response.ok) { const payload = await response.json(); info.innerText = payload.error || 'No se pudo exportar el historial.'; return; }
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const disposition = response.headers.get('content-disposition') || '';
                 const match = disposition.match(/filename="?([^"]+)"?/i);
                 const filename = match ? match[1] : 'global_weights_history.csv';
                 const anchor = document.createElement('a');
-                anchor.href = url;
-                anchor.download = filename;
-                document.body.appendChild(anchor);
-                anchor.click();
-                anchor.remove();
+                anchor.href = url; anchor.download = filename;
+                document.body.appendChild(anchor); anchor.click(); anchor.remove();
                 window.URL.revokeObjectURL(url);
                 info.innerText = `Historial exportado: ${filename}`;
                 loadResultsFiles();
-            } catch (err) {
-                console.error('No se pudo exportar el historial:', err);
-                info.innerText = 'No se pudo exportar el historial.';
-            }
+            } catch (err) { console.error('No se pudo exportar el historial:', err); info.innerText = 'No se pudo exportar el historial.'; }
         }
 
         setInterval(fetchDashboard, 2500);
@@ -875,16 +748,12 @@ def dashboard():
 </html>"""
     return html
 
-
-# ====================== MAIN ======================
 if __name__ == "__main__":
+    import uvicorn
     print("=" * 60)
-    print(" SERVIDOR CENTRAL FEDERADO HFL v7-no-ascon + FOG LAYER")
-    print(f" Fog Clusters esperados: {MIN_UPDATES_PER_ROUND}")
-    print(f" Fog Leaders: {FOG_LEADERS}")
-    print(" Modo baseline sin ASCON: JSON plano")
-    print(" Arquitectura: ESP32 → RPi ↔ RPi → PC (3-tier)")
-    print(f" Dashboard: http://localhost:{SERVER_PORT}/")
+    print(" SERVIDOR CENTRAL FEDERADO HFL v7-CNN - ANALYTICS DASHBOARD")
+    print(" Modo baseline sin ASCON: JSON plano | Modelo: CNN-1D")
+    print(" -> Dashboard Gráfico: http://localhost:8002/")
     print("=" * 60)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-    uvicorn.run(app, host="0.0.0.0", port=SERVER_PORT, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=8002, log_level="warning")

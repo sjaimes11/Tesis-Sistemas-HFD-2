@@ -1,6 +1,6 @@
 """
 =============================================================================
- server_hfl_fog.py — PC Servidor Federado — HFL v7 + Fog Layer
+ server_hfl_fog.py — PC Servidor Federado — HFL v7-CNN + Fog Layer
 =============================================================================
  Servidor central adaptado para la arquitectura con capa Fog.
  Recibe pesos PRE-AGREGADOS de fog clusters (no de gateways individuales).
@@ -35,7 +35,7 @@ from pathlib import Path
 import plain_metrics
 from plain_metrics import PlainMetrics
 
-app = FastAPI(title="Servidor HFL v7 + Fog - Analytics Dashboard")
+app = FastAPI(title="Servidor HFL v7-CNN + Fog - Analytics Dashboard")
 
 app.add_middleware(
     CORSMiddleware,
@@ -49,24 +49,26 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 plain_metrics.RESULTS_DIR = RESULTS_DIR
 metrics = PlainMetrics("server_fog")
 
-# ====================== ARQUITECTURA ======================
+# ====================== ARQUITECTURA CNN-1D ======================
+# Dense1: GAP(16) -> 8   <- capa federada
+# Dense_out: 8 -> 3      <- capa federada
 FEATURE_COUNT = 13
-L2_UNITS = 16
-L3_UNITS = 8
+GAP_OUT      = 16
+DENSE1_UNITS = 8
 OUTPUT_UNITS = 3
 CLASS_NAMES = ["normal", "mqtt_bruteforce", "scan_A"]
 
 # ====================== MODELO GLOBAL ======================
-W3_global = np.zeros((L2_UNITS, L3_UNITS), dtype=np.float32)
-b3_global = np.zeros(L3_UNITS, dtype=np.float32)
-W4_global = np.zeros((L3_UNITS, OUTPUT_UNITS), dtype=np.float32)
-b4_global = np.zeros(OUTPUT_UNITS, dtype=np.float32)
+Wd1_global = np.zeros((GAP_OUT,      DENSE1_UNITS), dtype=np.float32)
+bd1_global = np.zeros(DENSE1_UNITS,               dtype=np.float32)
+Wdo_global = np.zeros((DENSE1_UNITS, OUTPUT_UNITS), dtype=np.float32)
+bdo_global = np.zeros(OUTPUT_UNITS,               dtype=np.float32)
 
 # ====================== FEDAVG ACUMULADORES ======================
-W3_update_sum = np.zeros((L2_UNITS, L3_UNITS), dtype=np.float32)
-b3_update_sum = np.zeros(L3_UNITS, dtype=np.float32)
-W4_update_sum = np.zeros((L3_UNITS, OUTPUT_UNITS), dtype=np.float32)
-b4_update_sum = np.zeros(OUTPUT_UNITS, dtype=np.float32)
+Wd1_update_sum = np.zeros((GAP_OUT,      DENSE1_UNITS), dtype=np.float32)
+bd1_update_sum = np.zeros(DENSE1_UNITS,               dtype=np.float32)
+Wdo_update_sum = np.zeros((DENSE1_UNITS, OUTPUT_UNITS), dtype=np.float32)
+bdo_update_sum = np.zeros(OUTPUT_UNITS,               dtype=np.float32)
 
 accuracy_sum = 0.0
 loss_sum = 0.0
@@ -111,7 +113,7 @@ GLOBAL_HISTORY_COLUMNS = [
 
 # ====================== IPs de FOG LEADERS ======================
 FOG_LEADERS = [
-    *_env_list("FOG_LEADERS", ["http://192.168.40.120:5000"]),
+    *_env_list("FOG_LEADERS", ["http://192.168.1.6:5000"]),
 ]
 
 
@@ -196,13 +198,13 @@ def distribute_global_model():
     global round_in_progress
 
     payload = {
-        "W3": W3_global.tolist(), "b3": b3_global.tolist(),
-        "W4": W4_global.tolist(), "b4": b4_global.tolist(),
+        "W_dense1":    Wd1_global.tolist(), "b_dense1":    bd1_global.tolist(),
+        "W_dense_out": Wdo_global.tolist(), "b_dense_out": bdo_global.tolist(),
         "round": current_round
     }
     payload_dict = serialize_payload(payload, "PC->RPi_leader", current_round)
 
-    print(f"\n[SERVER] Distribuyendo Modelo Global plano a Fog Leaders (Ronda {current_round})...")
+    print(f"\n[SERVER-CNN] Distribuyendo Modelo Global plano a Fog Leaders (Ronda {current_round})...")
     for gw_url in FOG_LEADERS:
         try:
             resp = requests.post(f"{gw_url}/deploy-model", json=payload_dict, timeout=10)
@@ -216,76 +218,83 @@ def distribute_global_model():
 # ====================== ENDPOINT: recibir de Fog cluster ======================
 @app.post("/aggregate-from-fog")
 async def receive_fog_model(data: dict):
-    global W3_global, b3_global, W4_global, b4_global
-    global W3_update_sum, b3_update_sum, W4_update_sum, b4_update_sum
+    global Wd1_global, bd1_global, Wdo_global, bdo_global
+    global Wd1_update_sum, bd1_update_sum, Wdo_update_sum, bdo_update_sum
     global accuracy_sum, loss_sum
     global total_samples_this_round, updates_received
     global current_round, round_in_progress
 
     data = parse_payload(data, "RPi_leader->PC", current_round)
 
-    fog_id = data["gateway_id"]
+    fog_id      = data["gateway_id"]
     num_samples = data["num_samples"]
-    accuracy = data.get("accuracy", 0.0)
-    loss = data.get("loss", 0.0)
+    accuracy    = data.get("accuracy", 0.0)
+    loss        = data.get("loss", 0.0)
 
-    print(f"\n[SERVER] Pesos FOG-AGREGADOS recibidos de '{fog_id}' "
+    print(f"\n[SERVER-CNN] Pesos FOG-AGREGADOS recibidos de '{fog_id}' "
           f"| {num_samples} muestras | Acc: {accuracy:.2%}")
 
-    W3_np = np.array(data["W3"], dtype=np.float32)
-    b3_np = np.array(data["b3"], dtype=np.float32)
-    W4_np = np.array(data["W4"], dtype=np.float32)
-    b4_np = np.array(data["b4"], dtype=np.float32)
+    try:
+        Wd1_np = np.array(data["W_dense1"],   dtype=np.float32)
+        bd1_np = np.array(data["b_dense1"],   dtype=np.float32)
+        Wdo_np = np.array(data["W_dense_out"], dtype=np.float32)
+        bdo_np = np.array(data["b_dense_out"], dtype=np.float32)
+    except KeyError as e:
+        print(f"[ERROR] Clave faltante en payload: {e}. Claves recibidas: {list(data.keys())}")
+        return JSONResponse(status_code=400, content={"error": f"Missing key: {e}"})
+    except ValueError as e:
+        print(f"[ERROR] Shape incompatible: {e}")
+        return JSONResponse(status_code=400, content={"error": f"Shape error: {e}"})
 
-    W3_update_sum += W3_np * num_samples
-    b3_update_sum += b3_np * num_samples
-    W4_update_sum += W4_np * num_samples
-    b4_update_sum += b4_np * num_samples
+    Wd1_update_sum += Wd1_np * num_samples
+    bd1_update_sum += bd1_np * num_samples
+    Wdo_update_sum += Wdo_np * num_samples
+    bdo_update_sum += bdo_np * num_samples
 
     accuracy_sum += accuracy * num_samples
-    loss_sum += loss * num_samples
+    loss_sum     += loss     * num_samples
     total_samples_this_round += num_samples
-    updates_received += 1
+    updates_received         += 1
 
     print(f"  Acumulado: {updates_received} / {MIN_UPDATES_PER_ROUND} fog clusters")
 
     if updates_received >= MIN_UPDATES_PER_ROUND:
         current_round += 1
 
-        W3_global = W3_update_sum / total_samples_this_round
-        b3_global = b3_update_sum / total_samples_this_round
-        W4_global = W4_update_sum / total_samples_this_round
-        b4_global = b4_update_sum / total_samples_this_round
+        Wd1_global = Wd1_update_sum / total_samples_this_round
+        bd1_global = bd1_update_sum / total_samples_this_round
+        Wdo_global = Wdo_update_sum / total_samples_this_round
+        bdo_global = bdo_update_sum / total_samples_this_round
 
-        acc_global = accuracy_sum / total_samples_this_round
-        loss_global = loss_sum / total_samples_this_round
+        acc_global  = accuracy_sum / total_samples_this_round
+        loss_global = loss_sum     / total_samples_this_round
 
         print(f"\n{'='*60}")
-        print(f" GLOBAL FEDAVG - Ronda {current_round} ({total_samples_this_round} muestras)")
+        print(f" GLOBAL FEDAVG CNN-1D - Ronda {current_round} ({total_samples_this_round} muestras)")
         print(f" Arquitectura: {len(FOG_LEADERS)} fog cluster(s) con pre-agregación")
         print(f" Global Accuracy: {acc_global:.2%} | Global Loss: {loss_global:.4f}")
         print(f"{'='*60}")
 
-        class_mags = [float(np.mean(np.abs(W4_global[:, j]))) for j in range(OUTPUT_UNITS)]
+        class_mags = [float(np.mean(np.abs(Wdo_global[:, j]))) for j in range(OUTPUT_UNITS)]
 
         history.append({
-            "round": current_round,
-            "time": datetime.now().strftime("%H:%M:%S"),
-            "accuracy": float(acc_global),
-            "loss": float(loss_global),
-            "w3_mag": float(np.mean(np.abs(W3_global))),
-            "w4_normal": class_mags[0],
-            "w4_brute": class_mags[1],
-            "w4_scan": class_mags[2],
-            "fog_samples": total_samples_this_round
+            "round":      current_round,
+            "time":       datetime.now().strftime("%H:%M:%S"),
+            "accuracy":   float(acc_global),
+            "loss":       float(loss_global),
+            "w3_mag":     float(np.mean(np.abs(Wd1_global))),
+            "w4_normal":  class_mags[0],
+            "w4_brute":   class_mags[1],
+            "w4_scan":    class_mags[2],
+            "fog_samples": total_samples_this_round,
         })
 
-        W3_update_sum.fill(0); b3_update_sum.fill(0)
-        W4_update_sum.fill(0); b4_update_sum.fill(0)
+        Wd1_update_sum.fill(0); bd1_update_sum.fill(0)
+        Wdo_update_sum.fill(0); bdo_update_sum.fill(0)
         accuracy_sum = 0.0; loss_sum = 0.0
-        updates_received = 0
+        updates_received         = 0
         total_samples_this_round = 0
-        round_in_progress = False
+        round_in_progress        = False
 
         export_global_history_csv()
         distribute_global_model()
@@ -495,7 +504,7 @@ def dashboard():
 <body>
     <div class="header">
         <div>
-            <h1 class="title">🚀 Federated IDS Analytics - FOG (No-ASCON)</h1>
+            <h1 class="title">🚀 Federated IDS Analytics - FOG (CNN-1D)</h1>
             <p style="color: var(--purple); margin: 4px 0 0 0; font-size: 0.85rem;">☁️ Edge → Fog → Cloud | 📦 JSON plano | Resultados en Results_FOG</p>
         </div>
         <button class="button" onclick="startRound()">Forzar Sincronización Global</button>
@@ -543,10 +552,10 @@ def dashboard():
                     <th>Hora</th>
                     <th>Global Accuracy</th>
                     <th>Global Loss</th>
-                    <th>W3 (General)</th>
-                    <th>W4 Normal</th>
-                    <th>W4 Bruteforce</th>
-                    <th>W4 Scan_A</th>
+                    <th>Wd1 (General)</th>
+                    <th>Wdo Normal</th>
+                    <th>Wdo Bruteforce</th>
+                    <th>Wdo Scan_A</th>
                     <th>Fog Samples</th>
                 </tr>
             </thead>
@@ -879,11 +888,11 @@ def dashboard():
 # ====================== MAIN ======================
 if __name__ == "__main__":
     print("=" * 60)
-    print(" SERVIDOR CENTRAL FEDERADO HFL v7-no-ascon + FOG LAYER")
+    print(" SERVIDOR CENTRAL FEDERADO HFL v7-CNN + FOG LAYER (No-ASCON)")
     print(f" Fog Clusters esperados: {MIN_UPDATES_PER_ROUND}")
     print(f" Fog Leaders: {FOG_LEADERS}")
     print(" Modo baseline sin ASCON: JSON plano")
-    print(" Arquitectura: ESP32 → RPi ↔ RPi → PC (3-tier)")
+    print(" Arquitectura: ESP32 → RPi ↔ RPi → PC (3-tier) CNN-1D")
     print(f" Dashboard: http://localhost:{SERVER_PORT}/")
     print("=" * 60)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)

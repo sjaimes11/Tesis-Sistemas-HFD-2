@@ -1,0 +1,23 @@
+timestamp,device_name,device_suffix,hostname,run_id,stage,fl_round,num_samples,accuracy,loss,fog_role,buffer_target
+2026-04-27 20:01:17,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,0,30,0.9666666388511658,0.432550847530365,peer,30
+2026-04-27 20:02:00,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,1,30,0.699999988079071,0.8171405792236328,peer,30
+2026-04-27 20:02:50,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,2,30,0.6333333253860474,0.7875165343284607,peer,30
+2026-04-27 20:03:40,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,3,30,0.8333333134651184,0.37352922558784485,peer,30
+2026-04-27 20:04:30,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,4,30,0.7333333492279053,0.5682260394096375,peer,30
+2026-04-27 20:05:20,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,5,30,0.8333333134651184,0.49012959003448486,peer,30
+2026-04-27 20:06:10,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,6,30,0.8333333134651184,0.3226034939289093,peer,30
+2026-04-27 20:07:00,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,7,30,0.9666666388511658,0.2098333090543747,peer,30
+2026-04-27 20:07:50,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,8,30,0.800000011920929,0.3642165958881378,peer,30
+2026-04-27 20:08:40,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,9,30,0.9666666388511658,0.09234289824962616,peer,30
+2026-04-27 20:09:30,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,10,30,0.5333333611488342,0.6157645583152771,peer,30
+2026-04-27 20:10:20,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,11,30,0.9333333373069763,0.2649584710597992,peer,30
+2026-04-27 20:11:10,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,12,30,0.8333333134651184,0.3143634796142578,peer,30
+2026-04-27 20:12:00,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,13,30,0.9333333373069763,0.1588587909936905,peer,30
+2026-04-27 20:12:50,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,13,30,0.9333333373069763,0.21935266256332397,peer,30
+2026-04-27 20:13:40,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,13,30,0.8999999761581421,0.2154347002506256,peer,30
+2026-04-27 20:14:30,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,14,30,0.9333333373069763,0.1697687953710556,peer,30
+2026-04-27 20:15:20,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,15,30,0.9333333373069763,0.16723211109638214,peer,30
+2026-04-27 20:16:10,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,16,30,0.8333333134651184,0.2695365250110626,peer,30
+2026-04-27 20:17:00,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,17,30,0.8333333134651184,0.4317970871925354,peer,30
+2026-04-27 20:17:50,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,18,30,0.9333333373069763,0.16975311934947968,peer,30
+2026-04-27 20:18:40,gateway,gateway_fog_peer,gatewayB,CNN_no_ascon_1,local_train,19,30,0.9333333373069763,0.12158827483654022,peer,30

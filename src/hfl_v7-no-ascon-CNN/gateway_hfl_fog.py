@@ -1,9 +1,12 @@
 """
 =============================================================================
- gateway_hfl_fog.py — Raspberry Pi (Fog Gateway) — HFL v7 + Fog Layer
+ gateway_hfl_fog.py — Raspberry Pi (Fog Gateway) — HFL v7-CNN + Fog Layer
 =============================================================================
  Implementa intercomunicación Fog (RPi <-> RPi) vía MQTT con JSON plano,
  añadiendo una capa de pre-agregación entre gateways antes de enviar al PC.
+
+ Modelo CNN-1D: 13 features -> Conv1D(32) -> Conv1D(16) -> GAP -> Dense(8) -> Dense(3)
+ Capas FL: W_dense1(16,8) + b_dense1(8) + W_dense_out(8,3) + b_dense_out(3)
 
  Roles (configurar FOG_ROLE):
    "leader" → coordina agregación Fog, comunica con el servidor PC
@@ -84,7 +87,7 @@ metrics = PlainMetrics("gateway", suffix=GATEWAY_ID)
 model_results = ModelResultsLogger("gateway", suffix=GATEWAY_ID)
 
 # =============================================================================
-#  DATASET LOCAL Y MODELO
+#  DATASET LOCAL Y MODELO CNN-1D
 # =============================================================================
 FEATURE_COUNT = 13
 CLASS_NAMES = ["normal", "mqtt_bruteforce", "scan_A"]
@@ -101,39 +104,40 @@ node_stats = {}
 fog_weights_buffer = {}
 fog_weights_lock = threading.Lock()
 
-def build_mlp_model():
+def build_cnn_model():
     model = tf.keras.Sequential([
-        tf.keras.layers.Dense(32, activation='relu', input_shape=(FEATURE_COUNT,), name='dense_0'),
-        tf.keras.layers.Dense(16, activation='relu', name='dense_1'),
-        tf.keras.layers.Dense(8, activation='relu', name='dense_3'),
-        tf.keras.layers.Dense(3, activation='softmax', name='dense_out')
+        tf.keras.layers.Input(shape=(FEATURE_COUNT, 1), name='input_features'),
+        tf.keras.layers.Conv1D(32, kernel_size=3, activation='relu', padding='same', name='conv_1'),
+        tf.keras.layers.BatchNormalization(name='bn_conv_1'),
+        tf.keras.layers.Dropout(0.3, name='drop_1'),
+        tf.keras.layers.Conv1D(16, kernel_size=3, activation='relu', padding='same', name='conv_2'),
+        tf.keras.layers.BatchNormalization(name='bn_conv_2'),
+        tf.keras.layers.Dropout(0.2, name='drop_2'),
+        tf.keras.layers.GlobalAveragePooling1D(name='gap'),
+        tf.keras.layers.Dense(8, activation='relu', name='dense_1'),
+        tf.keras.layers.Dense(3, activation='softmax', name='dense_out'),
     ])
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
                   loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     return model
 
 
-def load_base_mlp_model():
+def load_base_cnn_model():
     base_dir = Path(__file__).resolve().parent
-    h5_path = base_dir / "ids_3class.h5"
+    weights_path = base_dir / "ids_3class_cnn.weights.h5"
     keras_path = base_dir / "ids_3class.keras"
-    weights_path = base_dir / "ids_3class.weights.h5"
-
-    if h5_path.exists():
-        print(f"[FOG-{FOG_ROLE.upper()}] Intentando cargar fallback compatible: {h5_path.name}")
-        model = tf.keras.models.load_model(str(h5_path), compile=False)
-        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
-                      loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-        return model
 
     if keras_path.exists():
         print(f"[FOG-{FOG_ROLE.upper()}] Intentando cargar modelo nativo Keras: {keras_path.name}")
-        model = tf.keras.models.load_model(str(keras_path), compile=False)
-        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
-                      loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-        return model
+        try:
+            loaded_model = tf.keras.models.load_model(str(keras_path), compile=False)
+            loaded_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
+                          loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+            return loaded_model
+        except Exception as e:
+            print(f"[FOG-{FOG_ROLE.upper()}] No se pudo cargar .keras directamente: {e}")
 
-    model = build_mlp_model()
+    model = build_cnn_model()
     if weights_path.exists():
         print(f"[FOG-{FOG_ROLE.upper()}] Cargando pesos manualmente desde {weights_path.name}")
         model.load_weights(str(weights_path))
@@ -141,15 +145,15 @@ def load_base_mlp_model():
 
 
 # =============================================================================
-#  MODELO KERAS
+#  MODELO KERAS CNN-1D
 # =============================================================================
-print(f"[FOG-{FOG_ROLE.upper()}] Cargando modelo base ids_3class.* ...")
+print(f"[FOG-{FOG_ROLE.upper()}] Cargando modelo base CNN-1D ...")
 try:
-    model = load_base_mlp_model()
-    print(f"[FOG-{FOG_ROLE.upper()}] Modelo cargado exitosamente.")
+    model = load_base_cnn_model()
+    print(f"[FOG-{FOG_ROLE.upper()}] Modelo CNN-1D cargado exitosamente.")
 except Exception as e:
-    print(f"[FOG-{FOG_ROLE.upper()}] Creando modelo desde cero: {e}")
-    model = build_mlp_model()
+    print(f"[FOG-{FOG_ROLE.upper()}] Creando modelo CNN-1D desde cero: {e}")
+    model = build_cnn_model()
 
 # =============================================================================
 #  UTILIDADES DE TRANSPORTE PLANO
@@ -181,7 +185,7 @@ def parse_json_payload(payload_raw, direction, round_num, **extra_fields):
 
 
 # =============================================================================
-#  HEURÍSTICA DE ETIQUETADO (misma que gateway_hfl.py)
+#  HEURÍSTICA DE ETIQUETADO
 # =============================================================================
 def heuristicLabel(features):
     pkts = int(features[0])
@@ -305,10 +309,10 @@ def handle_fog_weights_received(payload):
 
     with fog_weights_lock:
         fog_weights_buffer[peer_id] = {
-            "W3": np.array(data["W3"], dtype=np.float32),
-            "b3": np.array(data["b3"], dtype=np.float32),
-            "W4": np.array(data["W4"], dtype=np.float32),
-            "b4": np.array(data["b4"], dtype=np.float32),
+            "W_dense1":    np.array(data["W_dense1"],    dtype=np.float32),
+            "b_dense1":    np.array(data["b_dense1"],    dtype=np.float32),
+            "W_dense_out": np.array(data["W_dense_out"], dtype=np.float32),
+            "b_dense_out": np.array(data["b_dense_out"], dtype=np.float32),
             "num_samples": data["num_samples"],
             "accuracy": data["accuracy"],
             "loss": data["loss"]
@@ -325,7 +329,7 @@ def check_fog_aggregation_ready():
         return
 
     print(f"\n{'='*60}")
-    print(f" FOG AGGREGATION — {len(fog_weights_buffer)} gateways listos")
+    print(f" FOG AGGREGATION CNN-1D — {len(fog_weights_buffer)} gateways listos")
     print(f"{'='*60}")
 
     fog_fedavg()
@@ -343,31 +347,31 @@ def fog_fedavg():
         fog_weights_buffer.clear()
         return
 
-    W3_agg = np.zeros((16, 8), dtype=np.float32)
-    b3_agg = np.zeros(8, dtype=np.float32)
-    W4_agg = np.zeros((8, 3), dtype=np.float32)
-    b4_agg = np.zeros(3, dtype=np.float32)
+    Wd1_agg = np.zeros((16, 8), dtype=np.float32)
+    bd1_agg = np.zeros(8, dtype=np.float32)
+    Wdo_agg = np.zeros((8, 3), dtype=np.float32)
+    bdo_agg = np.zeros(3, dtype=np.float32)
     acc_agg = 0.0
     loss_agg = 0.0
 
     for gw_id, w in fog_weights_buffer.items():
         n = w["num_samples"]
-        W3_agg += w["W3"] * n
-        b3_agg += w["b3"] * n
-        W4_agg += w["W4"] * n
-        b4_agg += w["b4"] * n
+        Wd1_agg += w["W_dense1"] * n
+        bd1_agg += w["b_dense1"] * n
+        Wdo_agg += w["W_dense_out"] * n
+        bdo_agg += w["b_dense_out"] * n
         acc_agg += w["accuracy"] * n
         loss_agg += w["loss"] * n
         print(f"  {gw_id}: {n} muestras, Acc={w['accuracy']:.2%}")
 
-    W3_agg /= total_samples
-    b3_agg /= total_samples
-    W4_agg /= total_samples
-    b4_agg /= total_samples
+    Wd1_agg /= total_samples
+    bd1_agg /= total_samples
+    Wdo_agg /= total_samples
+    bdo_agg /= total_samples
     acc_agg /= total_samples
     loss_agg /= total_samples
 
-    print(f"  Fog FedAvg: {total_samples} muestras totales, "
+    print(f"  Fog FedAvg CNN-1D: {total_samples} muestras totales, "
           f"Acc promedio={acc_agg:.2%}, Loss={loss_agg:.4f}")
     model_results.record(
         stage="fog_fedavg",
@@ -381,23 +385,23 @@ def fog_fedavg():
 
     fog_weights_buffer.clear()
 
-    send_fog_aggregated_to_pc(W3_agg, b3_agg, W4_agg, b4_agg,
+    send_fog_aggregated_to_pc(Wd1_agg, bd1_agg, Wdo_agg, bdo_agg,
                                total_samples, acc_agg, loss_agg)
 
 
-def send_fog_aggregated_to_pc(W3, b3, W4, b4, num_samples, accuracy, loss):
+def send_fog_aggregated_to_pc(Wd1, bd1, Wdo, bdo, num_samples, accuracy, loss):
     payload = {
         "gateway_id": f"fog_cluster_{GATEWAY_ID}",
         "num_samples": num_samples,
         "round": current_round,
         "accuracy": accuracy,
         "loss": loss,
-        "W3": W3.tolist(), "b3": b3.tolist(),
-        "W4": W4.tolist(), "b4": b4.tolist()
+        "W_dense1": Wd1.tolist(), "b_dense1": bd1.tolist(),
+        "W_dense_out": Wdo.tolist(), "b_dense_out": bdo.tolist()
     }
     payload_dict, _ = serialize_json_payload(payload, "RPi_leader->PC", current_round)
 
-    print("[FOG-LEADER] Enviando pesos Fog-agregados al servidor PC...")
+    print("[FOG-LEADER] Enviando pesos Fog-agregados CNN-1D al servidor PC...")
     try:
         resp = requests.post(url_servidor, json=payload_dict, timeout=10)
         print(f"  -> Respuesta PC: {resp.json()}")
@@ -414,22 +418,22 @@ def handle_fog_global_received(payload):
     data = parse_json_payload(payload, "RPi_leader->RPi_peer", current_round)
 
     current_round = data.get("round", current_round + 1)
-    W3 = np.array(data["W3"], dtype=np.float32)
-    b3 = np.array(data["b3"], dtype=np.float32)
-    W4 = np.array(data["W4"], dtype=np.float32)
-    b4 = np.array(data["b4"], dtype=np.float32)
+    Wd1 = np.array(data["W_dense1"],    dtype=np.float32)
+    bd1 = np.array(data["b_dense1"],    dtype=np.float32)
+    Wdo = np.array(data["W_dense_out"], dtype=np.float32)
+    bdo = np.array(data["b_dense_out"], dtype=np.float32)
 
     print(f"\n{'='*60}")
-    print(f" [FOG-PEER] MODELO GLOBAL RECIBIDO DEL LÍDER (Ronda {current_round})")
+    print(f" [FOG-PEER] MODELO GLOBAL CNN-1D RECIBIDO DEL LÍDER (Ronda {current_round})")
     print(" JSON plano recibido y parseado correctamente")
     print(f"{'='*60}")
 
     dense_layers = [l for l in model.layers if isinstance(l, tf.keras.layers.Dense)]
     if len(dense_layers) >= 2:
-        dense_layers[-2].set_weights([W3, b3])
-        dense_layers[-1].set_weights([W4, b4])
+        dense_layers[-2].set_weights([Wd1, bd1])
+        dense_layers[-1].set_weights([Wdo, bdo])
 
-    broadcast_model_to_esp32s(W3, b3, W4, b4)
+    broadcast_model_to_esp32s(Wd1, bd1, Wdo, bdo)
 
 
 # =============================================================================
@@ -444,22 +448,22 @@ class DeployModelHandler(BaseHTTPRequestHandler):
             data = parse_json_payload(body, "PC->RPi_leader", current_round)
 
             current_round = data.get("round", current_round + 1)
-            W3 = np.array(data["W3"], dtype=np.float32)
-            b3 = np.array(data["b3"], dtype=np.float32)
-            W4 = np.array(data["W4"], dtype=np.float32)
-            b4 = np.array(data["b4"], dtype=np.float32)
+            Wd1 = np.array(data["W_dense1"],    dtype=np.float32)
+            bd1 = np.array(data["b_dense1"],    dtype=np.float32)
+            Wdo = np.array(data["W_dense_out"], dtype=np.float32)
+            bdo = np.array(data["b_dense_out"], dtype=np.float32)
 
             print(f"\n{'='*60}")
-            print(f" [FOG-LEADER] MODELO GLOBAL RECIBIDO DEL PC (Ronda {current_round})")
+            print(f" [FOG-LEADER] MODELO GLOBAL CNN-1D RECIBIDO DEL PC (Ronda {current_round})")
             print(f"{'='*60}")
 
             dense_layers = [l for l in model.layers if isinstance(l, tf.keras.layers.Dense)]
             if len(dense_layers) >= 2:
-                dense_layers[-2].set_weights([W3, b3])
-                dense_layers[-1].set_weights([W4, b4])
+                dense_layers[-2].set_weights([Wd1, bd1])
+                dense_layers[-1].set_weights([Wdo, bdo])
 
-            broadcast_model_to_esp32s(W3, b3, W4, b4)
-            broadcast_model_to_fog_peers(W3, b3, W4, b4)
+            broadcast_model_to_esp32s(Wd1, bd1, Wdo, bdo)
+            broadcast_model_to_fog_peers(Wd1, bd1, Wdo, bdo)
 
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -476,40 +480,40 @@ class DeployModelHandler(BaseHTTPRequestHandler):
 # =============================================================================
 #  BROADCAST: modelo global → ESP32s locales (MQTT plano)
 # =============================================================================
-def broadcast_model_to_esp32s(W3, b3, W4, b4):
+def broadcast_model_to_esp32s(Wd1, bd1, Wdo, bdo):
     payload = {
         "round": current_round,
-        "W3": W3.tolist(), "b3": b3.tolist(),
-        "W4": W4.tolist(), "b4": b4.tolist()
+        "W_dense1": Wd1.tolist(), "b_dense1": bd1.tolist(),
+        "W_dense_out": Wdo.tolist(), "b_dense_out": bdo.tolist()
     }
     _, payload_json = serialize_json_payload(payload, "RPi->ESP32", current_round)
 
     if mqtt_local and mqtt_local.is_connected():
         mqtt_local.publish(TOPIC_GLOBAL_MODEL, payload_json, qos=1)
-        print(f"[MQTT-LOCAL] Modelo global plano publicado para ESP32s ({len(payload_json)}B)")
+        print(f"[MQTT-LOCAL] Modelo global CNN-1D plano publicado para ESP32s ({len(payload_json)}B)")
 
 
 # =============================================================================
 #  BROADCAST: modelo global → peers Fog (MQTT plano) — solo líder
 # =============================================================================
-def broadcast_model_to_fog_peers(W3, b3, W4, b4):
+def broadcast_model_to_fog_peers(Wd1, bd1, Wdo, bdo):
     if FOG_ROLE != "leader":
         return
 
     payload = {
         "round": current_round,
-        "W3": W3.tolist(), "b3": b3.tolist(),
-        "W4": W4.tolist(), "b4": b4.tolist()
+        "W_dense1": Wd1.tolist(), "b_dense1": bd1.tolist(),
+        "W_dense_out": Wdo.tolist(), "b_dense_out": bdo.tolist()
     }
     _, payload_json = serialize_json_payload(payload, "RPi_leader->RPi_peer", current_round)
 
     if mqtt_fog and mqtt_fog.is_connected():
         mqtt_fog.publish(TOPIC_FOG_GLOBAL, payload_json, qos=1)
-        print(f"[MQTT-FOG] Modelo global plano publicado para peers Fog ({len(payload_json)}B)")
+        print(f"[MQTT-FOG] Modelo global CNN-1D plano publicado para peers Fog ({len(payload_json)}B)")
 
 
 # =============================================================================
-#  ENTRENAMIENTO LOCAL
+#  ENTRENAMIENTO LOCAL CNN-1D
 # =============================================================================
 def train_local_model():
     global X_train_buffer, Y_train_buffer
@@ -519,16 +523,19 @@ def train_local_model():
     X_train_buffer = []
     Y_train_buffer = []
 
-    print(f"\n[TRAIN] Entrenando localmente con {len(X)} muestras...")
-    hist = model.fit(X, Y, epochs=5, batch_size=8, verbose=1)
+    # CNN-1D espera entrada con shape (N, 13, 1)
+    X_cnn = X.reshape(-1, FEATURE_COUNT, 1)
+
+    print(f"\n[TRAIN-CNN] Entrenando localmente con {len(X)} muestras...")
+    hist = model.fit(X_cnn, Y, epochs=5, batch_size=8, verbose=1)
     final_acc = float(hist.history.get('accuracy', [0.0])[-1])
     final_loss = float(hist.history.get('loss', [0.0])[-1])
 
     dense_layers = [l for l in model.layers if isinstance(l, tf.keras.layers.Dense)]
-    W3, b3 = dense_layers[-2].get_weights()
-    W4, b4 = dense_layers[-1].get_weights()
+    Wd1, bd1 = dense_layers[-2].get_weights()
+    Wdo, bdo = dense_layers[-1].get_weights()
 
-    print(f"[TRAIN] Finalizado (Acc: {final_acc:.2%}, Loss: {final_loss:.4f})")
+    print(f"[TRAIN-CNN] Finalizado (Acc: {final_acc:.2%}, Loss: {final_loss:.4f})")
     model_results.record(
         stage="local_train",
         fl_round=current_round,
@@ -542,22 +549,22 @@ def train_local_model():
     if FOG_ROLE == "leader":
         with fog_weights_lock:
             fog_weights_buffer[GATEWAY_ID] = {
-                "W3": W3.copy(), "b3": b3.copy(),
-                "W4": W4.copy(), "b4": b4.copy(),
+                "W_dense1": Wd1.copy(), "b_dense1": bd1.copy(),
+                "W_dense_out": Wdo.copy(), "b_dense_out": bdo.copy(),
                 "num_samples": len(X),
                 "accuracy": final_acc,
                 "loss": final_loss
             }
-            print(f"[FOG-LEADER] Pesos propios almacenados en buffer Fog")
+            print(f"[FOG-LEADER] Pesos propios CNN-1D almacenados en buffer Fog")
             check_fog_aggregation_ready()
 
     elif FOG_ROLE == "peer":
-        send_weights_to_fog_leader(W3, b3, W4, b4, len(X), final_acc, final_loss)
+        send_weights_to_fog_leader(Wd1, bd1, Wdo, bdo, len(X), final_acc, final_loss)
 
     metrics.print_live_summary()
 
 
-def send_weights_to_fog_leader(W3, b3, W4, b4, num_samples, accuracy, loss):
+def send_weights_to_fog_leader(Wd1, bd1, Wdo, bdo, num_samples, accuracy, loss):
     """Peer: publica pesos locales al broker Fog del líder vía MQTT plano."""
     payload = {
         "gateway_id": GATEWAY_ID,
@@ -565,14 +572,14 @@ def send_weights_to_fog_leader(W3, b3, W4, b4, num_samples, accuracy, loss):
         "round": current_round,
         "accuracy": accuracy,
         "loss": loss,
-        "W3": W3.tolist(), "b3": b3.tolist(),
-        "W4": W4.tolist(), "b4": b4.tolist()
+        "W_dense1": Wd1.tolist(), "b_dense1": bd1.tolist(),
+        "W_dense_out": Wdo.tolist(), "b_dense_out": bdo.tolist()
     }
     _, payload_json = serialize_json_payload(payload, "RPi_peer->RPi_leader", current_round)
 
     if mqtt_fog and mqtt_fog.is_connected():
         mqtt_fog.publish(TOPIC_FOG_WEIGHTS, payload_json, qos=1)
-        print(f"[MQTT-FOG] Pesos planos enviados al líder Fog ({len(payload_json)}B)")
+        print(f"[MQTT-FOG] Pesos CNN-1D planos enviados al líder Fog ({len(payload_json)}B)")
     else:
         print(f"[ERROR] No hay conexión al broker Fog del líder")
 
@@ -582,8 +589,8 @@ def send_weights_to_fog_leader(W3, b3, W4, b4, num_samples, accuracy, loss):
 # =============================================================================
 if __name__ == "__main__":
     print("=" * 60)
-    print(f" GATEWAY HFL v7 + FOG [{GATEWAY_ID}]")
-    print(f" Rol Fog: {FOG_ROLE.upper()}")
+    print(f" GATEWAY HFL v7-CNN + FOG [{GATEWAY_ID}]")
+    print(f" Rol Fog: {FOG_ROLE.upper()} | Modelo: CNN-1D")
     if FOG_ROLE == "leader":
         print(f" Peers esperados: {FOG_EXPECTED_PEERS}")
         print(f" Servidor PC: {url_servidor}")

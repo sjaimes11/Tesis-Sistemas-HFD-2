@@ -1,0 +1,22 @@
+timestamp,device_name,device_suffix,hostname,run_id,stage,fl_round,num_samples,accuracy,loss,buffer_target
+2026-04-27 18:55:56,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.9666666388511658,0.6796393990516663,30
+2026-04-27 18:56:40,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,1.0,0.20342549681663513,30
+2026-04-27 18:57:35,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,1.0,0.027178725227713585,30
+2026-04-27 18:58:27,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.800000011920929,0.814701497554779,30
+2026-04-27 18:59:17,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.8333333134651184,0.5666168928146362,30
+2026-04-27 19:00:07,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.8999999761581421,0.42105332016944885,30
+2026-04-27 19:00:57,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.9666666388511658,0.20788563787937164,30
+2026-04-27 19:01:47,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.8666666746139526,0.3951999545097351,30
+2026-04-27 19:02:37,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.8999999761581421,0.33687418699264526,30
+2026-04-27 19:03:27,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.9333333373069763,0.2603101432323456,30
+2026-04-27 19:04:17,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.9333333373069763,0.19149833917617798,30
+2026-04-27 19:05:07,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.8999999761581421,0.25973033905029297,30
+2026-04-27 19:05:57,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.9333333373069763,0.19290775060653687,30
+2026-04-27 19:06:47,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.8999999761581421,0.19121284782886505,30
+2026-04-27 19:07:37,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.9333333373069763,0.1172882616519928,30
+2026-04-27 19:08:27,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.9666666388511658,0.10332269221544266,30
+2026-04-27 19:09:17,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,1.0,0.06545856595039368,30
+2026-04-27 19:10:07,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.8999999761581421,0.21315638720989227,30
+2026-04-27 19:10:57,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.8999999761581421,0.19990520179271698,30
+2026-04-27 19:11:47,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,1.0,0.0669337660074234,30
+2026-04-27 19:12:37,gateway,gateway_A,raspberrypi,CNN_no_ascon_2,local_train,0,30,0.9333333373069763,0.15106262266635895,30

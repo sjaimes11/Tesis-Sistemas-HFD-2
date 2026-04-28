@@ -1,0 +1,21 @@
+timestamp,device_name,device_suffix,hostname,run_id,stage,fl_round,num_samples,accuracy,loss,buffer_target
+2026-04-27 20:23:46,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,0,30,0.800000011920929,0.7042297720909119,30
+2026-04-27 20:24:29,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,1,30,0.7666666507720947,0.7107802033424377,30
+2026-04-27 20:25:19,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,2,30,0.6333333253860474,0.7572230100631714,30
+2026-04-27 20:26:09,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,3,30,0.7666666507720947,0.5627645254135132,30
+2026-04-27 20:26:59,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,4,30,0.800000011920929,0.5786905288696289,30
+2026-04-27 20:27:49,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,5,30,0.8333333134651184,0.4438096582889557,30
+2026-04-27 20:28:39,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,6,30,0.8333333134651184,0.38547229766845703,30
+2026-04-27 20:29:29,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,7,30,0.7666666507720947,0.5941392183303833,30
+2026-04-27 20:30:19,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,8,30,0.7666666507720947,0.4474447965621948,30
+2026-04-27 20:31:09,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,9,30,0.7333333492279053,0.609650194644928,30
+2026-04-27 20:31:59,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,10,30,0.699999988079071,0.5535954833030701,30
+2026-04-27 20:32:49,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,11,30,0.800000011920929,0.41575151681900024,30
+2026-04-27 20:33:39,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,12,30,0.8333333134651184,0.2866860032081604,30
+2026-04-27 20:34:29,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,13,30,0.6666666865348816,0.5854595303535461,30
+2026-04-27 20:35:19,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,14,30,0.8666666746139526,0.4024829864501953,30
+2026-04-27 20:36:09,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,15,30,0.800000011920929,0.391961932182312,30
+2026-04-27 20:36:59,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,16,30,0.8333333134651184,0.42884591221809387,30
+2026-04-27 20:37:49,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,17,30,0.9666666388511658,0.1615123748779297,30
+2026-04-27 20:38:39,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,18,30,0.800000011920929,0.34231752157211304,30
+2026-04-27 20:39:29,gateway,gateway_B,gatewayB,CNN_no_ascon_4,local_train,19,30,0.8666666746139526,0.2999313473701477,30
