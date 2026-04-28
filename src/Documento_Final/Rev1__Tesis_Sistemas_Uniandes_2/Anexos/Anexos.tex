@@ -41,6 +41,39 @@ La arquitectura desplegada consta de tres capas principales y una extensión FOG
 \section{Anexo C: Repositorio del Proyecto}
 \label{anx:repositorio}
 
-El código fuente completo, datasets y scripts de entrenamiento están disponibles en el repositorio del proyecto. Las carpetas relevantes para esta revisión son \texttt{hfl\_v7-RN} (MLP/RN con ASCON), \texttt{hfl\_v7-no-ascon} (baseline JSON plano), \texttt{hfl\_v7-CNN} (modelo CNN-1D), \texttt{NotebooksAndModels} (entrenamiento offline y exportación de pesos) y \texttt{Papers} (literatura base).
+El código fuente completo, datasets y scripts de entrenamiento están disponibles en el repositorio del proyecto. Las carpetas relevantes para esta revisión son \texttt{hfl\_v7-RN} (MLP/RN con ASCON), \texttt{hfl\_v7-no-ascon-RN} (baseline MLP/RN con JSON plano), \texttt{hfl\_v7-CNN} (modelo CNN-1D con ASCON, estándar y FOG), \texttt{NotebooksAndModels} (entrenamiento offline y exportación de pesos), \texttt{Analisis de Modelos} (post-procesamiento por variante: \texttt{RN}, \texttt{no-ascon}, \texttt{CNN}, \texttt{CNN\_FOG}, \texttt{NIST}) y \texttt{Papers} (literatura base).
+
+\section{Anexo D: Resumen de literatura clave incorporada}
+\label{anx:literatura}
+
+La Tabla~\ref{tab:anx_literatura_clave} resume los trabajos más recientes que sustentan las decisiones de diseño y los trabajos futuros del Capítulo~\ref{chap:conc}, distinguiendo lo que aporta cada referencia.
+
+\begin{longtable}{@{}p{0.32\textwidth} p{0.20\textwidth} p{0.42\textwidth}@{}}
+\caption{Literatura clave y aporte concreto a la tesis.}
+\label{tab:anx_literatura_clave}\\
+\toprule
+\textbf{Trabajo} & \textbf{Tipo} & \textbf{Aporte a la tesis} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Trabajo} & \textbf{Tipo} & \textbf{Aporte a la tesis} \\
+\midrule
+\endhead
+Kaur~\textit{et~al.}~2025 \cite{Kaur2025_ASCON_Survey} & Survey ASCON (ACM CSUR) & Justifica elección de ASCON-128 sobre 128a y guía contramedidas SCA. \\
+Mirzaali~\textit{et~al.}~2025 \cite{Mirzaali2025_LWC_Permutations} & Análisis crítico LWC & Argumenta no usar permutaciones \emph{ad-hoc}; sugiere ataques replicables. \\
+Tran~\textit{et~al.}~2026 \cite{Tran2026_EdgeTrustShard} & FL Bizantino MCU & Encuadra brecha de memoria HFL-MCU y motiva trabajo futuro Bizantino. \\
+Ficco~\textit{et~al.}~2024 \cite{Ficco2024_FL_TinyML_Onboard} & FL+TL on-board MCU & Antecedente directo de FL+TinyML on-board en ESP32 y RPi. \\
+Dini~\textit{et~al.}~2024 \cite{Dini2024_EmbeddedIIoT_Review} & Survey IIoT/AI embed. & Encuadra \emph{toolchains} TinyML y trade-offs SW/HW. \\
+Ni \& Li 2024 \cite{Ni2024_IIoT_Security_Survey} & Survey IIoT seguridad & Sustento del problema (IIoT, ML, retos). \\
+Amanullah~\textit{et~al.}~2020 \cite{Amanullah2020_DL_BigData_IoT_Security} & Survey DL+IoT & Antecedente histórico de DL para seguridad IoT. \\
+Bagaa~\textit{et~al.}~2020 \cite{Bagaa2020_ML_IoT_Framework} & SDN+ML para IoT & Antecedente de framework ML para seguridad IoT. \\
+Hajj~\textit{et~al.}~2023 \cite{Hajj2023_CrossLayerFL_IDS} & FL cross-layer IDS & Comparación directa contra FL para IDS IoT. \\
+Chaurasia~\textit{et~al.}~2024 \cite{Chaurasia2024_FL_ResNet_IIoT} & FL+ResNet IIoT & Comparación con cliente FL más expresivo. \\
+Roy~\textit{et~al.}~2023 \cite{Roy2023_FL_AdaptedModel} & FL personalizado & Refuerzo del trabajo futuro de personalized FL. \\
+Saravana Balaji~\textit{et~al.}~2023 \cite{SaravanaBalaji2023_EdgeIoT_DL} & Edge sanitario+LABE & Antecedente de Edge+cifrado para IoT. \\
+Wang~\textit{et~al.}~2019 \cite{Wang2019_DataFusion_CPSS} & Data fusion CPSS & Sustento conceptual del modo FOG. \\
+Rani~\textit{et~al.}~2024 \cite{Rani2024_IoT_IDS_Datasets} & Integración datasets IoT-IDS & Sustento de la línea de trabajo futuro sobre datasets reales. \\
+\bottomrule
+\end{longtable}
 
 \end{appendix}

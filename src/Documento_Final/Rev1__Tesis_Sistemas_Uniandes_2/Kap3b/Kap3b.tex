@@ -1,7 +1,31 @@
 \chapter{Metodología}
 \label{chap:meth}
 
-La presente investigación sigue un enfoque experimental y cuantitativo, estructurado en seis fases: (i) construcción del pipeline de datos, (ii) entrenamiento y comparación offline de modelos livianos, (iii) implementación de la arquitectura jerárquica de aprendizaje federado, (iv) integración de cifrado ligero ASCON-128, (v) construcción de una línea base sin cifrado y (vi) evaluación de variantes con MLP/RN, CNN-1D y estrategia FOG sobre hardware real. 
+La presente investigación sigue un enfoque experimental y cuantitativo, estructurado en seis fases: (i) construcción del pipeline de datos, (ii) entrenamiento y comparación offline de modelos livianos, (iii) implementación de la arquitectura jerárquica de aprendizaje federado, (iv) integración de cifrado ligero ASCON-128, (v) construcción de una línea base sin cifrado y (vi) evaluación de variantes con MLP/RN, CNN-1D y estrategia FOG sobre hardware real.
+
+% ====================================================================
+\section{Modelo de Amenazas y Suposiciones}
+\label{sec:threat_model}
+
+Antes de detallar la arquitectura, se hace explícito el modelo de amenazas que motiva las decisiones de diseño. Se asume un atacante de red pasivo o activo capaz de observar y modificar el tráfico inalámbrico entre nodos ESP32, gateways Raspberry Pi y el PC coordinador, pero \emph{externo} al sistema. Las amenazas que el sistema busca mitigar son:
+
+\begin{itemize}
+    \item \textbf{Confidencialidad de pesos y features:} Un atacante que capture los mensajes MQTT/HTTP no debe poder leer el contenido (pesos federados, métricas locales, vectores de features). Esto se garantiza con ASCON-128 sobre todos los canales \cite{NISTSP8002322025, Kaur2025_ASCON_Survey}.
+    \item \textbf{Integridad y autenticidad:} Mensajes alterados o inyectados deben ser detectados y descartados. Se usa el tag de autenticación de 128 bits que ASCON-128 produce de forma nativa, evitando el patrón frecuente de combinar cifrado simétrico con HMAC externo \cite{NISTIR8454_2023}.
+    \item \textbf{Reuso de mensajes (replay):} Cada nonce se construye a partir de un timestamp truncado a 32 bits y un contador monótono local; combinado con el tag autenticado, esto detecta reutilizaciones aunque un atacante reenvíe un mensaje válido.
+    \item \textbf{Diseños criptográficos no estandarizados:} Se descarta el uso de permutaciones ultra-ligeras \emph{ad-hoc} para autenticación, dado que análisis recientes han demostrado vulnerabilidades estructurales explotables sobre Raspberry Pi en condiciones realistas \cite{Mirzaali2025_LWC_Permutations}.
+\end{itemize}
+
+\noindent\textbf{Amenazas fuera del alcance.} Se delimitan explícitamente las siguientes amenazas que \emph{no} se mitigan en esta versión del sistema:
+
+\begin{itemize}
+    \item \textbf{Clientes bizantinos / data poisoning:} Un gateway o nodo edge comprometido podría enviar pesos manipulados que sesguen el modelo global. La literatura reporta que un 10\% de participantes maliciosos puede degradar la accuracy global de 96\% a 23\% \cite{Tran2026_EdgeTrustShard}. Mitigaciones (Krum, FLTrust, Fed-NGA, MF-PoP) requieren capacidades de cómputo y memoria que exceden las de un MCU sin descomposición arquitectónica adicional. Esta línea queda como trabajo futuro.
+    \item \textbf{Ataques de canal lateral sobre ASCON:} Análisis de potencia, EM o fault injection contra la implementación ASCON pueden recuperar la clave si el atacante tiene acceso físico al MCU \cite{Kaur2025_ASCON_Survey}. El sistema asume despliegue en un entorno físico controlado.
+    \item \textbf{Inferencia de membresía:} Aunque FL no comparte datos crudos, los pesos pueden filtrar información sobre los datos locales. Defensas como differential privacy (DP-SGD) no se aplican en esta versión.
+    \item \textbf{Compromiso del PC coordinador:} El PC se asume confiable (TCB). Trabajos basados en blockchain o multi-coordinador podrían eliminar este supuesto \cite{Tran2026_EdgeTrustShard}.
+\end{itemize}
+
+
 % ====================================================================
 \section{Arquitectura del Sistema}
 \label{sec:arquitectura}
@@ -159,7 +183,7 @@ Tiny Transformer & Auto-atención tabular liviana & Pesos y modelo Keras para an
 \end{tabular}
 \end{table}
 
-El despliegue principal selecciona el MLP/RN porque ofrece el mejor balance entre precisión offline, tamaño y simplicidad de implementación en C++ sobre ESP32-S3. La variante CNN-1D se implementa como rama experimental: las capas convolucionales permanecen fijas en el edge y solo se federan las capas densas \texttt{dense\_1} y \texttt{dense\_out}, equivalentes funcionalmente a las capas federadas del MLP.
+El despliegue principal selecciona el MLP/RN porque ofrece el mejor balance entre precisión offline, tamaño y simplicidad de implementación en C++ sobre ESP32-S3. La variante CNN-1D se implementa como rama experimental: las capas convolucionales permanecen fijas en el edge y solo se federan las capas densas \texttt{dense\_1} y \texttt{dense\_out}, equivalentes funcionalmente a las capas federadas del MLP. Esta estrategia de \emph{federar solo las capas finales} se reporta también en trabajos previos de FL+TL para TinyML \cite{Ficco2024_FL_TinyML_Onboard, Roy2023_FL_AdaptedModel} y permite acotar el tamaño del payload sin perder capacidad de adaptación local.
 
 % ====================================================================
 \section{Protocolo de Aprendizaje Federado Jerárquico}
@@ -214,6 +238,8 @@ Para proteger los artefactos de aprendizaje federado en tránsito, se integra \t
     \item \textbf{Tasa (rate):} 64 bits (8 bytes por bloque).
     \item \textbf{Permutación:} $p^{12}$ para inicialización/finalización, $p^6$ para procesamiento de bloques.
 \end{itemize}
+
+Se elige ASCON-128 (rate de 64 bits) sobre la variante ASCON-128a (rate de 128 bits) por dos razones: (i) su mayor número de rondas en la fase de procesamiento del cuerpo proporciona un margen de seguridad superior frente a ataques diferenciales y de cubo recientemente revisados \cite{Kaur2025_ASCON_Survey}; y (ii) los payloads del sistema (features de 13 floats, vectores de pesos de $\sim$3.6\,KB) son lo suficientemente pequeños para que la diferencia de \emph{throughput} entre ASCON-128 y ASCON-128a no sea determinante. Esta decisión es alineada con la recomendación de NIST SP 800-232 para canales con paquetes pequeños \cite{NISTSP8002322025}.
 
 \subsection{Canales Cifrados}
 

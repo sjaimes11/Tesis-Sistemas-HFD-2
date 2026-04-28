@@ -7,9 +7,9 @@ Esta investigación diseñó, implementó y evaluó un prototipo funcional de Si
 
 \subsection{Sobre la viabilidad de TinyML para IDS en IoT}
 
-Se demostró que un modelo MLP compacto de 1\,139 parámetros ($\approx$4.5\,KB) es capaz de ejecutarse en el ESP32-S3 y clasificar tráfico de red IoT en tres categorías (\texttt{normal}, \texttt{mqtt\_bruteforce}, \texttt{scan\_A}) con accuracy operativa en el rango de 90--95\% tras el entrenamiento federado. Esta cifra se sitúa por debajo del techo centralizado establecido por Decision Tree (99.87\%) y Random Forest (99.94\%), pero dentro de un rango útil para sistemas de alerta temprana.
+Se demostró que un modelo MLP compacto de 1\,139 parámetros ($\approx$4.5\,KB) es capaz de ejecutarse en el ESP32-S3 y clasificar tráfico de red IoT en tres categorías (\texttt{normal}, \texttt{mqtt\_bruteforce}, \texttt{scan\_A}) con accuracy operativa en el rango de 90--95\% tras el entrenamiento federado. Esta cifra se sitúa por debajo del techo centralizado establecido por Decision Tree (99.87\%) y Random Forest (99.94\%), pero dentro de un rango útil para sistemas de alerta temprana, y es competitivo con el 0.86 reportado por trabajos comparables de FL+TinyML on-board \cite{Ficco2024_FL_TinyML_Onboard}.
 
-El análisis comparativo con modelos clásicos reveló que los algoritmos más precisos (Random Forest, SVM-RBF) requieren del orden de megabytes de memoria y son incompatibles con microcontroladores. El notebook general mostró que MLP/RN, CNN-1D y Residual-MLP tienen desempeños offline similares alrededor de 90.5\%, pero el MLP/RN ofrece el mejor compromiso entre precisión, tamaño y simplicidad de despliegue.
+El análisis comparativo con modelos clásicos reveló que los algoritmos más precisos (Random Forest, SVM-RBF) requieren del orden de megabytes de memoria y son incompatibles con microcontroladores. El notebook general mostró que MLP/RN, CNN-1D y Residual-MLP tienen desempeños offline similares alrededor de 90.5\%, pero el MLP/RN ofrece el mejor compromiso entre precisión, tamaño y simplicidad de despliegue \cite{Dini2024_EmbeddedIIoT_Review, HeydariMahmoud2025_TinyML_IDS}.
 
 \subsection{Sobre el aprendizaje federado y la privacidad}
 
@@ -29,7 +29,7 @@ La cuantificación exhaustiva del overhead de ASCON-128 sobre 182 operaciones cr
     \item No se observó \textbf{degradación relevante en la convergencia} ni en la accuracy del modelo federado al habilitar ASCON; la comparación contra \texttt{hfl\_v7-no-ascon} muestra que el cifrado no invalida el ciclo HFL.
 \end{itemize}
 
-Estos resultados validan que ASCON-128 es un mecanismo criptográfico idóneo para proteger las comunicaciones de aprendizaje federado en dispositivos IoT restringidos, con un costo operacional despreciable que no justifica prescindir de la protección.
+Estos resultados validan que ASCON-128 es un mecanismo criptográfico idóneo para proteger las comunicaciones de aprendizaje federado en dispositivos IoT restringidos, con un costo operacional despreciable que no justifica prescindir de la protección. Esta evidencia experimental complementa el survey reciente de Kaur~\textit{et~al.}~\cite{Kaur2025_ASCON_Survey} sobre implementaciones FPGA/ASIC de ASCON, aportando una medición end-to-end en software embebido (C++ sobre ESP32) y en Python (Raspberry Pi y PC).
 
 \subsection{Sobre la arquitectura integrada}
 
@@ -42,23 +42,31 @@ A nivel sistémico, la arquitectura Edge--Fog--Cloud propuesta demostró ser fun
 \end{itemize}
 
 % ====================================================================
-\section{Trabajos Futuros}
+\section{Amenazas no cubiertas y trabajos futuros}
 \label{sec:future}
 
-A partir de las limitaciones identificadas y las oportunidades emergentes, se proponen las siguientes líneas de investigación:
+Como se delimitó en la Sección~\ref{sec:threat_model} y en las limitaciones del Capítulo~\ref{chap:resu}, el sistema deja por fuera tres familias de amenazas que motivan el siguiente roadmap: (i) clientes federados maliciosos / data poisoning, (ii) ataques de canal lateral sobre la implementación criptográfica y (iii) inferencia de membresía sobre los pesos federados. A partir de estas limitaciones y de las oportunidades emergentes, se proponen las siguientes líneas:
 
 \begin{enumerate}
-    \item \textbf{Mejora de la precisión federada con técnicas avanzadas de FL:} Explorar algoritmos de agregación más robustos ante datos non-IID, tales como FedProx \cite{Li2020FedProx}, SCAFFOLD o personalized FL, para reducir el gap de accuracy entre el enfoque federado y el centralizado.
+    \item \textbf{Mejora de la precisión federada con técnicas avanzadas de FL:} Explorar algoritmos de agregación más robustos ante datos non-IID, tales como FedProx \cite{Li2020FedProx}, SCAFFOLD o personalized FL, para reducir el gap de accuracy entre el enfoque federado y el centralizado, siguiendo los hallazgos de \cite{Roy2023_FL_AdaptedModel} sobre modelos localmente adaptados.
 
-    \item \textbf{Datos de tráfico real:} Sustituir la simulación de tráfico en los ESP32 por captura y análisis de tráfico MQTT real en un entorno IoT operativo, validando el sistema con distribuciones de tráfico genuinas y eliminando la dependencia de la función heurística de etiquetado.
+    \item \textbf{Robustez bizantina en FL sobre MCUs:} Incorporar agregaciones tolerantes a clientes maliciosos (Krum, FLTrust, Fed-NGA) o esquemas jerárquicos como EdgeTrust-Shard~\cite{Tran2026_EdgeTrustShard}, que reportan tolerancia hasta 30\% de adversarios manteniendo $\sim$94\% de accuracy con apenas 140\,KB de memoria en RPi Pico.
 
-    \item \textbf{Evaluación energética y de larga duración:} Medir el consumo energético de los nodos ESP32 durante la inferencia continua y la comunicación cifrada, y ejecutar el sistema durante períodos prolongados (semanas) para evaluar la estabilidad y la deriva del modelo (\emph{concept drift}).
+    \item \textbf{Datos de tráfico real:} Sustituir la simulación de tráfico en los ESP32 por captura y análisis de tráfico MQTT real en un entorno IoT operativo, integrando datasets como CICIoT2023, Edge-IIoTset o TON\_IoT \cite{Neto2023_CICIoT2023, Ferrag2022_EdgeIIoTset, Moustafa2020_TONIoT, Rani2024_IoT_IDS_Datasets}, eliminando la dependencia de la función heurística de etiquetado.
 
-    \item \textbf{Escalabilidad multi-gateway:} Extender el despliegue a múltiples Raspberry Pi actuando como gateways independientes con datasets locales distintos, evaluando el impacto de una topología HFL más realista con mayor heterogeneidad.
+    \item \textbf{Evaluación energética y de larga duración:} Medir el consumo energético de los nodos ESP32 durante la inferencia continua y la comunicación cifrada \cite{Tekin2023_OnDeviceEnergy}, y ejecutar el sistema durante períodos prolongados (semanas) para evaluar la estabilidad y la deriva del modelo (\emph{concept drift}).
 
-    \item \textbf{Cuantización del modelo:} Aplicar cuantización post-entrenamiento (INT8) al MLP para reducir aún más la huella de memoria y evaluar el impacto en accuracy. Esto habilitaría el despliegue en microcontroladores aún más restringidos (e.g., ESP32-C3 con 400\,KB de SRAM).
+    \item \textbf{Escalabilidad multi-gateway y multi-zona:} Extender el despliegue a múltiples Raspberry Pi actuando como gateways independientes con datasets locales distintos, evaluando el impacto de una topología HFL más realista con mayor heterogeneidad y validando empíricamente las ventajas de la pre-agregación FOG \cite{Wang2019_DataFusion_CPSS}.
 
-    \item \textbf{Comparación con ASCON-128a y otras variantes:} Evaluar ASCON-128a (rate de 128 bits vs.\ 64 bits en ASCON-128) para determinar si la mayor tasa de procesamiento reduce el overhead temporal, y comparar con otros esquemas de criptografía ligera estandarizados.
+    \item \textbf{Cuantización del modelo:} Aplicar cuantización post-entrenamiento (INT8) al MLP para reducir aún más la huella de memoria y evaluar el impacto en accuracy. Esto habilitaría el despliegue en microcontroladores aún más restringidos (e.g., ESP32-C3 con 400\,KB de SRAM) o en plataformas embebidas industriales \cite{Dini2024_EmbeddedIIoT_Review}.
+
+    \item \textbf{Comparación con ASCON-128a y endurecimiento contra canal lateral:} Evaluar ASCON-128a (rate de 128 bits vs.\ 64 bits en ASCON-128) para determinar si la mayor tasa de procesamiento reduce el overhead temporal, y aplicar las contramedidas frente a ataques de canal lateral (masking, hiding, randomized SBox) reportadas por Kaur~\textit{et~al.}~\cite{Kaur2025_ASCON_Survey}.
+
+    \item \textbf{Replicación del análisis crítico de criptografía ligera:} Replicar el patrón experimental de Mirzaali~\textit{et~al.}~\cite{Mirzaali2025_LWC_Permutations} sobre los protocolos del sistema, ejecutando ataques activos sobre Raspberry Pi para validar empíricamente la robustez del esquema ASCON-128 elegido.
 
     \item \textbf{Detección de concept drift y reentrenamiento adaptativo:} Implementar mecanismos de detección de cambio en la distribución de los datos (ADWIN, Page-Hinkley) que disparen automáticamente nuevas rondas de aprendizaje federado cuando la precisión del modelo cae por debajo de un umbral configurable.
+
+    \item \textbf{Combinación FL + Transfer Learning on-board:} Integrar transfer learning local en cada gateway, siguiendo la receta de Ficco~\textit{et~al.}~\cite{Ficco2024_FL_TinyML_Onboard}, para acelerar la adaptación a tráfico no visto durante el preentrenamiento offline.
+
+    \item \textbf{Privacidad diferencial sobre los pesos:} Añadir ruido calibrado a las actualizaciones (DP-SGD) antes del envío al PC para acotar la inferencia de membresía y robustecer la garantía de privacidad más allá del simple no compartir datos crudos.
 \end{enumerate}

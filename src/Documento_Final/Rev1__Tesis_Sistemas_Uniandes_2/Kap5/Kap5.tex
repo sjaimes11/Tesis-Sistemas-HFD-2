@@ -185,6 +185,55 @@ CNN-1D + FOG + ASCON    & 7  & 0.9750 & 0.0910 & 58.61\,s \\
 
 La comparación confirma tres hallazgos. Primero, el cifrado no degrada la convergencia de manera observable; la variante con ASCON mantiene métricas competitivas frente al baseline sin cifrado. Segundo, el modo FOG funciona como extensión de la arquitectura, agregando pesos entre gateways antes de enviar al PC. Tercero, la CNN-1D muestra resultados altos en las corridas FOG, aunque su implementación es más costosa y menos simple que el MLP para inferencia en ESP32.
 
+\subsection{Comparación con la literatura}
+\label{subsec:lit_comparison}
+
+Para situar los resultados en el panorama actual, la Tabla~\ref{tab:literatura_comparativa} contrasta este sistema con trabajos representativos de FL+IDS y FL+TinyML. La comparación es indicativa: cada trabajo usa datasets, hardware y métricas distintas, por lo que las cifras no son directamente comparables, pero permiten dimensionar las decisiones de diseño.
+
+\begin{table}[H]
+\centering
+\caption{Comparación cualitativa con trabajos relacionados.}
+\label{tab:literatura_comparativa}
+\scriptsize
+\begin{tabular}{p{0.20\textwidth} p{0.10\textwidth} p{0.10\textwidth} p{0.08\textwidth} p{0.10\textwidth} p{0.10\textwidth} p{0.18\textwidth}}
+\toprule
+\textbf{Trabajo} & \textbf{Edge HW} & \textbf{Modelo} & \textbf{FL/HFL} & \textbf{Cifrado canal} & \textbf{Acc.\ reportada} & \textbf{Particularidad} \\
+\midrule
+Hajj~\textit{et~al.}~\cite{Hajj2023_CrossLayerFL_IDS} & PC sim. & MLP \emph{cross-layer} & FL plano & No & $\sim$0.97 & FL para IDS IoT con coordinación cross-layer \\
+Chaurasia~\textit{et~al.}~\cite{Chaurasia2024_FL_ResNet_IIoT} & PC sim. & ResNet & FL plano & No & $\sim$0.99 & ResNet como cliente FL en IIoT \\
+Ficco~\textit{et~al.}~\cite{Ficco2024_FL_TinyML_Onboard} & ESP32, RPi3, Arduino & NN compacta + TL & FL+TL on-board & No & 0.86 (clasif.) & FL+TL on-board, datasets ECG/Car \\
+Roy~\textit{et~al.}~\cite{Roy2023_FL_AdaptedModel} & PC sim. & DNN & FL personalizado & No & $\sim$0.96 & Modelo localmente adaptado \\
+Tran~\textit{et~al.}~\cite{Tran2026_EdgeTrustShard} & RPi Pico (264\,KB) & FL+blockchain & HFL+MF-PoP & Sí (cripto-PoP) & 0.94 a 30\% Byz. & Byzantine-robust FL en MCU \\
+Heydari \& Mahmoud~\cite{HeydariMahmoud2025_TinyML_IDS} & MCU smart home & ML liviano & No FL & No & --- & TinyML IDS sin federación \\
+Saravana Balaji~\textit{et~al.}~\cite{SaravanaBalaji2023_EdgeIoT_DL} & Edge sanitario & DBN+BOA & No FL & LABE & 0.979 & Edge salud con cifrado por atributos \\
+\midrule
+\textbf{Esta tesis (RN+ASCON)} & ESP32-S3 + RPi4 & MLP 1\,139 par. & HFL bidireccional & ASCON-128 & 0.946 & FL+TinyML+ASCON-128 medido \\
+\textbf{Esta tesis (CNN+FOG)} & ESP32-S3 + RPi4 & CNN-1D & HFL+FOG & ASCON-128 & 0.975 & Pre-agregación FOG entre RPi \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Lecturas de la tabla:
+\begin{itemize}
+    \item Trabajos de FL para IDS sin restricciones edge \cite{Hajj2023_CrossLayerFL_IDS, Chaurasia2024_FL_ResNet_IIoT, Roy2023_FL_AdaptedModel} alcanzan 0.96--0.99, pero usan PCs como nodos cliente, sin demostrar despliegue en MCU. Esta tesis acepta una caída de $\sim$2--5 puntos a cambio de validar el ciclo en ESP32-S3 real con cifrado autenticado activo en todos los canales.
+    \item Frente a Ficco~\textit{et~al.}~\cite{Ficco2024_FL_TinyML_Onboard}, que reporta 0.86 en clasificación, las variantes con ASCON y FOG superan ese punto sin sacrificar el ciclo on-board.
+    \item Frente a EdgeTrust-Shard~\cite{Tran2026_EdgeTrustShard}, los resultados de accuracy son comparables aunque el problema atacado es distinto (Byzantine-robust FL vs.\ confidencialidad/integridad).
+    \item Esta tesis es de los pocos trabajos identificados que combinan, en el mismo sistema desplegado y medido, HFL bidireccional + ASCON-128 + dos familias de modelos (MLP/CNN) + agregación FOG opcional.
+\end{itemize}
+
+\subsection{Limitaciones del estudio}
+\label{subsec:limitations}
+
+La interpretación de los resultados debe contemplar las siguientes limitaciones:
+\begin{enumerate}
+    \item \textbf{Tres clases y dataset acotado:} El problema se reduce a tres clases relevantes para tráfico MQTT (\texttt{normal}, \texttt{mqtt\_bruteforce}, \texttt{scan\_A}). Datasets más amplios como CICIoT2023, Edge-IIoTset y TON\_IoT \cite{Neto2023_CICIoT2023, Ferrag2022_EdgeIIoTset, Moustafa2020_TONIoT} contienen más vectores de ataque y permitirían generalizar mejor las conclusiones.
+    \item \textbf{Etiquetado heurístico en gateway:} Las reglas que asignan etiquetas a las features recibidas son una aproximación calibrada con las distribuciones reales del dataset, pero introducen ruido. Esto contribuye al \emph{gap} de $\sim$7 puntos contra el modelo centralizado y es consistente con lo reportado en FL con datos non-IID \cite{Imteaj2022_FL_ResourceConstrainedSurvey, Albanbay2025}.
+    \item \textbf{Número limitado de gateways y nodos:} Las pruebas usan $K=2$ gateways. Topologías con $K \geq 5$ y mayor heterogeneidad de cliente podrían exhibir convergencia más lenta o requerir agregadores más robustos como FedProx \cite{Li2020FedProx}.
+    \item \textbf{Sin defensas contra clientes maliciosos:} Tal como se delimitó en la Sección~\ref{sec:threat_model}, el sistema no implementa Krum, FLTrust, Fed-NGA ni MF-PoP \cite{Tran2026_EdgeTrustShard}; un cliente comprometido puede sesgar la agregación.
+    \item \textbf{Análisis de canal lateral pendiente:} La implementación de ASCON-128 no incluye contramedidas explícitas contra ataques de potencia, EM o \emph{fault injection} sobre el ESP32 \cite{Kaur2025_ASCON_Survey}.
+    \item \textbf{Tráfico simulado en parte:} Aunque el ciclo se ejecuta sobre hardware real, el nodo \emph{simulated} reproduce distribuciones del dataset; un despliegue con captura de tráfico genuino aportaría mayor validez externa.
+\end{enumerate}
+
 % ====================================================================
 \section{Overhead del Cifrado ASCON-128}
 \label{sec:res_ascon}
