@@ -1,0 +1,9 @@
+panel,metrics,source
+Salud del sistema,"round_completion_rate,last_global_accuracy,last_global_loss,avg_round_duration_sec",global_round_sli_summary.csv
+Transporte,"p95_ms,avg_payload_wire_bytes,avg_overhead_pct",transport_sli_summary.csv
+Entrenamiento local,"avg_accuracy,avg_loss,avg_num_samples",local_training_sli_summary.csv
+Agregacion fog,"fog_fedavg accuracy/loss,peer_count",fog_aggregation_sli_summary.csv
+Convergencia global,"global accuracy/loss,w3_mag,w4_*",global_round_enriched.csv
+Calidad de datos,class mix por gateway/intento,class_mix_summary.csv
+Trazas por ronda,round_trace_summary,round_trace_summary.csv
+NIST / ASCON,"ascon_ops,p95_latency,overhead_pct",nist_ascon_experiment_summary.csv

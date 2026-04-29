@@ -1,0 +1,7 @@
+trace,span,source,join_key
+round_trace,edge_rpi_transport,transport gateway,"experiment,attempt_id,round_ref"
+round_trace,local_train,model_metrics stage=local_train,"experiment,attempt_id,round_ref"
+round_trace,fog_fedavg,model_metrics stage=fog_fedavg,"experiment,attempt_id,round_ref"
+round_trace,rpi_pc_transport,transport server channel=RPi->PC,"experiment,attempt_id,round_ref"
+round_trace,pc_rpi_transport,transport server channel=PC->RPi,"experiment,attempt_id,round_ref"
+round_trace,global_state,global_weights_history,"experiment,attempt_id,round_ref"

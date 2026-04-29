@@ -1,0 +1,11 @@
+metric,source,meaning,sli_type
+edge_rpi_processing_p95_ms,transport_sli_summary.csv,p95 de decrypt/deserialize ESP32->RPi por gateway.,latency
+rpi_pc_processing_p95_ms,transport_sli_summary.csv,p95 de decrypt/deserialize RPi->PC en servidor.,latency
+pc_rpi_processing_p95_ms,transport_sli_summary.csv,p95 de encrypt/serialize PC->RPi.,latency
+avg_payload_wire_bytes,transport_sli_summary.csv,Bytes transmitidos por mensaje luego de cifrado o serializacion.,traffic
+avg_overhead_pct,transport_sli_summary.csv,Sobrecosto porcentual respecto a plaintext/payload.,efficiency
+local_accuracy_avg,local_training_sli_summary.csv,Accuracy local promedio por gateway.,model_quality
+local_loss_avg,local_training_sli_summary.csv,Loss local promedio por gateway.,model_quality
+round_completion_rate,global_round_sli_summary.csv,Rondas globales observadas / 30 esperadas.,availability
+gateway_sync_skew_sec,gateway_alignment_sli_summary.csv,Diferencia temporal entre gateways para una misma ronda local.,coordination
+weight_drift,global_round_enriched.csv,Cambio absoluto entre rondas de magnitudes W3/W4.,convergence

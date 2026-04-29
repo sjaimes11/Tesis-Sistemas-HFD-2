@@ -1,0 +1,289 @@
+{
+  "generated_at": "2026-04-28T19:49:05",
+  "root": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src",
+  "output_root": "C:\\Users\\VivoBook\\Downloads\\microproyecto2\\microproyecto 2 porque wtf\\src\\Analisis de Modelos\\Completo\\analysis_outputs\\complete_hfl_analysis",
+  "totals": {
+    "experiments_configured": 8,
+    "attempts_discovered": 58,
+    "attempt_ids_unique_across_all_experiments": 29,
+    "experiment_attempt_pairs": 58,
+    "csv_files_total": 337,
+    "transport_events": 82396,
+    "model_metric_rows": 2648,
+    "global_attempt_summaries": 56
+  },
+  "by_experiment": {
+    "CNN_ASCON": {
+      "attempts": 8,
+      "csv_files_total": 48,
+      "transport_events": 11096,
+      "model_metric_rows": 320,
+      "global_rounds": 160,
+      "avg_last_global_accuracy": 0.9604165,
+      "avg_last_global_loss": 0.103981,
+      "avg_round_completion_rate": 0.6666666666666666
+    },
+    "CNN_FOG_ASCON": {
+      "attempts": 7,
+      "csv_files_total": 37,
+      "transport_events": 8493,
+      "model_metric_rows": 360,
+      "global_rounds": 120,
+      "avg_last_global_accuracy": 0.975,
+      "avg_last_global_loss": 0.091019,
+      "avg_round_completion_rate": 0.6666666666666666
+    },
+    "CNN_FOG_NO_ASCON": {
+      "attempts": 3,
+      "csv_files_total": 18,
+      "transport_events": 4355,
+      "model_metric_rows": 190,
+      "global_rounds": 60,
+      "avg_last_global_accuracy": 0.9444446666666666,
+      "avg_last_global_loss": 0.11897333333333333,
+      "avg_round_completion_rate": 0.6666666666666666
+    },
+    "CNN_NO_ASCON": {
+      "attempts": 3,
+      "csv_files_total": 18,
+      "transport_events": 4218,
+      "model_metric_rows": 123,
+      "global_rounds": 60,
+      "avg_last_global_accuracy": 0.9388886666666667,
+      "avg_last_global_loss": 0.13630833333333334,
+      "avg_round_completion_rate": 0.6666666666666666
+    },
+    "RN_ASCON": {
+      "attempts": 15,
+      "csv_files_total": 84,
+      "transport_events": 22810,
+      "model_metric_rows": 596,
+      "global_rounds": 286,
+      "avg_last_global_accuracy": 0.9380951428571427,
+      "avg_last_global_loss": 0.15451692857142857,
+      "avg_round_completion_rate": 0.680952380952381
+    },
+    "RN_FOG_ASCON": {
+      "attempts": 5,
+      "csv_files_total": 30,
+      "transport_events": 7026,
+      "model_metric_rows": 300,
+      "global_rounds": 100,
+      "avg_last_global_accuracy": 0.9633334,
+      "avg_last_global_loss": 0.112425,
+      "avg_round_completion_rate": 0.6666666666666666
+    },
+    "RN_FOG_NO_ASCON": {
+      "attempts": 3,
+      "csv_files_total": 18,
+      "transport_events": 4240,
+      "model_metric_rows": 180,
+      "global_rounds": 60,
+      "avg_last_global_accuracy": 0.9,
+      "avg_last_global_loss": 0.21990433333333334,
+      "avg_round_completion_rate": 0.6666666666666666
+    },
+    "RN_NO_ASCON": {
+      "attempts": 14,
+      "csv_files_total": 84,
+      "transport_events": 20158,
+      "model_metric_rows": 579,
+      "global_rounds": 289,
+      "avg_last_global_accuracy": 0.9297617857142855,
+      "avg_last_global_loss": 0.15813521428571428,
+      "avg_round_completion_rate": 0.6880952380952381
+    }
+  },
+  "nist": {
+    "ascon_experiments": 4,
+    "total_ascon_ops": 49425,
+    "attempts_ge_1000_ops": 33,
+    "max_p95_latency_ms": 42.108199999999925,
+    "avg_overhead_pct_mean": 89.77482368045887,
+    "note": "Umbrales 1000 ops, 50 ms y 50% son criterios operativos del proyecto; no son pass/fail oficiales NIST."
+  },
+  "statistical_highlights_alpha_0_05": [
+    {
+      "architecture": "CNN",
+      "topology": "fog",
+      "metric": "avg_transport_overhead_pct",
+      "test": "mann_whitney_u_independent",
+      "p_value": 0.02103526003050671,
+      "interpretation": "Diferencia significativa: ASCON mayor carga de bytes."
+    },
+    {
+      "architecture": "CNN",
+      "topology": "fog",
+      "metric": "edge_payload_wire_bytes_avg",
+      "test": "welch_t_test_independent",
+      "p_value": 3.288472371891204e-10,
+      "interpretation": "Diferencia significativa: ASCON mayor carga de bytes."
+    },
+    {
+      "architecture": "CNN",
+      "topology": "fog",
+      "metric": "edge_processing_p95_ms",
+      "test": "welch_t_test_independent",
+      "p_value": 7.140677779774963e-11,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    },
+    {
+      "architecture": "CNN",
+      "topology": "fog",
+      "metric": "server_egress_processing_p95_ms",
+      "test": "mann_whitney_u_independent",
+      "p_value": 0.016666666666666666,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    },
+    {
+      "architecture": "CNN",
+      "topology": "fog",
+      "metric": "server_ingress_processing_p95_ms",
+      "test": "mann_whitney_u_independent",
+      "p_value": 0.02103526003050671,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    },
+    {
+      "architecture": "CNN",
+      "topology": "standard",
+      "metric": "avg_transport_overhead_pct",
+      "test": "mann_whitney_u_independent",
+      "p_value": 0.01783319593448533,
+      "interpretation": "Diferencia significativa: ASCON mayor carga de bytes."
+    },
+    {
+      "architecture": "CNN",
+      "topology": "standard",
+      "metric": "edge_payload_wire_bytes_avg",
+      "test": "welch_t_test_independent",
+      "p_value": 7.19119381640488e-08,
+      "interpretation": "Diferencia significativa: ASCON mayor carga de bytes."
+    },
+    {
+      "architecture": "CNN",
+      "topology": "standard",
+      "metric": "edge_processing_p95_ms",
+      "test": "welch_t_test_independent",
+      "p_value": 5.975969727342855e-17,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    },
+    {
+      "architecture": "CNN",
+      "topology": "standard",
+      "metric": "server_egress_processing_p95_ms",
+      "test": "mann_whitney_u_independent",
+      "p_value": 0.012121212121212121,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    },
+    {
+      "architecture": "CNN",
+      "topology": "standard",
+      "metric": "server_ingress_processing_p95_ms",
+      "test": "mann_whitney_u_independent",
+      "p_value": 0.01783319593448533,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    },
+    {
+      "architecture": "RN",
+      "topology": "fog",
+      "metric": "avg_transport_overhead_pct",
+      "test": "mann_whitney_u_independent",
+      "p_value": 0.03247332032606962,
+      "interpretation": "Diferencia significativa: ASCON mayor carga de bytes."
+    },
+    {
+      "architecture": "RN",
+      "topology": "fog",
+      "metric": "edge_payload_wire_bytes_avg",
+      "test": "welch_t_test_independent",
+      "p_value": 7.19558577544179e-09,
+      "interpretation": "Diferencia significativa: ASCON mayor carga de bytes."
+    },
+    {
+      "architecture": "RN",
+      "topology": "fog",
+      "metric": "edge_processing_p95_ms",
+      "test": "welch_t_test_independent",
+      "p_value": 1.6593257914785285e-12,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    },
+    {
+      "architecture": "RN",
+      "topology": "fog",
+      "metric": "server_egress_processing_p95_ms",
+      "test": "welch_t_test_independent",
+      "p_value": 0.0011963824317965228,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    },
+    {
+      "architecture": "RN",
+      "topology": "fog",
+      "metric": "server_ingress_processing_p95_ms",
+      "test": "mann_whitney_u_independent",
+      "p_value": 0.03247332032606962,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    },
+    {
+      "architecture": "RN",
+      "topology": "standard",
+      "metric": "avg_round_duration_sec",
+      "test": "mann_whitney_u_independent",
+      "p_value": 3.135495050537401e-05,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    },
+    {
+      "architecture": "RN",
+      "topology": "standard",
+      "metric": "avg_transport_overhead_pct",
+      "test": "mann_whitney_u_independent",
+      "p_value": 1.2982704712784435e-06,
+      "interpretation": "Diferencia significativa: ASCON mayor carga de bytes."
+    },
+    {
+      "architecture": "RN",
+      "topology": "standard",
+      "metric": "edge_payload_wire_bytes_avg",
+      "test": "mann_whitney_u_independent",
+      "p_value": 7.4678435688707155e-06,
+      "interpretation": "Diferencia significativa: ASCON mayor carga de bytes."
+    },
+    {
+      "architecture": "RN",
+      "topology": "standard",
+      "metric": "edge_processing_p95_ms",
+      "test": "welch_t_test_independent",
+      "p_value": 3.0681327543668107e-24,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    },
+    {
+      "architecture": "RN",
+      "topology": "standard",
+      "metric": "p95_round_duration_sec",
+      "test": "mann_whitney_u_independent",
+      "p_value": 5.7553244908314206e-05,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    },
+    {
+      "architecture": "RN",
+      "topology": "standard",
+      "metric": "server_egress_processing_p95_ms",
+      "test": "mann_whitney_u_independent",
+      "p_value": 5.097028889963147e-06,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    },
+    {
+      "architecture": "RN",
+      "topology": "standard",
+      "metric": "server_ingress_processing_p95_ms",
+      "test": "mann_whitney_u_independent",
+      "p_value": 1.2982704712784435e-06,
+      "interpretation": "Diferencia significativa: ASCON mayor latencia/tiempo."
+    }
+  ],
+  "limitations": [
+    "La latencia extremo a extremo real por muestra no se puede reconstruir exacta sin trace_id compartido.",
+    "Las filas del servidor no siempre identifican gateway de origen; se analizan como transporte agregado.",
+    "Las rondas dentro de una ejecucion son medidas repetidas, no ejecuciones independientes.",
+    "NIST SP 800-22 aplica a pruebas de aleatoriedad RNG/PRNG; no debe citarse como base directa de t-test o Wilcoxon para FL."
+  ]
+}

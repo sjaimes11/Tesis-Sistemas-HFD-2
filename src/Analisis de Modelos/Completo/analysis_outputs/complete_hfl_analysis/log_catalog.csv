@@ -1,0 +1,8 @@
+event_name,source,when,required_fields
+transport.crypto.gateway,canonical_log_events.csv,Cada decrypt ASCON en gateway.,"timestamp_dt,channel,operation,elapsed_ms,pt_bytes,enc_bytes,fl_round"
+transport.crypto.server,canonical_log_events.csv,Cada decrypt/encrypt ASCON en servidor.,"timestamp_dt,channel,operation,elapsed_ms,pt_bytes,enc_bytes,fl_round"
+transport.plain.gateway,canonical_log_events.csv,Cada deserialize/serialize sin ASCON en gateway.,"timestamp_dt,channel,operation,payload_bytes,elapsed_ms,fl_round"
+transport.plain.server,canonical_log_events.csv,Cada deserialize/serialize sin ASCON en servidor.,"timestamp_dt,channel,operation,payload_bytes,elapsed_ms,fl_round"
+model.local_train,canonical_log_events.csv,Fin de entrenamiento local.,"timestamp_dt,gateway_id,fl_round,num_samples,accuracy,loss"
+model.fog_fedavg,canonical_log_events.csv,Agregacion fog en lider.,"timestamp_dt,gateway_id,fl_round,num_samples,accuracy,loss,peer_count"
+model.global_round,canonical_log_events.csv,Servidor registra ronda global.,"time,round,accuracy,loss,w3_mag,w4_*"
