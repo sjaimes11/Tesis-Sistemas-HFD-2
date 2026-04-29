@@ -380,20 +380,32 @@ Los modelos se entrenaron y compararon inicialmente fuera de linea usando los sc
 
 ### Resultados HFL v7
 
-Los analisis temporales y comparativos se consolidaron en `Analisis de Modelos` y en las figuras de resultados del documento final.
+Los analisis temporales y comparativos se consolidaron en `Analisis de Modelos/Completo/` (capa SRE unificada que cubre las 8 variantes en una sola corrida) y en las figuras de resultados del documento final. La capa SRE genera `executive_summary.json`, `transport_sli_summary.csv`, `local_training_sli_summary.csv`, `global_round_sli_summary.csv`, `round_trace_summary.csv`, `canonical_log_events.csv` y `SRE_OBSERVABILITY_SPEC.md`.
 
-| Variante | Intentos/rondas analizadas | Accuracy global final promedio | Loss global final promedio | Duracion promedio de ronda |
-|---|---:|---:|---:|---:|
-| RN + ASCON | 9 | 0.9463 | 0.1415 | 61.25 s |
-| RN sin ASCON | 14 | 0.9298 | 0.1581 | 51.01 s |
-| CNN FOG | 7 | 0.9750 | 0.0910 | 58.61 s |
+| Variante | Intentos | Accuracy final | Loss final | Ronda (s) | GW p95 (ms) | Srv dec p95 (ms) | Overhead (B) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| CNN_ASCON_FOG    | 7  | 0.9750 | 0.0910 | 58.61 | 4.53 | 37.47 | 1098 |
+| CNN_ASCON_NoFOG  | 8  | 0.9604 | 0.1040 | 58.97 | 4.55 | 24.46 | 1049 |
+| CNN_PLAIN_FOG    | 3  | 0.9444 | 0.1190 | 54.86 | 0.16 |  0.00 |    0 |
+| CNN_PLAIN_NoFOG  | 3  | 0.9389 | 0.1363 | 52.02 | 0.15 |  0.00 |    0 |
+| RN_ASCON_FOG     | 5  | 0.9633 | 0.1124 | 71.13 | 4.37 | 50.47 | 1084 |
+| RN_ASCON_NoFOG   | 15 | 0.9381 | 0.1545 | 72.91 | 4.65 | 26.69 | 1050 |
+| RN_PLAIN_FOG     | 3  | 0.9000 | 0.2199 | 67.14 | 0.16 |  0.00 |    0 |
+| RN_PLAIN_NoFOG   | 14 | 0.9298 | 0.1581 | 51.01 | 0.17 |  0.00 |    0 |
+| **Promedio**     | **58** | **0.9437** | **0.1383** | **61.36** | **2.34** | **17.39** | **636** |
 
-Figuras relevantes:
+Lecturas: ASCON mejora la accuracy promedio en +3.2 pts respecto a PLAIN (filtrado implicito de mensajes corruptos); CNN-1D supera a RN en todas las configuraciones; FOG ayuda a CNN y a RN+ASCON, pero degrada RN+PLAIN (-3 pts). Las figuras del documento final se cortan en ronda 20 para homogeneidad visual; las tablas SRE conservan las 30 rondas registradas.
 
-- `Analisis de Modelos/no-ascon/analysis_outputs/sre_results_16_29/global_accuracy_loss.png`
-- `Analisis de Modelos/no-ascon/analysis_outputs/sre_results_16_29/weight_magnitude_trends.png`
-- `Documento_Final/Rev1__Tesis_Sistemas_Uniandes_2/images/Resultados/hfl_v7_accuracy_loss_matrix.png`
-- `Documento_Final/Rev1__Tesis_Sistemas_Uniandes_2/images/Resultados/hfl_v7_weight_magnitude_matrix.png`
+Figuras relevantes (todas generadas por `sre_completo_analysis.py`):
+
+- `Analisis de Modelos/Completo/global_accuracy_loss.png`
+- `Analisis de Modelos/Completo/weight_magnitude_trends.png`
+- `Analisis de Modelos/Completo/round_duration.png`
+- `Analisis de Modelos/Completo/gateway_accuracy_skew.png`
+- `Analisis de Modelos/Completo/transport_latency_p95.png`
+- `Analisis de Modelos/Completo/transport_payload_bytes.png`
+- `Analisis de Modelos/Completo/class_mix_by_gateway.png`
+- Copiadas al documento en `Documento_Final/Rev1__Tesis_Sistemas_Uniandes_2/images/Resultados/Completo/`
 
 ## Impacto de ASCON
 

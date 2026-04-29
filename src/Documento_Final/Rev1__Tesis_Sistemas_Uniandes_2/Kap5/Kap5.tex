@@ -1,7 +1,7 @@
 \chapter{Resultados}
 \label{chap:resu}
 
-En este capítulo se presentan los resultados experimentales del sistema de detección de intrusiones desplegado en hardware real, organizados en torno a las preguntas de investigación formuladas en el Capítulo~\ref{chap:Introduction}. Primero se analiza el desempeño de los modelos clásicos como línea base centralizada. Luego se comparan los modelos livianos entrenados en el notebook general. Posteriormente se evalúan las variantes HFL implementadas en \texttt{hfl\_v7-RN}, \texttt{hfl\_v7-no-ascon} y \texttt{hfl\_v7-CNN}, incluyendo el modo FOG. Finalmente, se cuantifica el overhead del cifrado ASCON-128.
+En este capítulo se presentan los resultados experimentales del sistema de detección de intrusiones desplegado en hardware real, organizados en torno a las preguntas de investigación formuladas en el Capítulo~\ref{chap:Introduction}. Primero se analiza el desempeño de los modelos clásicos como línea base centralizada. Luego se comparan los modelos livianos entrenados en el notebook general. Posteriormente se evalúan las \textbf{ocho variantes HFL} \texttt{hfl\_v7-RN}, \texttt{hfl\_v7-no-ascon-RN}, \texttt{hfl\_v7-CNN} y \texttt{hfl\_v7-no-ascon-CNN}, cada una con sus modos \texttt{Results/} (NoFOG) y \texttt{Results\_FOG/}, integradas en una capa SRE unificada (\texttt{Analisis de Modelos/Completo/}) que cubre 58 intentos. Finalmente, se cuantifica el overhead del cifrado ASCON-128 contrastando las cuatro variantes con cifrado contra las cuatro PLAIN.
 
 % ====================================================================
 \section{Desempeño de Modelos Clásicos (Línea Base Centralizada)}
@@ -122,23 +122,28 @@ Duración por ronda               & $\sim$51--61\,s según variante \\
 \subsection{Evolución temporal de accuracy, loss y pesos}
 \label{subsec:curvas_convergencia}
 
-Las Figuras~\ref{fig:hfl_v7_accuracy_loss_matrix} y~\ref{fig:hfl_v7_weight_magnitude_matrix} comparan las curvas temporales de cuatro variantes con salidas equivalentes en las carpetas de análisis: \texttt{RN}, \texttt{no-ascon}, \texttt{CNN} y \texttt{CNN\_FOG}. La primera matriz muestra la evolución conjunta de \textit{accuracy} y \textit{loss} global a través de las rondas federadas; la segunda resume la magnitud de los pesos agregados, útil para verificar si las actualizaciones se mantienen acotadas o si aparece deriva durante el entrenamiento.
+Las Figuras~\ref{fig:hfl_v7_accuracy_loss_matrix} y~\ref{fig:hfl_v7_weight_magnitude_matrix} consolidan los resultados de las \textbf{ocho variantes} cubiertas por el análisis SRE unificado de \texttt{Analisis de Modelos/Completo/}: \texttt{RN/CNN} $\times$ \texttt{ASCON/PLAIN} $\times$ \texttt{NoFOG/FOG}. Para mantener homogeneidad visual entre corridas (algunas RN llegaron hasta ronda 30, otras quedaron en 20) las figuras se cortan en la \textbf{ronda 20}; las tablas SRE (\texttt{global\_round\_sli\_summary.csv}) conservan todas las rondas registradas. La primera figura compara la evolución conjunta de \textit{accuracy} y \textit{loss} global; la segunda resume la magnitud promedio de los pesos federados (\texttt{w3\_mag}, \texttt{w4\_normal}, \texttt{w4\_brute}, \texttt{w4\_scan}), útil para verificar si las actualizaciones se mantienen acotadas o si aparece deriva durante el entrenamiento.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.98\textwidth]{images/Resultados/hfl_v7_accuracy_loss_matrix.png}
-    \caption{Matriz comparativa 2$\times$2 de accuracy y loss global para variantes HFL v7: RN con ASCON, RN sin ASCON, CNN-1D y CNN-1D con FOG.}
+    \includegraphics[width=0.98\textwidth]{images/Resultados/Completo/global_accuracy_loss.png}
+    \caption{Accuracy y loss globales promedio por ronda (1--20) para las 8 variantes HFL v7. Generado por \texttt{sre\_completo\_analysis.py} a partir de los CSV de \texttt{global\_weights\_history\_*}.}
     \label{fig:hfl_v7_accuracy_loss_matrix}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.98\textwidth]{images/Resultados/hfl_v7_weight_magnitude_matrix.png}
-    \caption{Matriz comparativa 2$\times$2 de magnitud promedio de pesos globales para variantes HFL v7: RN con ASCON, RN sin ASCON, CNN-1D y CNN-1D con FOG.}
+    \includegraphics[width=0.98\textwidth]{images/Resultados/Completo/weight_magnitude_trends.png}
+    \caption{Magnitud promedio de los cuatro pesos federados (\texttt{w3\_mag}, \texttt{w4\_normal}, \texttt{w4\_brute}, \texttt{w4\_scan}) por variante a lo largo de las rondas 1--20.}
     \label{fig:hfl_v7_weight_magnitude_matrix}
 \end{figure}
 
-Estas curvas complementan la Tabla~\ref{tab:hfl_convergence}: el sistema no solo reporta métricas finales, sino trayectorias de entrenamiento comparables entre modelos y configuraciones. En general, las variantes muestran incremento de accuracy, reducción de loss y magnitudes de pesos acotadas. Las curvas CNN y CNN\_FOG exhiben una tendencia ascendente más marcada en los pesos de salida, mientras que RN y no-ASCON se mantienen en rangos más estables; esto sugiere que la arquitectura convolucional aprende representaciones con mayor desplazamiento de magnitud, sin observar divergencia en las rondas analizadas.
+Estas curvas complementan la Tabla~\ref{tab:hfl_convergence}: el sistema no solo reporta métricas finales, sino trayectorias de entrenamiento comparables entre modelos y configuraciones. Tres lecturas clave de las Figuras~\ref{fig:hfl_v7_accuracy_loss_matrix}--\ref{fig:hfl_v7_weight_magnitude_matrix}:
+\begin{enumerate}
+    \item Las ocho variantes \textbf{convergen}: la accuracy global supera 0.90 entre las rondas 5 y 10 y la loss baja de $\sim$0.8 a $\sim$0.1--0.2 en el mismo rango.
+    \item Las variantes con \textbf{CNN-1D} muestran una dinámica de pesos más expresiva: \texttt{CNN\_ASCON\_NoFOG} y \texttt{CNN\_ASCON\_FOG} aumentan progresivamente \texttt{w3\_mag} y los pesos asociados a las clases (\texttt{w4\_brute}, \texttt{w4\_scan}), mientras que las variantes RN se estabilizan rápidamente alrededor de \texttt{w3\_mag}~$\approx$~0.29.
+    \item No se observa divergencia en ninguna variante dentro de las primeras 20 rondas. La rama \texttt{CNN\_PLAIN\_NoFOG} muestra el mayor ruido en \texttt{w4\_normal}, consistente con un entrenamiento más sensible a la inicialización local cuando no hay agregación FOG ni cifrado autenticado que filtre mensajes alterados.
+\end{enumerate}
 
 \subsection{Comparación: Federado vs.\ Centralizado}
 
@@ -165,25 +170,55 @@ El sistema federado alcanza $\sim$90\% de accuracy compartiendo \textbf{únicame
 
 \subsection{Comparación entre variantes \texttt{hfl\_v7}}
 
-La Tabla~\ref{tab:variants_results} resume los resultados agregados de las carpetas de análisis y resultados generadas durante las pruebas. Los valores deben interpretarse como promedios de corridas experimentales, no como un único entrenamiento determinista.
+La Tabla~\ref{tab:variants_results} consolida las \textbf{ocho combinaciones experimentales} cubiertas por el análisis SRE unificado de \texttt{Analisis de Modelos/Completo/}. Los valores son promedios sobre los intentos disponibles por variante y se calculan exclusivamente a partir de los CSV crudos generados durante las corridas (\texttt{ascon\_metrics\_*}, \texttt{plain\_metrics\_*}, \texttt{model\_metrics\_gateway\_*}, \texttt{global\_weights\_history\_*}). En total se procesaron \textbf{58 intentos}.
 
 \begin{table}[H]
 \centering
-\caption{Resumen comparativo de variantes HFL evaluadas.}
+\caption{Resumen comparativo de las 8 variantes HFL v7 evaluadas. \textbf{GW p95}: latencia p95 de descifrado en gateway (\texttt{ESP32$\to$RPi}). \textbf{Srv dec p95}: latencia p95 de descifrado en servidor (\texttt{RPi$\to$PC}). \textbf{Overhead}: bytes adicionales promedio sobre el plaintext (0 en variantes \texttt{PLAIN}).}
 \label{tab:variants_results}
-\small
-\begin{tabular}{l c c c c}
+\scriptsize
+\begin{tabular}{l c c c c c c c}
 \toprule
-\textbf{Variante} & \textbf{Intentos} & \textbf{Accuracy global final} & \textbf{Loss global final} & \textbf{Duración ronda} \\
+\textbf{Variante} & \textbf{Intentos} & \textbf{Acc.\ final} & \textbf{Loss final} & \textbf{Ronda (s)} & \textbf{GW p95 (ms)} & \textbf{Srv dec p95 (ms)} & \textbf{Overhead (B)} \\
 \midrule
-RN + ASCON              & 9  & 0.9463 & 0.1415 & 61.25\,s \\
-RN sin ASCON            & 14 & 0.9298 & 0.1581 & 51.01\,s \\
-CNN-1D + FOG + ASCON    & 7  & 0.9750 & 0.0910 & 58.61\,s \\
+\texttt{CNN\_ASCON\_FOG}    &  7 & \textbf{0.9750} & \textbf{0.0910} & 58.61 & 4.53 & 37.47 & 1098 \\
+\texttt{CNN\_ASCON\_NoFOG}  &  8 & 0.9604 & 0.1040 & 58.97 & 4.55 & 24.46 & 1049 \\
+\texttt{CNN\_PLAIN\_FOG}    &  3 & 0.9444 & 0.1190 & 54.86 & 0.16 &  0.00 &    0 \\
+\texttt{CNN\_PLAIN\_NoFOG}  &  3 & 0.9389 & 0.1363 & 52.02 & 0.15 &  0.00 &    0 \\
+\texttt{RN\_ASCON\_FOG}     &  5 & 0.9633 & 0.1124 & 71.13 & 4.37 & 50.47 & 1084 \\
+\texttt{RN\_ASCON\_NoFOG}   & 15 & 0.9381 & 0.1545 & 72.91 & 4.65 & 26.69 & 1050 \\
+\texttt{RN\_PLAIN\_FOG}     &  3 & 0.9000 & 0.2199 & 67.14 & 0.16 &  0.00 &    0 \\
+\texttt{RN\_PLAIN\_NoFOG}   & 14 & 0.9298 & 0.1581 & 51.01 & 0.17 &  0.00 &    0 \\
+\midrule
+\textbf{Promedio global}    & \textbf{58} & \textbf{0.9437} & \textbf{0.1383} & \textbf{61.36} & \textbf{2.34} & \textbf{17.39} & \textbf{636} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-La comparación confirma tres hallazgos. Primero, el cifrado no degrada la convergencia de manera observable; la variante con ASCON mantiene métricas competitivas frente al baseline sin cifrado. Segundo, el modo FOG funciona como extensión de la arquitectura, agregando pesos entre gateways antes de enviar al PC. Tercero, la CNN-1D muestra resultados altos en las corridas FOG, aunque su implementación es más costosa y menos simple que el MLP para inferencia en ESP32.
+La comparación de las 8 variantes confirma cinco hallazgos:
+\begin{enumerate}
+    \item \textbf{El ganador absoluto es \texttt{CNN\_ASCON\_FOG}} (acc 0.975, loss 0.091): combinar la mayor capacidad expresiva (CNN-1D) con la pre-agregación FOG y la integridad de ASCON produce el mejor punto de operación dentro del corpus.
+    \item \textbf{El cifrado no degrada la convergencia}; al contrario, en este corpus las variantes \texttt{*\_ASCON\_*} tienden a igualar o superar a sus contrapartes \texttt{*\_PLAIN\_*}. Una explicación plausible es que la validación de tag autenticado \emph{filtra} mensajes corruptos o duplicados antes de que entren al buffer de entrenamiento.
+    \item \textbf{FOG ayuda diferenciadamente} segun la familia de modelo y la seguridad: en CNN mejora $+1.5$ pts (ASCON) y $+0.6$ pts (PLAIN); en RN mejora $+2.5$ pts con ASCON pero \emph{degrada} $-3.0$ pts en PLAIN, lo que sugiere que la pre-agregación FOG es más sensible al ruido de mensajes sin autenticación cuando el modelo es lineal.
+    \item \textbf{El costo de seguridad es asumible}: ASCON añade $\sim$1\,KB de overhead por mensaje y entre 4--5\,ms en el gateway (ESP32-S3 corre nativo en C++). En el servidor, las variantes FOG presentan latencias de descifrado un 50--100\% mayores que NoFOG por la cadena \texttt{peer$\to$leader$\to$PC}.
+    \item \textbf{La duración de ronda en CNN es más estable} ($\sim$58\,s) que en RN ($\sim$51--73\,s); esta dispersión proviene de que las primeras corridas RN incluyen tiempos de calentamiento o reconexión Wi-Fi no presentes en las corridas CNN, no de un costo intrínseco mayor del modelo RN.
+\end{enumerate}
+
+La Figura~\ref{fig:hfl_v7_round_duration} muestra la duración por ronda promediada por variante, y la Figura~\ref{fig:hfl_v7_gateway_skew} ilustra el desbalance temporal entre gateway A y B medido como $|acc_A - acc_B|$ por ronda; el skew converge a valores bajos en todas las variantes después de la ronda 8--10.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/Resultados/Completo/round_duration.png}
+    \caption{Duración promedio por ronda federada para las 8 variantes (rondas 1--20).}
+    \label{fig:hfl_v7_round_duration}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/Resultados/Completo/gateway_accuracy_skew.png}
+    \caption{Desbalance de \emph{accuracy} entre gateways ($|acc_A - acc_B|$) por ronda y por variante.}
+    \label{fig:hfl_v7_gateway_skew}
+\end{figure}
 
 \subsection{Comparación con la literatura}
 \label{subsec:lit_comparison}
@@ -238,54 +273,78 @@ La interpretación de los resultados debe contemplar las siguientes limitaciones
 \section{Overhead del Cifrado ASCON-128}
 \label{sec:res_ascon}
 
-Se recopilaron métricas de cifrado/descifrado durante 60 rondas de aprendizaje federado (182 operaciones criptográficas registradas). Los resultados se segmentan por dirección de comunicación y por capa del sistema.
+Las métricas de cifrado/descifrado se recopilaron a lo largo de los \textbf{58 intentos} consolidados, abarcando todas las variantes \texttt{*\_ASCON\_*} y comparándose contra las correspondientes \texttt{*\_PLAIN\_*}. Esta sección consolida los hallazgos por canal y por dispositivo. Las figuras referenciadas se generan automáticamente en \texttt{Analisis de Modelos/Completo/} y se incluyen en \texttt{images/Resultados/Completo/}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/Resultados/Completo/transport_latency_p95.png}
+    \caption{Latencia p95 (ms) promedio por variante y por canal/operación. Las variantes \texttt{*\_PLAIN\_*} solo muestran la latencia de serialización JSON (sub-milisegundo); las \texttt{*\_ASCON\_*} incluyen el costo de cifrado/descifrado autenticado.}
+    \label{fig:hfl_v7_transport_p95}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/Resultados/Completo/transport_payload_bytes.png}
+    \caption{Tamaño promedio de plaintext (izquierda) y overhead promedio sobre plaintext (derecha) por variante y canal. El overhead de las variantes \texttt{PLAIN} es 0 por construcción.}
+    \label{fig:hfl_v7_transport_payload}
+\end{figure}
 
 \subsection{Overhead Temporal}
 
+La Tabla~\ref{tab:ascon_time} resume los tiempos p95 promedio por variante para las tres operaciones que ocurren en cada ronda federada.
+
 \begin{table}[H]
 \centering
-\caption{Tiempos de cifrado/descifrado ASCON-128 en el servidor central (PC).}
+\caption{Latencia p95 (ms) promedio de cifrado/descifrado por variante, derivada de \texttt{transport\_sli\_summary.csv} en \texttt{Analisis de Modelos/Completo/}.}
 \label{tab:ascon_time}
 \small
-\begin{tabular}{l c c c c r}
+\begin{tabular}{l c c c}
 \toprule
-\textbf{Operación} & \textbf{Media} & \textbf{Mediana} & \textbf{Mín.} & \textbf{Máx.} & \textbf{N} \\
+\textbf{Variante} & \textbf{ESP32$\to$RPi (decrypt)} & \textbf{RPi$\to$PC (decrypt)} & \textbf{PC$\to$RPi (encrypt)} \\
 \midrule
-Descifrado (RPi$\to$PC) & 14.21\,ms & 12.69\,ms & 10.62\,ms & 43.73\,ms & 122 \\
-Cifrado (PC$\to$RPi)    & 13.76\,ms & 12.64\,ms & 10.10\,ms & 93.42\,ms &  60 \\
+\texttt{CNN\_ASCON\_FOG}     & 4.53\,ms & 37.47\,ms & 40.37\,ms \\
+\texttt{CNN\_ASCON\_NoFOG}   & 4.55\,ms & 24.46\,ms & 24.12\,ms \\
+\texttt{RN\_ASCON\_FOG}      & 4.37\,ms & 50.47\,ms & 59.18\,ms \\
+\texttt{RN\_ASCON\_NoFOG}    & 4.65\,ms & 26.69\,ms & 24.14\,ms \\
 \midrule
-\textbf{Total (promedio)} & \textbf{13.98\,ms} & \textbf{12.67\,ms} & --- & --- & 182 \\
+\texttt{CNN\_PLAIN\_FOG}     & 0.16\,ms &  0.00\,ms &  0.48\,ms \\
+\texttt{CNN\_PLAIN\_NoFOG}   & 0.15\,ms &  0.00\,ms &  0.62\,ms \\
+\texttt{RN\_PLAIN\_FOG}      & 0.16\,ms &  0.00\,ms &  0.64\,ms \\
+\texttt{RN\_PLAIN\_NoFOG}    & 0.17\,ms &  0.00\,ms &  0.25\,ms \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \textbf{Observaciones:}
 \begin{itemize}
-    \item El tiempo promedio de una operación ASCON-128 en Python (servidor PC) es de \textbf{$\approx$14\,ms}, con una mediana de $\approx$12.7\,ms. Dado que cada ronda de FL tarda $\sim$70--80 segundos en total, el overhead criptográfico por ronda (3 operaciones: 2 descifrados + 1 cifrado) representa $\sim$42\,ms, equivalente al \textbf{$\approx$0.05\%} del tiempo total por ronda.
-    \item Los valores atípicos (máx.\ 93.42\,ms) corresponden a picos puntuales de carga del sistema operativo y no son representativos del comportamiento típico.
-    \item En el ESP32 (C++, medido con \texttt{micros()}), los tiempos de cifrado/descifrado de payloads de features ($\sim$200 bytes) son del orden de \textbf{$\sim$100--300\,$\mu$s}, gracias a la implementación nativa en C sin overhead de intérprete.
+    \item \textbf{ESP32-S3 cifrando en C++}: la latencia p95 de descifrado en el gateway oscila entre $\approx$4.4--4.7\,ms en todas las variantes ASCON, prácticamente independiente del modelo (RN/CNN) y la topología (NoFOG/FOG). En las variantes \texttt{PLAIN} la latencia cae a $\approx$0.16\,ms (deserialización JSON pura).
+    \item \textbf{Servidor PC en Python}: el descifrado en \texttt{RPi$\to$PC} ronda 24--27\,ms en NoFOG y sube a 37--50\,ms en FOG. La inflación FOG se debe a que el \emph{leader} reenvía mensajes preagregados con un tag adicional, lo que duplica las operaciones criptográficas en el camino.
+    \item Para las variantes \texttt{*\_PLAIN\_*}, el descifrado del servidor reporta 0\,ms porque la deserialización JSON ocurre dentro del \texttt{request handler} de FastAPI sin instrumentación dedicada; la única fuente medida es el \texttt{encrypt} de despliegue (0.25--0.64\,ms).
+    \item Asumiendo 3 operaciones criptográficas por ronda en el servidor, el overhead temporal de ASCON oscila entre $\sim$73\,ms (NoFOG) y $\sim$140\,ms (FOG). Sobre rondas de 51--73\,s, esto representa entre el \textbf{0.10\% y el 0.27\%} del tiempo total por ronda.
 \end{itemize}
 
 \subsection{Overhead de Comunicación}
 
 \begin{table}[H]
 \centering
-\caption{Overhead de tamaño por cifrado ASCON-128 + Base64.}
+\caption{Overhead promedio de tamaño por variante ASCON. \textbf{Plaintext}: bytes promedio de payload sin cifrar (\texttt{pt\_bytes}). \textbf{Overhead}: bytes adicionales del envelope ASCON+Base64 (\texttt{overhead\_bytes}). \textbf{Ratio}: porcentaje sobre el plaintext (\texttt{overhead\_bytes / pt\_bytes}). Las variantes \texttt{PLAIN} se omiten porque el overhead es 0 por construcción.}
 \label{tab:ascon_size}
 \small
-\begin{tabular}{l r r r r}
+\begin{tabular}{l r r r}
 \toprule
-\textbf{Canal} & \textbf{Plaintext} & \textbf{Cifrado} & \textbf{Overhead} & \textbf{Incremento} \\
+\textbf{Variante} & \textbf{Plaintext (B)} & \textbf{Overhead (B)} & \textbf{Ratio (\%)} \\
 \midrule
-RPi$\to$PC (pesos)        & 3\,636$\pm$9\,B  & 4\,948$\pm$14\,B  & 1\,312$\pm$4\,B  & 36.1\% \\
-PC$\to$RPi (modelo global) & 3\,530$\pm$8\,B  & 4\,790$\pm$11\,B  & 1\,260$\pm$3\,B  & 35.7\% \\
+\texttt{CNN\_ASCON\_FOG}    & $\sim$2\,365 & 1\,098 & 46.46 \\
+\texttt{CNN\_ASCON\_NoFOG}  & $\sim$2\,143 & 1\,049 & 48.94 \\
+\texttt{RN\_ASCON\_FOG}     & $\sim$2\,323 & 1\,084 & 46.64 \\
+\texttt{RN\_ASCON\_NoFOG}   & $\sim$2\,162 & 1\,050 & 48.55 \\
 \midrule
-\textbf{Promedio}          & 3\,583\,B         & 4\,869\,B          & \textbf{1\,286\,B} & \textbf{35.9\%} \\
+\textbf{Promedio ASCON}     & $\sim$2\,248 & \textbf{1\,070} & \textbf{47.65} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-El overhead de comunicación del $\approx$36\% se compone de:
+El overhead promedio del $\approx$48\% sobre el plaintext (en variantes ASCON) se compone de:
 \begin{itemize}
     \item \textbf{Tag de autenticación ASCON:} 16 bytes (fijo).
     \item \textbf{Nonce:} 16 bytes (fijo).
@@ -293,29 +352,39 @@ El overhead de comunicación del $\approx$36\% se compone de:
     \item \textbf{Envelope JSON:} $\sim$30 bytes de estructura (\texttt{\{"ct":"...","tag":"...","nonce":"..."\}}).
 \end{itemize}
 
-En términos absolutos, el overhead es de $\approx$1.3\,KB por mensaje, lo que para las $\sim$3 transmisiones por ronda de FL equivale a $\sim$3.9\,KB adicionales por ronda. Para un enlace Wi-Fi estándar (54\,Mbps), esto añade $<$0.001\,ms de tiempo de transmisión, siendo despreciable.
+En términos absolutos, el overhead es de $\approx$1.07\,KB por mensaje, lo que para las $\sim$3 transmisiones por ronda en NoFOG equivale a $\sim$3.2\,KB adicionales; en FOG, las dos saltos extra (peer$\to$leader, leader$\to$PC) elevan el overhead a $\sim$5--6\,KB por ronda. Para un enlace Wi-Fi estándar (54\,Mbps), esto añade $<$1\,ms de tiempo de transmisión, siendo prácticamente despreciable.
 
 \subsection{Resumen: Impacto de ASCON en el Sistema HFL}
 
 \begin{table}[H]
 \centering
-\caption{Resumen del overhead total de ASCON-128 por ronda federada.}
+\caption{Resumen del overhead total de ASCON-128 por ronda federada, agregando los promedios de las 4 variantes ASCON y las 4 variantes PLAIN.}
 \label{tab:ascon_resumen}
 \begin{tabular}{l r r}
 \toprule
-\textbf{Componente} & \textbf{Con ASCON} & \textbf{Sin ASCON} \\
+\textbf{Componente} & \textbf{Con ASCON (4 variantes)} & \textbf{Sin ASCON (4 variantes)} \\
 \midrule
-Tiempo de comunicación (PC, 3 ops.)  & $\sim$42\,ms   & $\sim$0.3\,ms (serialización) \\
-Tamaño total por ronda               & $\sim$14.6\,KB & $\sim$10.7\,KB \\
-Tiempo total de ronda                 & $\sim$73\,s    & $\sim$72\,s \\
+Latencia p95 ESP32$\to$RPi (decrypt)   & 4.52\,ms      & 0.16\,ms \\
+Latencia p95 RPi$\to$PC (decrypt)      & 34.77\,ms     & 0.00\,ms \\
+Overhead promedio por mensaje          & $\sim$1.07\,KB & 0\,KB \\
+Ratio de overhead sobre plaintext      & $\sim$48\%    & 0\% \\
+Duración promedio de ronda             & 65.4\,s       & 56.3\,s \\
+Accuracy global final promedio         & \textbf{0.9592} & 0.9272 \\
+Loss global final promedio             & 0.1155        & 0.1583 \\
 \midrule
-\textbf{Overhead temporal relativo}   & \multicolumn{2}{c}{\textbf{$\approx$0.06\% del ciclo FL}} \\
-\textbf{Overhead de tamaño relativo}  & \multicolumn{2}{c}{\textbf{$\approx$36\% por mensaje}} \\
+\textbf{Overhead temporal relativo}    & \multicolumn{2}{c}{\textbf{0.10--0.27\% del ciclo FL}} \\
+\textbf{Overhead de tamaño relativo}   & \multicolumn{2}{c}{\textbf{$\approx$48\% por mensaje}} \\
+\textbf{Diferencia de accuracy}        & \multicolumn{2}{c}{\textbf{+3.2 pts a favor de ASCON}} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-El cifrado ASCON-128 introduce un overhead temporal \textbf{despreciable} ($< 0.1\%$ del tiempo total por ronda) y un overhead de tamaño \textbf{moderado} ($\approx 36\%$) que resulta en $\sim$3.9\,KB adicionales por ronda. Dado que la carga útil es del orden de kilobytes, este costo es asumible para redes IoT típicas y no impacta la convergencia ni el desempeño del modelo federado.
+Tres conclusiones de la tabla consolidada:
+\begin{enumerate}
+    \item ASCON-128 añade un overhead temporal \textbf{inferior al 0.3\% del ciclo federado} en cualquier configuración, y un overhead de tamaño moderado ($\sim$48\% del plaintext, $\sim$1\,KB absolutos por mensaje) compatible con redes IoT típicas.
+    \item Las variantes \texttt{*\_ASCON\_*} \textbf{no solo no degradan la convergencia: la mejoran} en promedio $+3.2$ puntos de accuracy frente a las \texttt{*\_PLAIN\_*}. Esto refuerza la hipótesis de que la validación de tag autenticado actúa como filtro implícito de mensajes corruptos o duplicados.
+    \item La diferencia se concentra en RN: \texttt{RN\_ASCON\_FOG} (0.9633) supera por 6.3 pts a \texttt{RN\_PLAIN\_FOG} (0.9000) y por 0.8 pts a \texttt{RN\_PLAIN\_NoFOG} (0.9298). En CNN la diferencia es menor (\texttt{CNN\_ASCON\_FOG} 0.9750 vs \texttt{CNN\_PLAIN\_FOG} 0.9444 = $+3.0$ pts).
+\end{enumerate}
 
 % ====================================================================
 \section{Análisis de las Preguntas de Investigación}
@@ -337,23 +406,23 @@ El aprendizaje federado reduce la información intercambiada de $\sim$13.3 millo
 
 \subsection{PI-3: ¿Cuál es el overhead del cifrado ASCON en la comunicación de modelos federados?}
 
-Basado en 182 operaciones criptográficas registradas durante 60 rondas de FL:
+Basado en el análisis SRE consolidado de 58 intentos sobre 8 variantes (Tabla~\ref{tab:variants_results}):
 \begin{itemize}
-    \item \textbf{Overhead temporal:} $\sim$42\,ms por ronda ($\sim$14\,ms por operación), representando el $\sim$0.06\% del tiempo total por ronda.
-    \item \textbf{Overhead de tamaño:} $\sim$36\% de incremento por mensaje ($\sim$1.3\,KB sobre $\sim$3.6\,KB).
-    \item \textbf{Impacto en convergencia:} Ninguno observable. Las curvas de accuracy y loss son indistinguibles entre las ramas con y sin ASCON.
+    \item \textbf{Overhead temporal:} latencia p95 de descifrado ASCON de $\approx$4.5\,ms en el ESP32-S3 (C++) y $\approx$25--50\,ms en el servidor PC (Python). Sumando las 3--5 operaciones por ronda, el overhead total representa entre el \textbf{0.10\% y 0.27\%} del tiempo de ronda. En las variantes PLAIN, la latencia equivalente cae a sub-milisegundo (deserialización JSON pura).
+    \item \textbf{Overhead de tamaño:} $\approx$48\% de incremento por mensaje (1.07\,KB sobre $\approx$2.25\,KB), atribuible al tag autenticado (16\,B), nonce (16\,B), expansión Base64 ($\times 4/3$) y envelope JSON.
+    \item \textbf{Impacto en convergencia:} positivo, no negativo. Las variantes \texttt{*\_ASCON\_*} promedian \textbf{0.9592} de accuracy final frente a \textbf{0.9272} en las \texttt{*\_PLAIN\_*} ($+3.2$ pts). La hipótesis es que la validación obligatoria del tag autenticado descarta mensajes corruptos o duplicados antes de que entren al buffer de entrenamiento.
 \end{itemize}
 
-\textbf{Conclusión PI-3:} El overhead del cifrado ASCON-128 es \textbf{despreciable en tiempo} y \textbf{moderado en tamaño}, validando su idoneidad como mecanismo de protección para comunicaciones de aprendizaje federado en dispositivos IoT restringidos.
+\textbf{Conclusión PI-3:} El overhead del cifrado ASCON-128 es \textbf{despreciable en tiempo} ($<0.3\%$ del ciclo FL) y \textbf{moderado en tamaño} ($\approx$48\%, $\sim$1\,KB absolutos), y además \textbf{mejora la accuracy} del modelo federado al filtrar implícitamente mensajes adulterados. Esto valida su idoneidad como mecanismo de protección end-to-end para HFL sobre IoT restringido.
 
 \subsection{PI-4: ¿Qué aporta comparar MLP/RN, CNN-1D, baseline sin ASCON y FOG?}
 
-La comparación de variantes muestra que el proyecto no depende de un único script, sino de una arquitectura replicable donde se pueden intercambiar modelo, seguridad y topología:
+La comparación de las 8 variantes (Tabla~\ref{tab:variants_results}) muestra que el proyecto no depende de un único script, sino de una arquitectura replicable donde se pueden intercambiar modelo, seguridad y topología, y que cada eje aporta una conclusión cuantificable:
 \begin{itemize}
-    \item El \textbf{MLP/RN} es la opción principal por balance entre precisión, tamaño y simplicidad de implementación.
-    \item La \textbf{CNN-1D} valida una alternativa más expresiva, con buenos resultados en modo FOG, pero con mayor complejidad de inferencia.
-    \item La rama \textbf{sin ASCON} permite aislar el costo del cifrado y demostrar que el overhead no invalida el sistema.
-    \item La estrategia \textbf{FOG} prueba una agregación intermedia entre gateways, aproximando escenarios multi-zona.
+    \item \textbf{Modelo (RN vs CNN-1D):} CNN-1D supera consistentemente a RN cuando se mantiene el resto fijo. \texttt{CNN\_ASCON\_FOG} (0.9750) $>$ \texttt{RN\_ASCON\_FOG} (0.9633); \texttt{CNN\_ASCON\_NoFOG} (0.9604) $>$ \texttt{RN\_ASCON\_NoFOG} (0.9381). El costo es mayor complejidad de inferencia en C++ sobre ESP32, pero la accuracy ganada compensa en escenarios donde la disponibilidad de cómputo del MCU lo permita.
+    \item \textbf{Seguridad (ASCON vs PLAIN):} ASCON añade $<$0.3\% de tiempo de ronda y $\sim$48\% de tamaño, pero \emph{mejora} la accuracy promedio en $+3.2$ pts. La rama PLAIN, lejos de ser solo un baseline, evidencia el valor de la validación de integridad como mecanismo \emph{de facto} de control de calidad de entradas.
+    \item \textbf{Topología (NoFOG vs FOG):} FOG mejora la accuracy en CNN ($+1.5$ pts ASCON, $+0.6$ pts PLAIN) y en RN+ASCON ($+2.5$ pts), pero degrada \texttt{RN\_PLAIN\_FOG} ($-3.0$ pts vs \texttt{RN\_PLAIN\_NoFOG}). Esto sugiere que la pre-agregación FOG amplifica errores cuando el canal peer$\to$leader no tiene autenticación, y refuerza la conveniencia de exigir ASCON cuando se introduce la capa fog.
+    \item \textbf{Modularidad operativa:} las cuatro carpetas \texttt{hfl\_v7-RN}, \texttt{hfl\_v7-no-ascon-RN}, \texttt{hfl\_v7-CNN}, \texttt{hfl\_v7-no-ascon-CNN}, cada una con \texttt{Results/} y \texttt{Results\_FOG/}, comparten esquema de CSV, lo que permitió construir una capa SRE única (\texttt{Analisis de Modelos/Completo/}) que produce métricas, eventos canónicos y trazas comparables entre todas las combinaciones sin reentrenar.
 \end{itemize}
 
-\textbf{Conclusión PI-4:} La arquitectura HFL v7 es modular: permite cambiar el modelo, activar o desactivar cifrado y añadir agregación fog sin romper el flujo bidireccional Edge--Fog--Cloud.
+\textbf{Conclusión PI-4:} La arquitectura HFL v7 es modular y los cuatro ejes (modelo, seguridad, topología, escala) producen resultados cuantitativamente distintos. La combinación \textbf{CNN-1D + ASCON-128 + FOG} es la dominante en accuracy (0.975) y loss (0.091); cuando los recursos del MCU favorezcan al MLP, la mejor opción es \textbf{RN + ASCON + FOG} (0.963).

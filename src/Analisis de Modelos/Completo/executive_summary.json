@@ -1,0 +1,165 @@
+{
+  "attempts_analyzed_total": 58,
+  "variants": {
+    "CNN_ASCON_FOG": {
+      "attempts_analyzed": 7,
+      "attempt_range": [
+        2,
+        8
+      ],
+      "avg_gateway_decrypt_p95_ms": 4.528029166666666,
+      "avg_server_decrypt_p95_ms": 37.46702857142858,
+      "avg_server_encrypt_p95_ms": 40.373300000000015,
+      "avg_payload_overhead_bytes": 1098.4007185732105,
+      "avg_payload_overhead_ratio_pct": 46.457609241844864,
+      "avg_local_accuracy": 0.929722216973702,
+      "avg_local_loss": 0.21247392398593848,
+      "avg_global_last_accuracy": 0.975,
+      "avg_global_last_loss": 0.091019,
+      "avg_round_completion_rate": 0.6666666666666666,
+      "avg_round_duration_sec": 58.60526315789473
+    },
+    "CNN_ASCON_NoFOG": {
+      "attempts_analyzed": 8,
+      "attempt_range": [
+        1,
+        8
+      ],
+      "avg_gateway_decrypt_p95_ms": 4.55301875,
+      "avg_server_decrypt_p95_ms": 24.460712499999968,
+      "avg_server_encrypt_p95_ms": 24.123643750000028,
+      "avg_payload_overhead_bytes": 1049.23380791785,
+      "avg_payload_overhead_ratio_pct": 48.93957255591831,
+      "avg_local_accuracy": 0.9371874939650298,
+      "avg_local_loss": 0.1831049046346379,
+      "avg_global_last_accuracy": 0.9604165,
+      "avg_global_last_loss": 0.103981,
+      "avg_round_completion_rate": 0.6666666666666666,
+      "avg_round_duration_sec": 58.96710526315789
+    },
+    "CNN_PLAIN_FOG": {
+      "attempts_analyzed": 3,
+      "attempt_range": [
+        2,
+        6
+      ],
+      "avg_gateway_decrypt_p95_ms": 0.1605416666666666,
+      "avg_server_decrypt_p95_ms": 0.0,
+      "avg_server_encrypt_p95_ms": 0.4830000000000001,
+      "avg_payload_overhead_bytes": 0.0,
+      "avg_payload_overhead_ratio_pct": 0.0,
+      "avg_local_accuracy": 0.905636357990178,
+      "avg_local_loss": 0.2655941083850551,
+      "avg_global_last_accuracy": 0.9444446666666666,
+      "avg_global_last_loss": 0.11897333333333333,
+      "avg_round_completion_rate": 0.6666666666666666,
+      "avg_round_duration_sec": 54.859649122807014
+    },
+    "CNN_PLAIN_NoFOG": {
+      "attempts_analyzed": 3,
+      "attempt_range": [
+        2,
+        6
+      ],
+      "avg_gateway_decrypt_p95_ms": 0.153875,
+      "avg_server_decrypt_p95_ms": 0.0,
+      "avg_server_encrypt_p95_ms": 0.6216666666666668,
+      "avg_payload_overhead_bytes": 0.0,
+      "avg_payload_overhead_ratio_pct": 0.0,
+      "avg_local_accuracy": 0.8958862375408883,
+      "avg_local_loss": 0.301791500891162,
+      "avg_global_last_accuracy": 0.9388886666666667,
+      "avg_global_last_loss": 0.13630833333333334,
+      "avg_round_completion_rate": 0.6666666666666666,
+      "avg_round_duration_sec": 52.01754385964912
+    },
+    "RN_ASCON_FOG": {
+      "attempts_analyzed": 5,
+      "attempt_range": [
+        2,
+        9
+      ],
+      "avg_gateway_decrypt_p95_ms": 4.374294999999999,
+      "avg_server_decrypt_p95_ms": 50.47260000000001,
+      "avg_server_encrypt_p95_ms": 59.18208000000002,
+      "avg_payload_overhead_bytes": 1083.9629477063957,
+      "avg_payload_overhead_ratio_pct": 46.64186742913817,
+      "avg_local_accuracy": 0.926999993622303,
+      "avg_local_loss": 0.2028117585147265,
+      "avg_global_last_accuracy": 0.9633334,
+      "avg_global_last_loss": 0.112425,
+      "avg_round_completion_rate": 0.6666666666666666,
+      "avg_round_duration_sec": 71.1263157894737
+    },
+    "RN_ASCON_NoFOG": {
+      "attempts_analyzed": 15,
+      "attempt_range": [
+        1,
+        15
+      ],
+      "avg_gateway_decrypt_p95_ms": 4.653987037037036,
+      "avg_server_decrypt_p95_ms": 26.68969333333333,
+      "avg_server_encrypt_p95_ms": 24.142673333333335,
+      "avg_payload_overhead_bytes": 1049.981266067204,
+      "avg_payload_overhead_ratio_pct": 48.55301930441454,
+      "avg_local_accuracy": 0.9215071870586686,
+      "avg_local_loss": 0.21253964863220368,
+      "avg_global_last_accuracy": 0.9380951428571427,
+      "avg_global_last_loss": 0.15451692857142857,
+      "avg_round_completion_rate": 0.680952380952381,
+      "avg_round_duration_sec": 72.91061742682173
+    },
+    "RN_PLAIN_FOG": {
+      "attempts_analyzed": 3,
+      "attempt_range": [
+        2,
+        4
+      ],
+      "avg_gateway_decrypt_p95_ms": 0.15864999999999985,
+      "avg_server_decrypt_p95_ms": 0.0,
+      "avg_server_encrypt_p95_ms": 0.6422666666666669,
+      "avg_payload_overhead_bytes": 0.0,
+      "avg_payload_overhead_ratio_pct": 0.0,
+      "avg_local_accuracy": 0.9194444398085277,
+      "avg_local_loss": 0.2134437265029798,
+      "avg_global_last_accuracy": 0.9,
+      "avg_global_last_loss": 0.21990433333333334,
+      "avg_round_completion_rate": 0.6666666666666666,
+      "avg_round_duration_sec": 67.14035087719299
+    },
+    "RN_PLAIN_NoFOG": {
+      "attempts_analyzed": 14,
+      "attempt_range": [
+        16,
+        29
+      ],
+      "avg_gateway_decrypt_p95_ms": 0.16748928571428573,
+      "avg_server_decrypt_p95_ms": 0.0,
+      "avg_server_encrypt_p95_ms": 0.2508142857142857,
+      "avg_payload_overhead_bytes": 0.0,
+      "avg_payload_overhead_ratio_pct": 0.0,
+      "avg_local_accuracy": 0.9166979895013017,
+      "avg_local_loss": 0.23103019796514784,
+      "avg_global_last_accuracy": 0.9297617857142855,
+      "avg_global_last_loss": 0.15813521428571428,
+      "avg_round_completion_rate": 0.6880952380952381,
+      "avg_round_duration_sec": 51.011357416529826
+    }
+  },
+  "global": {
+    "variants_count": 8,
+    "attempt_range_total": [
+      1,
+      29
+    ],
+    "avg_global_last_accuracy": 0.9437499285714287,
+    "avg_global_last_loss": 0.13826383928571429,
+    "avg_payload_overhead_bytes": 635.85686336865,
+    "avg_round_duration_sec": 61.35643356046195,
+    "class_labels_observed": [
+      "mqtt_bruteforce",
+      "normal",
+      "scan_A"
+    ]
+  }
+}
