@@ -206,11 +206,14 @@ W_{\text{global}}^{(t+1)} = \frac{\sum_{k=1}^{K} n_k \cdot W_k^{(t)}}{\sum_{k=1}
 
 donde $n_k$ es el número de muestras usadas para el entrenamiento local del gateway $k$ y $W_k^{(t)}$ sus pesos locales en la ronda $t$.
 
-El modelo global resultante es distribuido de vuelta a los gateways (HTTP POST a \texttt{/deploy-model}), quienes a su vez lo publican a los ESP32 por MQTT (\texttt{fl/global\_model}). En la rama sin ASCON se usan topics y endpoints con sufijo \texttt{\_plain}, por ejemplo \texttt{fl/features\_plain}, \texttt{fl/global\_model\_plain}, \texttt{/aggregate-from-gateway-plain} y \texttt{/deploy-model-plain}. De esta forma, el flujo bidireccional completo es:
+El modelo global resultante es distribuido de vuelta a los gateways (HTTP POST a \texttt{/deploy-model}), quienes a su vez lo publican a los ESP32 por MQTT (\texttt{fl/global\_model}). En la rama sin ASCON se usan topics y endpoints con sufijo \texttt{\_plain}, por ejemplo \texttt{fl/features\_plain}, \texttt{fl/global\_model\_plain}, \texttt{/aggregate-from-gateway-plain} y \texttt{/deploy-model-plain}. La Figura~\ref{fig:hfl_v7_bidirectional_flow} resume el flujo bidireccional completo en sus tres fases canónicas (top-down deployment, recolección y entrenamiento local, y agregación bottom-up).
 
-\begin{center}
-ESP32 $\xrightarrow{\text{features (MQTT)}}$ RPi $\xrightarrow{\text{pesos (HTTP)}}$ PC $\xrightarrow{\text{modelo global (HTTP)}}$ RPi $\xrightarrow{\text{modelo global (MQTT)}}$ ESP32
-\end{center}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{images/Metodologia/hfl_v7_bidirectional_flow.png}
+    \caption{Diagrama de secuencia del protocolo HFL v7 bidireccional. Los actores PC (Cloud), Raspberry Pi (Fog) y ESP32-S3 (Edge) intercambian mensajes en tres fases: despliegue del modelo global, recolección de features con entrenamiento local y agregación FedAvg. Todos los canales MQTT/HTTP se protegen con ASCON-128 cuando la variante está habilitada; en modo FOG se añaden los topics \texttt{fog/weights} y \texttt{fog/global\_model} entre Raspberry Pi peer y leader.}
+    \label{fig:hfl_v7_bidirectional_flow}
+\end{figure}
 
 En modo FOG, el flujo agrega dos canales adicionales: \texttt{fog/weights} para que los peers envíen pesos al líder y \texttt{fog/global\_model} para que el líder redistribuya el modelo global a los peers.
 
