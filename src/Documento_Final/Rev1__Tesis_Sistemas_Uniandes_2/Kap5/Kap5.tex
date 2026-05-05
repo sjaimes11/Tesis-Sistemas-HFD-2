@@ -177,6 +177,8 @@ La Tabla~\ref{tab:variants_results} consolida las \textbf{ocho combinaciones exp
 \caption{Resumen comparativo de las 8 variantes HFL v7 evaluadas. \textbf{GW p95}: latencia p95 de descifrado en gateway (\texttt{ESP32$\to$RPi}). \textbf{Srv dec p95}: latencia p95 de descifrado en servidor (\texttt{RPi$\to$PC}). \textbf{Overhead}: bytes adicionales promedio sobre el plaintext (0 en variantes \texttt{PLAIN}).}
 \label{tab:variants_results}
 \scriptsize
+\setlength{\tabcolsep}{4.5pt}
+\rowcolors{2}{gray!8}{white}
 \begin{tabular}{l c c c c c c c}
 \toprule
 \textbf{Variante} & \textbf{Intentos} & \textbf{Acc.\ final} & \textbf{Loss final} & \textbf{Ronda (s)} & \textbf{GW p95 (ms)} & \textbf{Srv dec p95 (ms)} & \textbf{Overhead (B)} \\
@@ -190,7 +192,7 @@ La Tabla~\ref{tab:variants_results} consolida las \textbf{ocho combinaciones exp
 \texttt{RN\_PLAIN\_FOG}     &  3 & 0.9000 & 0.2199 & 67.14 & 0.16 &  0.00 &    0 \\
 \texttt{RN\_PLAIN\_NoFOG}   & 14 & 0.9298 & 0.1581 & 51.01 & 0.17 &  0.00 &    0 \\
 \midrule
-\textbf{Promedio global}    & \textbf{58} & \textbf{0.9437} & \textbf{0.1383} & \textbf{61.36} & \textbf{2.34} & \textbf{17.39} & \textbf{636} \\
+\rowcolor{white}\textbf{Promedio global} & \textbf{58} & \textbf{0.9437} & \textbf{0.1383} & \textbf{61.36} & \textbf{2.34} & \textbf{17.39} & \textbf{636} \\
 \bottomrule
 \end{tabular}
 \end{table}

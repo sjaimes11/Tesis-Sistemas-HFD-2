@@ -4,13 +4,22 @@
 \section{Anexo A: Arquitectura del Sistema HFL}
 \label{anx:arquitectura}
 
-La arquitectura desplegada consta de tres capas principales y una extensión FOG opcional:
+La arquitectura desplegada consta de tres capas principales y una extensión FOG opcional. La Figura~\ref{fig:anx_arquitectura_hfl_v7} resume el despliegue físico, los protocolos por enlace y la cobertura de ASCON-128 sobre cada canal.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{images/Anexos/hfl_v7_architecture.png}
+    \caption{Arquitectura física del sistema HFL v7. La capa Cloud (PC) coordina las rondas con FastAPI y FedAvg ponderado. La capa Fog (Raspberry Pi) actúa como broker MQTT, etiquetador heurístico y entrenador local; en el modo FOG, una segunda Raspberry Pi participa como \emph{peer} y se comunica con el \emph{leader} mediante los topics \texttt{fog/weights} y \texttt{fog/global\_model} (línea discontinua). La capa Edge (ESP32-S3) ejecuta inferencia TinyML sobre 13 features de flujo y publica datos al gateway. ASCON-128 cubre todos los canales en variantes \texttt{*\_ASCON\_*}; en variantes \texttt{*\_PLAIN\_*} los topics y endpoints usan sufijo \texttt{\_plain} con JSON sin cifrar.}
+    \label{fig:anx_arquitectura_hfl_v7}
+\end{figure}
+
+A nivel narrativo, las capas se resumen así:
 
 \begin{itemize}
-    \item \textbf{Capa Edge:} 2 $\times$ ESP32-S3 (nodo normal + nodo simulado), ejecutando inferencia TinyML y comunicación MQTT cifrada con ASCON-128.
-    \item \textbf{Capa Fog:} Raspberry Pi 4 actuando como broker MQTT, gateway de entrenamiento local y puente HTTP hacia el servidor.
-    \item \textbf{Capa Cloud:} 1 $\times$ PC (servidor FastAPI), coordinando la agregación FedAvg y el dashboard analítico.
-    \item \textbf{Extensión FOG:} Raspberry Pi líder y peer usando \texttt{fog/weights} y \texttt{fog/global\_model} para agregar entre gateways antes del PC.
+    \item \textbf{Capa Edge:} $2 \times$ ESP32-S3 por gateway (un nodo \emph{normal} y un nodo \emph{simulated}), ejecutando inferencia TinyML y publicando \texttt{fl/features} hacia el gateway por MQTT cifrado con ASCON-128.
+    \item \textbf{Capa Fog:} Raspberry Pi~4 actuando como broker MQTT (Mosquitto), gateway de entrenamiento local (etiquetado heurístico, buffer $N_s = 40$, entrenamiento Keras) y puente HTTP hacia el servidor.
+    \item \textbf{Capa Cloud:} $1 \times$ PC ejecutando \texttt{server\_hfl.py} o \texttt{server\_hfl\_fog.py} (FastAPI), responsable de la agregación FedAvg ponderada por número de muestras y del dashboard analítico en tiempo real.
+    \item \textbf{Extensión FOG:} Raspberry Pi líder y peer comunicándose por \texttt{fog/weights} y \texttt{fog/global\_model} para agregar entre gateways antes de reportar al PC mediante \texttt{/aggregate-from-fog}.
 \end{itemize}
 
 \section{Anexo B: Archivos del Sistema}
@@ -18,22 +27,34 @@ La arquitectura desplegada consta de tres capas principales y una extensión FOG
 
 \begin{table}[H]
 \centering
-\caption{Archivos principales del sistema HFL v7.}
+\caption{Archivos principales del sistema HFL v7, agrupados por capa de despliegue.}
+\label{tab:anx_archivos_sistema}
 \small
-\begin{tabular}{l l l}
+\begin{tabular}{@{}l l p{0.46\textwidth}@{}}
 \toprule
 \textbf{Archivo} & \textbf{Dispositivo} & \textbf{Función} \\
 \midrule
-\texttt{main\_edge\_node\_normal.cpp}    & ESP32-S3 & Nodo de tráfico normal \\
-\texttt{main\_edge\_node\_simulated.cpp} & ESP32-S3 & Nodo de tráfico mixto \\
-\texttt{ascon128.h}                      & ESP32-S3 & Cifrado ASCON-128 (C++) \\
-\texttt{gateway\_hfl.py}                 & Raspberry Pi 4 & Gateway federado \\
-\texttt{gateway\_hfl\_fog.py}             & Raspberry Pi 4 & Gateway FOG líder/peer \\
-\texttt{ascon128.py}                     & RPi / PC & Cifrado ASCON-128 (Python) \\
-\texttt{ascon\_metrics.py}               & RPi / PC & Métricas de cifrado \\
-\texttt{plain\_metrics.py}               & RPi / PC & Métricas de baseline sin ASCON \\
-\texttt{server\_hfl.py}                  & PC & Servidor central FedAvg \\
-\texttt{server\_hfl\_fog.py}              & PC & Servidor para agregación FOG \\
+\multicolumn{3}{@{}l}{\emph{Capa Edge (firmware C++ sobre ESP32-S3)}} \\
+\midrule
+\texttt{main\_edge\_node\_normal.cpp}    & ESP32-S3       & Nodo de tráfico normal: publica \texttt{fl/features} a $\sim$5\,s. \\
+\texttt{main\_edge\_node\_simulated.cpp} & ESP32-S3       & Nodo de tráfico mixto (40\% normal, 30\% bruteforce, 30\% scan\_A). \\
+\texttt{ascon128.h}                      & ESP32-S3       & Implementación nativa C++ de ASCON-128 (interoperable con Python). \\
+\midrule
+\multicolumn{3}{@{}l}{\emph{Capa Fog (Python sobre Raspberry Pi 4)}} \\
+\midrule
+\texttt{gateway\_hfl.py}                 & Raspberry Pi 4 & Gateway federado en modo estándar (Mosquitto + entrenamiento local). \\
+\texttt{gateway\_hfl\_fog.py}            & Raspberry Pi 4 & Gateway FOG con rol \texttt{leader} o \texttt{peer} (\texttt{fog/weights}, \texttt{fog/global\_model}). \\
+\midrule
+\multicolumn{3}{@{}l}{\emph{Capas Fog y Cloud (utilidades comunes en Python)}} \\
+\midrule
+\texttt{ascon128.py}                     & RPi / PC       & Implementación Python de ASCON-128 con \texttt{generate\_nonce(ts, ctr)}. \\
+\texttt{ascon\_metrics.py}               & RPi / PC       & Recolector de métricas de cifrado/descifrado a CSV. \\
+\texttt{plain\_metrics.py}               & RPi / PC       & Equivalente para la línea base sin cifrado (variantes \texttt{*\_PLAIN\_*}). \\
+\midrule
+\multicolumn{3}{@{}l}{\emph{Capa Cloud (FastAPI sobre PC)}} \\
+\midrule
+\texttt{server\_hfl.py}                  & PC             & Servidor central FedAvg + dashboard analítico. \\
+\texttt{server\_hfl\_fog.py}             & PC             & Variante para agregación desde clusters FOG (\texttt{/aggregate-from-fog}). \\
 \bottomrule
 \end{tabular}
 \end{table}

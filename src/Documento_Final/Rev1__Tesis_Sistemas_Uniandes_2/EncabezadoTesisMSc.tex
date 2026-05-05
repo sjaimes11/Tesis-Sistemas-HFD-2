@@ -33,14 +33,18 @@
 \usepackage{graphicx}
 \usepackage{siunitx}
  %\usepackage{hyperref} % CAJAS ROJAS
-%\usepackage{xcolor}
+\usepackage[table]{xcolor}     % Color de soporte (tablas: \rowcolors, figuras).
+\usepackage[final]{microtype}  % Tipografia: protrusion + expansion para
+                               % evitar lineas que se desbordan al margen.
 
 % \usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
 % \usepackage{graphicx}     % Para \includegraphics
 \usepackage{subcaption}   % Para \begin{subfigure}
 \usepackage{caption}
-\captionsetup{font=small}
+\captionsetup{font=small,labelfont=bf,labelsep=period,justification=justified}
 \captionsetup[sub]{font=small,skip=2pt}
+\captionsetup[table]{position=above,skip=4pt}
+\captionsetup[figure]{position=below,skip=4pt}
 
 
 % \usepackage{booktabs}     % Para \toprule, \midrule, \bottomrule
