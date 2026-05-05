@@ -17,7 +17,7 @@ A nivel narrativo, las capas se resumen así:
 
 \begin{itemize}
     \item \textbf{Capa Edge:} $2 \times$ ESP32-S3 por gateway (un nodo \emph{normal} y un nodo \emph{simulated}), ejecutando inferencia TinyML y publicando \texttt{fl/features} hacia el gateway por MQTT cifrado con ASCON-128.
-    \item \textbf{Capa Fog:} Raspberry Pi~4 actuando como broker MQTT (Mosquitto), gateway de entrenamiento local (etiquetado heurístico, buffer $N_s = 40$, entrenamiento Keras) y puente HTTP hacia el servidor.
+    \item \textbf{Capa Fog:} Raspberry Pi~4 actuando como broker MQTT (Mosquitto), gateway de entrenamiento local (etiquetado heurístico, buffer $N_s = 30$, entrenamiento Keras) y puente HTTP hacia el servidor.
     \item \textbf{Capa Cloud:} $1 \times$ PC ejecutando \texttt{server\_hfl.py} o \texttt{server\_hfl\_fog.py} (FastAPI), responsable de la agregación FedAvg ponderada por número de muestras y del dashboard analítico en tiempo real.
     \item \textbf{Extensión FOG:} Raspberry Pi líder y peer comunicándose por \texttt{fog/weights} y \texttt{fog/global\_model} para agregar entre gateways antes de reportar al PC mediante \texttt{/aggregate-from-fog}.
 \end{itemize}

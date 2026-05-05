@@ -7,7 +7,7 @@ La adopción de redes \textit{Internet of Things} (IoT) e \textit{Industrial IoT
 
 Los sistemas de detección de intrusiones de red (NIDS) basados en aprendizaje automático han mostrado altos niveles de precisión en condiciones de laboratorio. Sin embargo, muchos de estos resultados se obtienen bajo supuestos que no siempre se cumplen en IoT: centralización de datos, disponibilidad de servidores con alta memoria, ausencia de cifrado en las comunicaciones internas del sistema y modelos demasiado grandes para ejecutarse en microcontroladores \cite{Bagaa2020_ML_IoT_Framework, Dini2024_EmbeddedIIoT_Review}. En consecuencia, el reto no consiste únicamente en maximizar \textit{accuracy}, sino en validar una arquitectura completa que pueda operar sobre hardware restringido, actualizarse de manera distribuida y proteger los artefactos del aprendizaje. Trabajos recientes destacan que los enfoques de TinyML actuales pocas veces incorporan entrenamiento on-board y que, cuando lo hacen, deben combinarlo con FL/Transfer Learning para evitar costosos viajes de datos crudos al servidor \cite{Ficco2024_FL_TinyML_Onboard, Ramadan2025}.
 
-Esta tesis aborda ese reto mediante una arquitectura Edge--Fog--Cloud para detección de intrusiones en tráfico MQTT. La capa Edge se implementa con nodos ESP32-S3 que ejecutan inferencia TinyML y transmiten características de flujo; la capa Fog se implementa sobre Raspberry Pi 4 como gateway MQTT, entrenador local y agregador intermedio; y la capa Cloud se implementa en un PC con FastAPI para coordinar la agregación global. El sistema se evaluó en varias configuraciones de la versión \texttt{hfl\_v7}: red neuronal MLP con ASCON-128, red neuronal MLP sin ASCON como línea base, variante CNN-1D y estrategia FOG con agregación entre gateways. La elección de ASCON-128 está motivada por su selección reciente como estándar NIST de criptografía ligera para dispositivos restringidos \cite{NISTSP8002322025, Kaur2025_ASCON_Survey}, en contraste con esquemas \emph{ad-hoc} basados en permutaciones que han demostrado ser vulnerables a ataques de divulgación de secretos y desincronización \cite{Mirzaali2025_LWC_Permutations}.
+Esta tesis aborda ese reto mediante una arquitectura Edge--Fog--Cloud para detección de intrusiones en tráfico MQTT. La capa Edge se implementa con nodos ESP32-S3 que ejecutan inferencia TinyML y transmiten características de flujo; la capa Fog se implementa sobre Raspberry Pi 4 como gateway MQTT, entrenador local y agregador intermedio; y la capa Cloud se implementa en un PC con FastAPI para coordinar la agregación global. El sistema se evaluó en varias configuraciones: red neuronal MLP con ASCON-128, red neuronal MLP sin ASCON como línea base, variante CNN-1D y estrategia FOG con agregación entre gateways. La elección de ASCON-128 está motivada por su selección reciente como estándar NIST de criptografía ligera para dispositivos restringidos \cite{NISTSP8002322025, Kaur2025_ASCON_Survey}, en contraste con esquemas \emph{ad-hoc} basados en permutaciones que han demostrado ser vulnerables a ataques de divulgación de secretos y desincronización \cite{Mirzaali2025_LWC_Permutations}.
 
 \section{Problemática}
 
@@ -17,38 +17,46 @@ La segunda brecha corresponde a la \textbf{privacidad y distribución de datos}.
 
 La tercera brecha es la \textbf{seguridad del propio ciclo federado}. Aunque FL evita mover datos crudos, los pesos del modelo, métricas locales y mensajes de control siguen siendo activos sensibles. Por tanto, las comunicaciones entre ESP32, Raspberry Pi y PC deben proteger confidencialidad e integridad con mecanismos compatibles con dispositivos restringidos. ASCON-128, estandarizado por NIST como criptografía ligera, es una opción pertinente para este escenario \cite{NISTSP8002322025, Kaur2025_ASCON_Survey}. Diseños \emph{ad-hoc} basados en permutaciones simples (XOR, rotaciones) ofrecen menor costo pero han sido comprometidos en análisis recientes, lo cual refuerza la necesidad de adoptar un AEAD estandarizado en el ciclo federado \cite{Mirzaali2025_LWC_Permutations}.
 
-Finalmente, el sistema debe ser evaluado como arquitectura, no solo como modelo. Por eso se comparan cuatro dimensiones: desempeño del modelo TinyML, costo del aprendizaje federado, overhead de ASCON-128 y efecto de variar el modelo o la topología mediante las ramas \texttt{hfl\_v7-RN}, \texttt{hfl\_v7-no-ascon-RN} y \texttt{hfl\_v7-CNN}.
+Finalmente, el sistema debe ser evaluado como arquitectura, no solo como modelo. Por eso se comparan cuatro dimensiones: desempeño del modelo TinyML, costo del aprendizaje federado, overhead de ASCON-128 y efecto de variar el modelo o la topología.
 
 \section{Justificación}
 
-La solución propuesta aporta una validación práctica de un IDS federado para IoT sobre hardware real. A diferencia de un entrenamiento centralizado, el sistema opera con un modelo compacto de 13 características de flujo y tres clases de tráfico: \texttt{normal}, \texttt{mqtt\_bruteforce} y \texttt{scan\_A}. Este alcance permite instrumentar el ciclo completo de detección, entrenamiento local, agregación global y redistribución del modelo sin depender de infraestructura de alto costo en el borde.
+\textbf{La solución propuesta aporta una validación práctica de un IDS federado para IoT sobre hardware real. A diferencia de un entrenamiento centralizado, el sistema opera con un modelo compacto de 13 características de flujo y tres clases de tráfico: \texttt{normal}, \texttt{mqtt\_bruteforce} y \texttt{scan\_A}. Este alcance permite instrumentar el ciclo completo de detección, entrenamiento local, agregación global y redistribución del modelo sin depender de infraestructura de alto costo en el borde.}
 
 El proyecto también justifica la comparación entre variantes. La rama con ASCON-128 permite medir el costo de proteger todos los canales; la rama sin ASCON sirve como línea base para aislar el overhead criptográfico; la variante CNN-1D evalúa si una arquitectura más expresiva mejora el desempeño sin romper la viabilidad edge; y el modo FOG introduce una agregación intermedia entre Raspberry Pi antes del servidor central.
 
-El documento está estructurado de la siguiente manera: el Capítulo~\ref{chap:Introduction} presenta el problema y los objetivos; el Capítulo~\ref{chap:theo} resume el marco conceptual y el estado del arte; el Capítulo~\ref{chap:meth} describe la arquitectura y el protocolo experimental; el Capítulo~\ref{chap:resu} presenta resultados; el Capítulo~\ref{chap:conc} concluye y plantea trabajos futuros; y los anexos resumen archivos y artefactos del sistema.
+El documento está estructurado de la siguiente manera: el Capítulo~\ref{chap:Introduction} presenta el problema y los objetivos; el Capítulo~\ref{chap:theo} resume el marco conceptual y el estado del arte; el Capítulo~\ref{chap:meth} describe la arquitectura y el protocolo experimental; el Capítulo~\ref{chap:resu} presenta resultados; el Capítulo~\ref{chap:conc} concluye y plantea trabajos futuros; y los anexos resumen archivos y artefactos del sistema. Adicionalmente, si desea consultar los scripts de las arquitecturas implementadas en Python y C++ implementadas en este trabajo, puede acceder a ellos a través del siguiente enlace: \href{https://github.com/sjaimes11/Tesis-Sistemas-HFD-2}{\textbf{Repositorio del proyecto}}.
 
 \section{Objetivos}
 
 \subsection{Objetivo General}
-Diseñar, implementar y evaluar un sistema de detección de intrusiones para tráfico IoT/MQTT basado en TinyML, aprendizaje federado jerárquico y cifrado ligero ASCON-128, desplegado sobre una arquitectura Edge--Fog--Cloud compuesta por ESP32-S3, Raspberry Pi 4 y un servidor PC.
+%Diseñar, implementar y evaluar un sistema de detección de intrusiones para tráfico IoT/MQTT basado en TinyML, aprendizaje federado jerárquico y cifrado ligero ASCON-128, desplegado sobre una arquitectura Edge--Fog--Cloud compuesta por ESP32-S3, Raspberry Pi 4 y un servidor PC.
+
+Diseñar, implementar y evaluar un prototipo funcional de un sistema de detección de intrusiones en el borde que combine modelos TinyML para inferencia eficiente, aprendizaje federado para entrenamiento colaborativo y cifrado ligero para proteger el intercambio de parámetros y mensajes.
 
 \subsection{Objetivos Específicos}
 \begin{enumerate}
-    \item Construir un \textit{pipeline} de datos basado en flujos de red unidireccionales, seleccionando 13 características computables en dispositivos de borde y definiendo un problema triclase para tráfico \texttt{normal}, \texttt{mqtt\_bruteforce} y \texttt{scan\_A}.
+    %\item Construir un \textit{pipeline} de datos basado en flujos de red unidireccionales, seleccionando 13 características computables en dispositivos de borde y definiendo un problema triclase para tráfico \texttt{normal}, \texttt{mqtt\_bruteforce} y \texttt{scan\_A}.
 
-    \item Entrenar y comparar modelos compactos para IDS IoT, incluyendo MLP, CNN-1D, Residual-MLP y Tiny Transformer, exportando pesos y parámetros de normalización para ejecución en ESP32-S3.
+    \item Construir el pipeline de datos para la captura, normalización y generación de features a partir del tráfico y/o de flujos de red, y seleccionar un conjunto de datasets públicos adecuados para entrenamiento y evaluación comparativa.
 
-    \item Implementar una arquitectura HFL bidireccional donde los gateways Raspberry Pi entrenan localmente, envían pesos al servidor central, reciben el modelo global y lo redistribuyen a los nodos ESP32.
+    \item Entrenar y comparar modelos compactos para IDS IoT, incluyendo MLP, CNN-1D, Residual-MLP y Tiny Transformer, exportando los pesos y los parámetros de normalización para ejecución en el microcontrolador ESP32.
 
-    \item Evaluar el impacto del cifrado ASCON-128 frente a una línea base sin cifrado, midiendo tiempo de cifrado/descifrado, tamaño de mensajes y efecto sobre la convergencia del modelo.
+    %\item 3. Implementar una arquitectura HFL bidireccional donde los gateways Raspberry Pi entrenan localmente, envían pesos al servidor central, reciben el modelo global y lo redistribuyen a los nodos ESP32.
 
-    \item Analizar el efecto de variar la arquitectura del modelo y la topología de agregación mediante las ramas \texttt{hfl\_v7-RN}, \texttt{hfl\_v7-no-ascon}, \texttt{hfl\_v7-CNN} y el modo FOG.
+    \item Implementar un esquema de aprendizaje federado para el entrenamiento distribuido de modelos, evaluando estrategias de agregación, la estabilidad con datos no IID y los costos de comunicación, apoyándose en criterios para la selección de frameworks y extensiones.
+
+    \item Integrar mecanismos de cifrado ligero y de autenticación en la arquitectura propuesta y validar experimentalmente el sistema completo, evaluando la capacidad de detección de ataques en los nodos, el impacto del aprendizaje federado frente al entrenamiento centralizado y los efectos en la latencia, el consumo y el desempeño general.
+
+    %\item Evaluar el impacto del cifrado ASCON-128 frente a una línea base sin cifrado, midiendo tiempo de cifrado/descifrado, tamaño de mensajes y efecto sobre la convergencia del modelo.
+
+    %\item Analizar el efecto de variar la arquitectura del modelo y la topología de agregación mediante las ramas \texttt{hfl\_v7-RN}, \texttt{hfl\_v7-no-ascon}, \texttt{hfl\_v7-CNN} y el modo FOG.
 \end{enumerate}
 
-\subsection{Preguntas de investigación}
-\begin{enumerate}
-    \item ¿Puede un modelo TinyML ejecutado en ESP32-S3 detectar tráfico MQTT malicioso con precisión operativamente viable?
-    \item ¿Qué reducción de transferencia de datos se obtiene al usar HFL en lugar de centralizar los flujos de red?
-    \item ¿Cuál es el costo temporal y de comunicación de proteger el ciclo federado con ASCON-128?
-    \item ¿Cómo cambian los resultados al comparar MLP, CNN-1D, baseline sin ASCON y agregación FOG?
-\end{enumerate}
+% \subsection{Preguntas de investigación}
+% \begin{enumerate}
+%     \item ¿Puede un modelo TinyML ejecutado en ESP32-S3 detectar tráfico MQTT malicioso con precisión operativamente viable?
+%     \item ¿Qué reducción de transferencia de datos se obtiene al usar HFL en lugar de centralizar los flujos de red?
+%     \item ¿Cuál es el costo temporal y de comunicación de proteger el ciclo federado con ASCON-128?
+%     \item ¿Cómo cambian los resultados al comparar MLP, CNN-1D, baseline sin ASCON y agregación FOG?
+% \end{enumerate}

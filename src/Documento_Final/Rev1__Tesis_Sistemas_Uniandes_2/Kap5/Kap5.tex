@@ -28,7 +28,7 @@ SVM (RBF)          & 0.9968 & 0.9953 & 0.9968 & 0.9954 & 0.9952 & 0.9944 \\
 \end{table}
 
 \textbf{Hallazgos clave:}
-\begin{itemize}
+\begin{itemize}[noitemsep, topsep=0pt]
     \item \textbf{Random Forest} alcanza el mejor desempeño global (Accuracy: 99.94\%, MCC: 0.9989), seguido de cerca por Decision Tree (99.87\%) y SVM-RBF (99.68\%).
     \item Los modelos lineales (Logistic Regression, SVM-Linear) muestran una caída significativa ($\approx 5$--$6$ puntos porcentuales), lo que sugiere que las fronteras de decisión entre clases no son completamente linealmente separables en el espacio de 13 features.
     \item Todos los modelos basados en árboles presentan un MCC $> 0.99$, confirmando que las 13 features seleccionadas son altamente discriminativas para la tarea de clasificación triclase.
@@ -103,7 +103,7 @@ Rondas hasta accuracy $> 70\%$  & $\sim$8--12 \\
 Rondas hasta accuracy $> 85\%$  & $\sim$20--30 \\
 Accuracy global estabilizada     & $\sim$0.90--0.95 \\
 Loss final (Cross-Entropy)       & $\sim$0.14--0.25 \\
-Muestras por ronda (por gateway) & 40 \\
+Muestras por ronda (por gateway) & 30 \\
 Épocas locales por ronda         & 5 \\
 Duración por ronda               & $\sim$51--61\,s según variante \\
 \bottomrule
@@ -111,8 +111,8 @@ Duración por ronda               & $\sim$51--61\,s según variante \\
 \end{table}
 
 \textbf{Análisis:}
-\begin{enumerate}
-    \item El modelo federado converge en $\sim$20--30 rondas hacia un rango operativo de $\sim$90--95\% de accuracy, lo que representa un \textbf{gap} frente a los modelos centralizados más precisos. Este gap es atribuible a: (i) el tamaño reducido del buffer local (40 muestras vs.\ 256\,276), (ii) la distribución non-IID de los datos entre nodos, y (iii) la función heurística de etiquetado que introduce ruido respecto a las etiquetas reales.
+\begin{enumerate}[noitemsep, topsep=0pt]
+    \item El modelo federado converge en $\sim$20--30 rondas hacia un rango operativo de $\sim$90--95\% de accuracy, lo que representa un \textbf{gap} frente a los modelos centralizados más precisos. Este gap es atribuible a: (i) el tamaño reducido del buffer local (30 muestras vs.\ 256\,276), (ii) la distribución non-IID de los datos entre nodos, y (iii) la función heurística de etiquetado que introduce ruido respecto a las etiquetas reales.
 
     \item La convergencia mejora durante las primeras rondas y presenta oscilaciones posteriores, típicas de FL con datos non-IID \cite{Imteaj2022_FL_ResourceConstrainedSurvey}.
 
@@ -133,13 +133,13 @@ Las Figuras~\ref{fig:hfl_v7_accuracy_loss_matrix} y~\ref{fig:hfl_v7_weight_magni
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.98\textwidth]{images/Resultados/Completo/weight_magnitude_trends.png}
+    \includegraphics[width=1\textwidth]{images/Resultados/Completo/weight_magnitude_trends.png}
     \caption{Magnitud promedio de los cuatro pesos federados (\texttt{w3\_mag}, \texttt{w4\_normal}, \texttt{w4\_brute}, \texttt{w4\_scan}) por variante a lo largo de las rondas 1--20.}
     \label{fig:hfl_v7_weight_magnitude_matrix}
 \end{figure}
 
 Estas curvas complementan la Tabla~\ref{tab:hfl_convergence}: el sistema no solo reporta métricas finales, sino trayectorias de entrenamiento comparables entre modelos y configuraciones. Tres lecturas clave de las Figuras~\ref{fig:hfl_v7_accuracy_loss_matrix}--\ref{fig:hfl_v7_weight_magnitude_matrix}:
-\begin{enumerate}
+\begin{enumerate}[noitemsep, topsep=0pt]
     \item Las ocho variantes \textbf{convergen}: la accuracy global supera 0.90 entre las rondas 5 y 10 y la loss baja de $\sim$0.8 a $\sim$0.1--0.2 en el mismo rango.
     \item Las variantes con \textbf{CNN-1D} muestran una dinámica de pesos más expresiva: \texttt{CNN\_ASCON\_NoFOG} y \texttt{CNN\_ASCON\_FOG} aumentan progresivamente \texttt{w3\_mag} y los pesos asociados a las clases (\texttt{w4\_brute}, \texttt{w4\_scan}), mientras que las variantes RN se estabilizan rápidamente alrededor de \texttt{w3\_mag}~$\approx$~0.29.
     \item No se observa divergencia en ninguna variante dentro de las primeras 20 rondas. La rama \texttt{CNN\_PLAIN\_NoFOG} muestra el mayor ruido en \texttt{w4\_normal}, consistente con un entrenamiento más sensible a la inicialización local cuando no hay agregación FOG ni cifrado autenticado que filtre mensajes alterados.
@@ -179,26 +179,26 @@ La Tabla~\ref{tab:variants_results} consolida las \textbf{ocho combinaciones exp
 \scriptsize
 \setlength{\tabcolsep}{4.5pt}
 \rowcolors{2}{gray!8}{white}
-\begin{tabular}{l c c c c c c c}
+\begin{tabular}{l  c c c c c c}
 \toprule
-\textbf{Variante} & \textbf{Intentos} & \textbf{Acc.\ final} & \textbf{Loss final} & \textbf{Ronda (s)} & \textbf{GW p95 (ms)} & \textbf{Srv dec p95 (ms)} & \textbf{Overhead (B)} \\
+\textbf{Variante}  & \textbf{Acc.\ final} & \textbf{Loss final} & \textbf{Ronda (s)} & \textbf{GW p95 (ms)} & \textbf{Srv dec p95 (ms)} & \textbf{Overhead (B)} \\
 \midrule
-\texttt{CNN\_ASCON\_FOG}    &  7 & \textbf{0.9750} & \textbf{0.0910} & 58.61 & 4.53 & 37.47 & 1098 \\
-\texttt{CNN\_ASCON\_NoFOG}  &  8 & 0.9604 & 0.1040 & 58.97 & 4.55 & 24.46 & 1049 \\
-\texttt{CNN\_PLAIN\_FOG}    &  3 & 0.9444 & 0.1190 & 54.86 & 0.16 &  0.00 &    0 \\
-\texttt{CNN\_PLAIN\_NoFOG}  &  3 & 0.9389 & 0.1363 & 52.02 & 0.15 &  0.00 &    0 \\
-\texttt{RN\_ASCON\_FOG}     &  5 & 0.9633 & 0.1124 & 71.13 & 4.37 & 50.47 & 1084 \\
-\texttt{RN\_ASCON\_NoFOG}   & 15 & 0.9381 & 0.1545 & 72.91 & 4.65 & 26.69 & 1050 \\
-\texttt{RN\_PLAIN\_FOG}     &  3 & 0.9000 & 0.2199 & 67.14 & 0.16 &  0.00 &    0 \\
-\texttt{RN\_PLAIN\_NoFOG}   & 14 & 0.9298 & 0.1581 & 51.01 & 0.17 &  0.00 &    0 \\
+\texttt{CNN\_ASCON\_FOG}    & \textbf{0.9750} & \textbf{0.0910} & 58.61 & 4.53 & 37.47 & 1098 \\
+\texttt{CNN\_ASCON\_NoFOG}   & 0.9604 & 0.1040 & 58.97 & 4.55 & 24.46 & 1049 \\
+\texttt{CNN\_PLAIN\_FOG}    & 0.9444 & 0.1190 & 54.86 & 0.16 &  0.00 &    0 \\
+\texttt{CNN\_PLAIN\_NoFOG}   & 0.9389 & 0.1363 & 52.02 & 0.15 &  0.00 &    0 \\
+\texttt{RN\_ASCON\_FOG}    & 0.9633 & 0.1124 & 71.13 & 4.37 & 50.47 & 1084 \\
+\texttt{RN\_ASCON\_NoFOG}   & 0.9381 & 0.1545 & 72.91 & 4.65 & 26.69 & 1050 \\
+\texttt{RN\_PLAIN\_FOG}     & 0.9000 & 0.2199 & 67.14 & 0.16 &  0.00 &    0 \\
+\texttt{RN\_PLAIN\_NoFOG}    & 0.9298 & 0.1581 & 51.01 & 0.17 &  0.00 &    0 \\
 \midrule
-\rowcolor{white}\textbf{Promedio global} & \textbf{58} & \textbf{0.9437} & \textbf{0.1383} & \textbf{61.36} & \textbf{2.34} & \textbf{17.39} & \textbf{636} \\
+\rowcolor{white}\textbf{Promedio global}  & \textbf{0.9437} & \textbf{0.1383} & \textbf{61.36} & \textbf{2.34} & \textbf{17.39} & \textbf{636} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-La comparación de las 8 variantes confirma cinco hallazgos:
-\begin{enumerate}
+La comparación de las 8 variantes confirma cinco hallazgos: 
+\begin{enumerate}[noitemsep, topsep=0pt]
     \item \textbf{El ganador absoluto es \texttt{CNN\_ASCON\_FOG}} (acc 0.975, loss 0.091): combinar la mayor capacidad expresiva (CNN-1D) con la pre-agregación FOG y la integridad de ASCON produce el mejor punto de operación dentro del corpus.
     \item \textbf{El cifrado no degrada la convergencia}; al contrario, en este corpus las variantes \texttt{*\_ASCON\_*} tienden a igualar o superar a sus contrapartes \texttt{*\_PLAIN\_*}. Una explicación plausible es que la validación de tag autenticado \emph{filtra} mensajes corruptos o duplicados antes de que entren al buffer de entrenamiento.
     \item \textbf{FOG ayuda diferenciadamente} segun la familia de modelo y la seguridad: en CNN mejora $+1.5$ pts (ASCON) y $+0.6$ pts (PLAIN); en RN mejora $+2.5$ pts con ASCON pero \emph{degrada} $-3.0$ pts en PLAIN, lo que sugiere que la pre-agregación FOG es más sensible al ruido de mensajes sin autenticación cuando el modelo es lineal.
@@ -251,7 +251,7 @@ Saravana Balaji~\textit{et~al.}~\cite{SaravanaBalaji2023_EdgeIoT_DL} & Edge sani
 \end{table}
 
 Lecturas de la tabla:
-\begin{itemize}
+\begin{itemize}[noitemsep, topsep=0pt]
     \item Trabajos de FL para IDS sin restricciones edge \cite{Hajj2023_CrossLayerFL_IDS, Chaurasia2024_FL_ResNet_IIoT, Roy2023_FL_AdaptedModel} alcanzan 0.96--0.99, pero usan PCs como nodos cliente, sin demostrar despliegue en MCU. Esta tesis acepta una caída de $\sim$2--5 puntos a cambio de validar el ciclo en ESP32-S3 real con cifrado autenticado activo en todos los canales.
     \item Frente a Ficco~\textit{et~al.}~\cite{Ficco2024_FL_TinyML_Onboard}, que reporta 0.86 en clasificación, las variantes con ASCON y FOG superan ese punto sin sacrificar el ciclo on-board.
     \item Frente a EdgeTrust-Shard~\cite{Tran2026_EdgeTrustShard}, los resultados de accuracy son comparables aunque el problema atacado es distinto (Byzantine-robust FL vs.\ confidencialidad/integridad).
@@ -262,7 +262,7 @@ Lecturas de la tabla:
 \label{subsec:limitations}
 
 La interpretación de los resultados debe contemplar las siguientes limitaciones:
-\begin{enumerate}
+\begin{enumerate}[noitemsep, topsep=0pt]
     \item \textbf{Tres clases y dataset acotado:} El problema se reduce a tres clases relevantes para tráfico MQTT (\texttt{normal}, \texttt{mqtt\_bruteforce}, \texttt{scan\_A}). Datasets más amplios como CICIoT2023, Edge-IIoTset y TON\_IoT \cite{Neto2023_CICIoT2023, Ferrag2022_EdgeIIoTset, Moustafa2020_TONIoT} contienen más vectores de ataque y permitirían generalizar mejor las conclusiones.
     \item \textbf{Etiquetado heurístico en gateway:} Las reglas que asignan etiquetas a las features recibidas son una aproximación calibrada con las distribuciones reales del dataset, pero introducen ruido. Esto contribuye al \emph{gap} de $\sim$7 puntos contra el modelo centralizado y es consistente con lo reportado en FL con datos non-IID \cite{Imteaj2022_FL_ResourceConstrainedSurvey, Albanbay2025}.
     \item \textbf{Número limitado de gateways y nodos:} Las pruebas usan $K=2$ gateways. Topologías con $K \geq 5$ y mayor heterogeneidad de cliente podrían exhibir convergencia más lenta o requerir agregadores más robustos como FedProx \cite{Li2020FedProx}.
@@ -318,7 +318,7 @@ La Tabla~\ref{tab:ascon_time} resume los tiempos p95 promedio por variante para 
 \end{table}
 
 \textbf{Observaciones:}
-\begin{itemize}
+\begin{itemize}[noitemsep, topsep=0pt]
     \item \textbf{ESP32-S3 cifrando en C++}: la latencia p95 de descifrado en el gateway oscila entre $\approx$4.4--4.7\,ms en todas las variantes ASCON, prácticamente independiente del modelo (RN/CNN) y la topología (NoFOG/FOG). En las variantes \texttt{PLAIN} la latencia cae a $\approx$0.16\,ms (deserialización JSON pura).
     \item \textbf{Servidor PC en Python}: el descifrado en \texttt{RPi$\to$PC} ronda 24--27\,ms en NoFOG y sube a 37--50\,ms en FOG. La inflación FOG se debe a que el \emph{leader} reenvía mensajes preagregados con un tag adicional, lo que duplica las operaciones criptográficas en el camino.
     \item Para las variantes \texttt{*\_PLAIN\_*}, el descifrado del servidor reporta 0\,ms porque la deserialización JSON ocurre dentro del \texttt{request handler} de FastAPI sin instrumentación dedicada; la única fuente medida es el \texttt{encrypt} de despliegue (0.25--0.64\,ms).
@@ -362,9 +362,10 @@ En términos absolutos, el overhead es de $\approx$1.07\,KB por mensaje, lo que 
 \centering
 \caption{Resumen del overhead total de ASCON-128 por ronda federada, agregando los promedios de las 4 variantes ASCON y las 4 variantes PLAIN.}
 \label{tab:ascon_resumen}
+\resizebox{0.9\textwidth}{!}{%
 \begin{tabular}{l r r}
 \toprule
-\textbf{Componente} & \textbf{Con ASCON (4 variantes)} & \textbf{Sin ASCON (4 variantes)} \\
+\textbf{Componente} & \textbf{Con ASCON (4 var.)} & \textbf{Sin ASCON (4 var.)} \\
 \midrule
 Latencia p95 ESP32$\to$RPi (decrypt)   & 4.52\,ms      & 0.16\,ms \\
 Latencia p95 RPi$\to$PC (decrypt)      & 34.77\,ms     & 0.00\,ms \\
@@ -379,6 +380,7 @@ Loss global final promedio             & 0.1155        & 0.1583 \\
 \textbf{Diferencia de accuracy}        & \multicolumn{2}{c}{\textbf{+3.2 pts a favor de ASCON}} \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 Tres conclusiones de la tabla consolidada:
