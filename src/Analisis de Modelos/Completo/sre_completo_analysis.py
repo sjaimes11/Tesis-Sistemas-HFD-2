@@ -1025,15 +1025,18 @@ def generate_plots(
         _save_plot(fig, path)
         plot_paths["global_accuracy_loss"] = str(path)
 
-        # 4. weight_magnitude_trends
+        # 4. weight_magnitude_trends  (2x2 grid para LaTeX)
         weight_cols = [c for c in ["w3_mag", "w4_normal", "w4_brute", "w4_scan"]
                        if c in gh_plot.columns]
         if weight_cols:
+            import math
             n = len(weight_cols)
-            fig, axes = plt.subplots(1, n, figsize=(5 * n, 5), sharex=True)
-            if n == 1:
-                axes = [axes]
-            for ax, col in zip(axes, weight_cols):
+            ncols = 2
+            nrows = math.ceil(n / ncols)
+            fig, axes_2d = plt.subplots(nrows, ncols, figsize=(12, 5 * nrows), sharex=True)
+            # Aplanar para iterar de forma uniforme
+            axes_flat = axes_2d.flatten() if hasattr(axes_2d, "flatten") else [axes_2d]
+            for ax, col in zip(axes_flat, weight_cols):
                 for variant, group in gh_plot.groupby("variant"):
                     by_round = group.groupby("round")[col].mean().reset_index()
                     ax.plot(by_round["round"], by_round[col], marker="o", label=variant, alpha=0.85)
@@ -1042,6 +1045,10 @@ def generate_plots(
                 ax.set_ylabel("Magnitud")
                 ax.set_xlim(1, MAX_ROUND_FOR_PLOTS)
                 ax.legend(fontsize=7, loc="best")
+            # Ocultar ejes sobrantes si n es impar
+            for ax in axes_flat[n:]:
+                ax.set_visible(False)
+            fig.tight_layout()
             path = output_dir / "weight_magnitude_trends.png"
             _save_plot(fig, path)
             plot_paths["weight_magnitude_trends"] = str(path)
