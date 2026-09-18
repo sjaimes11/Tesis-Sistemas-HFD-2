@@ -7,6 +7,10 @@ Revisión de "An Edge–Fog–Cloud Architectural Framework for Distributed IoT 
 | `01_Revision_Profunda.md` | Revisión sección por sección (contenido, coherencia, redacción, gaps) con severidad y checklist accionable | 1 |
 | `02_Tabla12_y_Datos.md` | Tabla 12 llena: accuracy federada real por escenario + P/R/F1 proxy (modelos offline) + LaTeX listo + nota al pie | 2 |
 | `03_Bibliografia_y_CrossRefs.md` | Parches para 5 `\bibitem` duplicados, referencias sin citar, y 2 cross-refs rotas (`sec:evaluation_methodology`, doble `fig:experimental_workflow`) | 3 y 4 |
+| `04_TODOs_Seccion5_3.md` | Los dos TODO de redacción de §5.3 resueltos con análisis de factores real | — |
+| `05_Ajustes_Discusion_Conclusiones.md` | Parches a §6.1 y §7 para alinearlos con §5.3 | — |
+| `06_TODO_REF_Resueltos.md` | Los 29 `% TODO-REF` resueltos con 11 referencias nuevas **verificadas** (Crossref/PMC) | — |
+| `paper_revisado_CAMBIOS.md` | **Guía de aplicación**: los 10 grupos de cambios ordenados para Overleaf | — |
 | `figures_en/` | 5 figuras de datos regeneradas en inglés (Fig 6, 7, 9, 10, 11) desde los CSV reales / Tablas 9–10 | 3 |
 
 ## Datos clave verificados (todos reales)
@@ -17,6 +21,10 @@ E1 93.81 · E2 92.98 · E3 96.33 · E4 90.00 · E5 96.04 · E6 93.89 · E7 97.50
 **P/R/F1 proxy offline** (test set 51 255 flujos, weighted):
 MLP 92.11 / 90.72 / 90.82 · CNN 92.09 / 90.70 / 90.80
 (valida contra Tabla 4-3 tesis: MLP 90.60 / CNN 90.51 ✓)
+
+## ⚠️ Hallazgo crítico de literatura
+
+**Alshammari, A.** — *Scientific Reports* **2026**, *16*, 10603 (DOI 10.1038/s41598-026-44260-7) — el marco **GreenShield** integra IDS + **ASCON** + **aprendizaje federado jerárquico** + **edge–fog–cloud**: casi tu misma combinación. Se valida sobre datasets (UNSW-NB15, CIC-IDS2017), **no sobre hardware real**, que es tu diferenciador. Hay que citarlo y diferenciarse explícitamente (§2.3, §2.4 y Tabla 14) — redacción lista en `06_TODO_REF_Resueltos.md` §D.
 
 ## Pendiente de tu decisión / acción manual
 
