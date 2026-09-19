@@ -1,0 +1,836 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12 Portable) (preloaded format=pdflatex.fmt)
+ restricted \write18 enabled.
+entering extended mode
+(paper.tex
+LaTeX2e <2025-11-01>
+L3 programming layer <2025-12-24>
+(Definitions/mdpi.cls
+Document Class: Definitions/mdpi 20/03/2024 MDPI paper class
+
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/base\arti
+cle.cls
+Document Class: article 2025/01/22 v1.4n Standard LaTeX document class
+
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/base\size
+10.clo))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/base\font
+enc.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/base\inpu
+tenc.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/tools\cal
+c.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/tools\ind
+entfirst.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/fancyhdr\
+fancyhdr.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/graphics\
+graphicx.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/graphics\
+keyval.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/graphics\
+graphics.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/graphics\
+trig.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/graphics-
+cfg\graphics.cfg)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/graphics-
+def\pdftex.def)))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/epstopdf-
+pkg\epstopdf.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/infware
+rr\infwarerr.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/grfext\gr
+fext.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/kvdefin
+ekeys\kvdefinekeys.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/kvoptions
+\kvoptions.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/ltxcmds
+\ltxcmds.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/kvsetkeys
+\kvsetkeys.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pdftexc
+mds\pdftexcmds.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/iftex\i
+ftex.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/epstopdf-
+pkg\epstopdf-base.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/00miktex\
+epstopdf-sys.cfg)))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/lastpage\
+lastpage.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/lastpage\
+lastpage2e.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/lastpage\
+lastpagemodern.sty) 
+))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/base\ifth
+en.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/float\flo
+at.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/amsmath\a
+msmath.sty
+For additional information on amsmath, use the `?' option.
+
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/amsmath\a
+mstext.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/amsmath\a
+msgen.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/amsmath\a
+msbsy.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/amsmath\a
+msopn.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/amsfonts\
+amssymb.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/amsfonts\
+amsfonts.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/lineno\li
+neno.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/etoolbox\
+etoolbox.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/setspace\
+setspace.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/enumitem\
+enumitem.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/psnfss\ma
+thpazo.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/booktabs\
+booktabs.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/titlesec\
+titlesec.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/tabto-ltx
+\tabto.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/xcolor\xc
+olor.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/graphics-
+cfg\color.cfg)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/graphics\
+mathcolor.ltx))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/colortbl\
+colortbl.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/tools\arr
+ay.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/soul\so
+ul.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/soul\so
+ul-ori.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/etexcmd
+s\etexcmds.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/multirow\
+multirow.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/microtype
+\microtype.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/microtype
+\microtype-pdftex.def)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/microtype
+\microtype.cfg))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/pgf/front
+endlayer\tikz.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/pgf/basic
+layer\pgf.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/pgf/utili
+ties\pgfrcs.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/uti
+lities\pgfutil-common.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/uti
+lities\pgfutil-latex.def)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/uti
+lities\pgfrcs.code.tex
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf\pgf
+.revision.tex)))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/pgf/basic
+layer\pgfcore.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/pgf/syste
+mlayer\pgfsys.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/sys
+temlayer\pgfsys.code.tex
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/uti
+lities\pgfkeys.code.tex
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/uti
+lities\pgfkeyslibraryfiltered.code.tex))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/sys
+temlayer\pgf.cfg)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/sys
+temlayer\pgfsys-pdftex.def
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/sys
+temlayer\pgfsys-common-pdf.def)))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/sys
+temlayer\pgfsyssoftpath.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/sys
+temlayer\pgfsysprotocol.code.tex))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcore.code.tex
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmath.code.tex
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmathutil.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmathparser.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmathfunctions.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmathfunctions.basic.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmathfunctions.trigonometric.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmathfunctions.random.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmathfunctions.comparison.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmathfunctions.base.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmathfunctions.round.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmathfunctions.misc.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmathfunctions.integerarithmetics.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmathcalc.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmathfloat.code.tex))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfint.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcorepoints.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcorepathconstruct.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcorepathusage.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcorescopes.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcoregraphicstate.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcoretransformations.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcorequick.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcoreobjects.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcorepathprocessing.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcorearrows.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcoreshade.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcoreimage.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcoreexternal.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcorelayers.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcoretransparency.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcorepatterns.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/bas
+iclayer\pgfcorerdf.code.tex)))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mod
+ules\pgfmoduleshapes.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mod
+ules\pgfmoduleplot.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/pgf/compa
+tibility\pgfcomp-version-0-65.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/pgf/compa
+tibility\pgfcomp-version-1-18.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/pgf/utili
+ties\pgffor.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/pgf/utili
+ties\pgfkeys.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/uti
+lities\pgfkeys.code.tex))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/pgf/math\
+pgfmath.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mat
+h\pgfmath.code.tex))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/uti
+lities\pgffor.code.tex))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/fro
+ntendlayer/tikz\tikz.code.tex
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/lib
+raries\pgflibraryplothandlers.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/mod
+ules\pgfmodulematrix.code.tex)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pgf/fro
+ntendlayer/tikz/libraries\tikzlibrarytopaths.code.tex)))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/refcount\
+refcount.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/changepag
+e\changepage.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/frankenst
+ein\attrib.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/frankenst
+ein\moredefs.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/was\upgre
+ek.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/tools\tab
+ularx.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/pbox\pbox
+.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/ragged2e\
+ragged2e.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/tocloft\t
+ocloft.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/marginnot
+e\marginnote.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/marginfix
+\marginfix.sty)
+==> First Aid for marginfix.sty applied!
+
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/enotez\en
+otez.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/l3kernel\
+expl3.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/l3backend
+\l3backend-pdftex.def))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/l3package
+s/xparse\xparse.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/l3package
+s/l3keys2e\l3keys2e.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/l3package
+s/xtemplate\xtemplate.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/translati
+ons\translations.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/xstring\x
+string.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/xstring
+\xstring.tex)) (Definitions/journalnames.tex)
+
+Class mdpi Warning: You used an invalid journal name or you have not specified 
+the journal. The first option of the documentclass command specifies the journa
+l. The word 'journal' should be replaced by one of the journal names specified 
+in template.tex (in the comment 'Choose between the following MDPI journal'). o
+n input line 147.
+
+
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/amscls\am
+sthm.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/natbib\na
+tbib.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/koma-scri
+pt\scrextend.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/koma-scri
+pt\scrkbase.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/koma-scri
+pt\scrbase.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/koma-scri
+pt\scrlfile.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/koma-scri
+pt\scrlfile-hook.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/koma-scri
+pt\scrlogo.sty))))))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/url\url.s
+ty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/geometry\
+geometry.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/iftex\i
+fvtex.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/geometry\
+geometry.cfg))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/newfloat\
+newfloat.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/caption\c
+aption.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/caption\c
+aption3.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/seqsplit\
+seqsplit.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/hyperref\
+hyperref.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/pdfesca
+pe\pdfescape.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/hycolor\h
+ycolor.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/hyperref\
+nameref.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/gettitl
+estring\gettitlestring.sty))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/stringe
+nc\stringenc.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/hyperref\
+pd1enc.def)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/intcalc
+\intcalc.sty)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/hyperref\
+puenc.def)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/bitset\
+bitset.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/bigintc
+alc\bigintcalc.sty)))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/hyperref\
+hpdftex.def
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/rerunfile
+check\rerunfilecheck.sty
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/generic/uniquec
+ounter\uniquecounter.sty)))
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/cleveref\
+cleveref.sty)
+==> First Aid for cleveref.sty applied!
+
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/psnfss\t1
+ppl.fd) (paper.aux)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/context/base/mk
+ii\supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/microtype
+\mt-ppl.cfg)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/translati
+ons/dicts\translations-basic-dictionary-english.trsl)
+*geometry* driver: auto-detecting
+*geometry* detected driver: pdftex
+(paper.out) (paper.out)
+Overfull \hbox (24.9262pt too wide) in paragraph at lines 56--56
+[][]\T1/ppl/m/n/7 (-20) https://www.mdpi.com/journal/notspecified[][] 
+
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/psnfss\ts
+1ppl.fd)
+Underfull \hbox (badness 3590) in paragraph at lines 56--56
+\T1/ppl/m/n/7 (+20) Submitted to \T1/ppl/m/it/7 (+20) Jour-nal Not Spec-i-fied
+
+Underfull \hbox (badness 10000) in paragraph at lines 56--56
+\T1/ppl/m/n/7 (+20) un-der the terms and con-di-tions
+
+Underfull \hbox (badness 10000) in paragraph at lines 56--56
+\T1/ppl/m/n/7 (+20) of the Cre-ative Com-mons Attri-
+
+Underfull \hbox (badness 8019) in paragraph at lines 56--56
+\T1/ppl/m/n/7 (+20) bu-tion (CC BY) li-cense ([][]https://[][]
+
+Underfull \hbox (badness 10000) in paragraph at lines 56--56
+[][]\T1/ppl/m/n/7 (+20) creativecommons.org/licenses/by/[][]
+
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/psnfss\ot
+1ppl.fd)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/psnfss\om
+lzplm.fd)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/psnfss\om
+szplm.fd)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/psnfss\om
+xzplm.fd)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/microtype
+\mt-msa.cfg)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/microtype
+\mt-msb.cfg)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/psnfss\ot
+1zplm.fd)
+(C:\Users\VivoBook\scoop\apps\miktex\current\texmfs\install\tex/latex/microtype
+\mt-eur.cfg)
+Overfull \hbox (24.9262pt too wide) in paragraph at lines 56--56
+[][]\T1/ppl/m/n/7 (-20) https://www.mdpi.com/journal/notspecified[][] 
+
+Underfull \hbox (badness 3590) in paragraph at lines 56--56
+\T1/ppl/m/n/7 (+20) Submitted to \T1/ppl/m/it/7 (+20) Jour-nal Not Spec-i-fied
+
+Underfull \hbox (badness 10000) in paragraph at lines 56--56
+\T1/ppl/m/n/7 (+20) un-der the terms and con-di-tions
+
+Underfull \hbox (badness 10000) in paragraph at lines 56--56
+\T1/ppl/m/n/7 (+20) of the Cre-ative Com-mons Attri-
+
+Underfull \hbox (badness 8019) in paragraph at lines 56--56
+\T1/ppl/m/n/7 (+20) bu-tion (CC BY) li-cense ([][]https://[][]
+
+Underfull \hbox (badness 10000) in paragraph at lines 56--56
+[][]\T1/ppl/m/n/7 (+20) creativecommons.org/licenses/by/[][]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 20.0pt, for example:
+(fancyhdr)                \setlength{\headheight}{20.0pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-8.0pt}.
+
+[1{C:/Users/VivoBook/scoop/apps/miktex/current/texmfs/data/fonts/map/pdftex/pdf
+tex.map}{C:/Users/VivoBook/scoop/apps/miktex/current/texmfs/install/fonts/enc/d
+vips/base/8r.enc} <./Definitions/logo-mdpi-eps-converted-to.pdf> <./Definitions
+/logo-orcid.pdf>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[2]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[3]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[4]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[5]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[6]
+Underfull \hbox (badness 10000) in paragraph at lines 154--154
+[]|\T1/ppl/b/n/8 (+20) Contribución al apren-
+
+Underfull \hbox (badness 10000) in paragraph at lines 156--156
+[]|\T1/ppl/m/n/8 (+20) Detección lo-cal en
+
+Underfull \hbox (badness 10000) in paragraph at lines 157--157
+[]|\T1/ppl/m/n/8 (+20) Aprendizaje co-lab-o-ra-
+
+Underfull \hbox (badness 10000) in paragraph at lines 157--157
+[]|\T1/ppl/m/n/8 (+20) Transforma las ob-ser-va-
+
+Underfull \hbox (badness 10000) in paragraph at lines 157--158
+[]|\T1/ppl/m/n/8 (+20) Desacopla la in-fer-en-cia del en-tre-
+
+Underfull \hbox (badness 10000) in paragraph at lines 158--158
+[]|\T1/ppl/m/n/8 (+20) Consolida las ac-tu-al-iza-
+
+Overfull \hbox (1.29132pt too wide) in paragraph at lines 152--161
+ [][] 
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[7]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[8 <./Figures/architecture.png>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[9]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[10]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[11 <./Figures/Hierarchical Federated Learning Workflow.png>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[12]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[13 <./Figures/experimental_workflow.png>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[14]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[15]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[16]
+Underfull \hbox (badness 10000) in paragraph at lines 369--369
+[]|\T1/ppl/m/n/8 (+20) Raspberry Pi 4
+
+Underfull \hbox (badness 2126) in paragraph at lines 369--369
+\T1/ppl/m/n/8 (+20) en-tre-namiento, agre-gación re-
+
+Overfull \hbox (2.93121pt too wide) in paragraph at lines 359--376
+ [][] 
+
+Underfull \hbox (badness 10000) in paragraph at lines 395--395
+[]|\T1/ppl/m/n/8 (+20) TensorFlow/Keras, Mosquitto
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[17]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[18 <./Figures/Model_Selection.png> <./Figures/experimental_protocol.png>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[19]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[20]
+Underfull \hbox (badness 4403) in paragraph at lines 601--601
+[]|\T1/ppl/m/n/9 (+20) Evaluar el de-sem-peño
+
+Underfull \hbox (badness 4569) in paragraph at lines 601--601
+\T1/ppl/m/n/9 (+20) global del sis-tema de
+
+Underfull \hbox (badness 4479) in paragraph at lines 601--601
+\T1/ppl/m/n/9 (+20) el de-sem-peño del sis-
+
+Underfull \hbox (badness 2635) in paragraph at lines 601--601
+[]|\T1/ppl/m/n/9 (+20) Arquitectura de apren-
+
+Underfull \hbox (badness 2717) in paragraph at lines 601--601
+[]|\T1/ppl/m/n/9 (+20) Comparación en-tre las ar-qui-
+
+Underfull \hbox (badness 10000) in paragraph at lines 601--601
+[]|\T1/ppl/m/n/9 (+20) Modelo de in-fer-en-cia
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[21]
+Underfull \hbox (badness 3000) in paragraph at lines 637--637
+\T1/ppl/m/n/9 (+20) de de-tec-ción de in-tru-
+
+Underfull \hbox (badness 4168) in paragraph at lines 637--637
+[]|\T1/ppl/m/n/9 (+20) Desempeño del apren-
+
+Underfull \hbox (badness 10000) in paragraph at lines 637--637
+[]|\T1/ppl/m/n/9 (+20) Desempeño del de-
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[22]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[23]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[24 <./Figures/fl_evaluation_framework.png>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[25]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[26]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[27 <./Figures/convergence_English.png>]
+Overfull \hbox (28.1122pt too wide) in paragraph at lines 792--815
+ [][] 
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[28 <./Figures/Stability_English.png>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[29]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[30 <./Figures/Round_Duration_English.png>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[31 <./Figures/Crypto_Latency_English.png>]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[32 <./Figures/Payload_Overhead_English.png>]
+Overfull \hbox (0.75368pt too wide) in paragraph at lines 946--947
+\T1/ppl/m/n/10 (-20) desde una per-spec-tiva que tra-sciende la eval-u-ación in
+-di-vid-ual de sus com-po-nentes. Aunque
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[33]
+Overfull \hbox (43.64261pt too wide) in paragraph at lines 966--983
+ [][] 
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[34]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[35]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[36]
+Underfull \hbox (badness 10000) in paragraph at lines 1052--1052
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[37]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[38]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 16.18796pt, for example:
+(fancyhdr)                \setlength{\headheight}{16.18796pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-4.18796pt}.
+
+[39] 
+enddocument/afterlastpage (AED): lastpage setting LastPage.
+(paper.aux)
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+ )
+(see the transcript file for additional information) <C:\Users\VivoBook\scoop\a
+pps\miktex\current\texmfs/data\fonts/pk/ljfour/jknappen/ec/dpi600\ectt0800.pk> 
+<C:\Users\VivoBook\scoop\apps\miktex\current\texmfs/data\fonts/pk/ljfour/jknapp
+en/ec/dpi375\ecss0800.pk><C:/Users/VivoBook/scoop/apps/miktex/current/texmfs/in
+stall/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/VivoBook/scoop/apps/m
+iktex/current/texmfs/install/fonts/type1/public/amsfonts/cm/cmr10.pfb><C:/Users
+/VivoBook/scoop/apps/miktex/current/texmfs/install/fonts/type1/public/amsfonts/
+cm/cmsy10.pfb><C:/Users/VivoBook/scoop/apps/miktex/current/texmfs/install/fonts
+/type1/public/amsfonts/symbols/msam10.pfb><C:/Users/VivoBook/scoop/apps/miktex/
+current/texmfs/install/fonts/type1/urw/palatino/uplb8a.pfb><C:/Users/VivoBook/s
+coop/apps/miktex/current/texmfs/install/fonts/type1/urw/palatino/uplr8a.pfb><C:
+/Users/VivoBook/scoop/apps/miktex/current/texmfs/install/fonts/type1/urw/palati
+no/uplri8a.pfb>
+Output written on paper.pdf (39 pages, 1624257 bytes).
+Transcript written on paper.log.
+pdflatex: major issue: So far, you have not checked for MiKTeX updates.
