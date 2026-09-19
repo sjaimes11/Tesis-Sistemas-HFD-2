@@ -70,3 +70,71 @@ Las 6 conceptuales son **placeholders rojos** — no tengo tus diagramas, viven 
 ## Clase MDPI
 
 `Definitions/` trae un `mdpi.cls` de un espejo público, para poder compilar aquí. **Tu Overleaf ya tiene el oficial**: al pasar el `.tex`, conserva tu carpeta `Definitions/` y no subas esta.
+
+---
+
+# Ronda 2 — Cada TODO aporta texto, no solo una cita
+
+Los 29 puntos marcados con `% TODO-REF` llevan ahora **una o dos frases de contenido**
+además de la referencia. **+1776 palabras**; el paper pasó de 39 a **42 páginas**.
+
+El patrón aplicado en casi todos los casos: la clave nueva se **saca** del grupo de citas
+existente y pasa a respaldar la frase nueva, que es la que hace la afirmación específica.
+Así cada referencia queda donde sostiene algo concreto, en lugar de engordar un grupo genérico.
+
+| TODO | Línea | Qué aporta ahora la frase nueva |
+|---|---|---|
+| 1 | 62 | La superficie de ataque se define por la arquitectura que interconecta los dispositivos, no por vulnerabilidades individuales |
+| 2 | 64 | El nivel Fog absorbió funciones de seguridad que antes residían en la nube |
+| 3 | 68 | Las propuestas integradas existen pero se validan sobre datasets, no sobre dispositivos |
+| 4 | 81 | El desplazamiento al borde fue escalonado; la detección quedó repartida entre niveles |
+| 5 | 85 | Las cuatro métricas TinyML deben medirse **en la plataforma de destino**, no estimarse |
+| 6 | 87 | Un microcontrolador sí puede actualizarse en operación, bajo las mismas restricciones que la inferencia |
+| 7 | 92 | Sin aprendizaje en línea, el modelo queda congelado en el despliegue |
+| 8 | 96 | La topología de comunicación es un parámetro de diseño equiparable a los hiperparámetros |
+| 9 | 98 | La agregación intermedia reduce mensajes pero añade un nivel cuyo costo hay que contabilizar |
+| 10 | 100 | **Cifrar el canal no detiene poisoning ni inferencia** — se originan en el contenido, no en el transporte |
+| 11 | 105 | Proteger frente a externos (cripto) ≠ proteger frente a participantes (otras garantías) |
+| 12 | 107 | La elección del algoritmo depende de la plataforma y del tamaño de mensaje |
+| 13 | 113 | El cifrado se reporta agregado; no se atribuye a etapas ni canales concretos |
+| 14 | 115 | Operación aislada vs. efecto acumulado por ronda: solo emerge instrumentando el ciclo |
+| 15 | 120 | Qué falta exactamente: costo por canal y por nivel, y series temporales por ronda |
+| 16 | 122 | Cada compromiso se estudió en un plano distinto; sin medición conjunta no se sostienen |
+| 17 | 168 | El borde clasifica un evento ya representado, no correlaciona ni mantiene el modelo |
+| 18 | 170 | Por qué características estadísticas y no paquetes; la compresión conjunta es el factor limitante |
+| 19 | 172 | Quien observa no es necesariamente quien entrena |
+| 20 | 177 | El nivel intermedio reduce tráfico **y** consolida entre pares con condiciones similares |
+| 21 | 181 | Compartir parámetros reduce la exposición pero no la elimina; privacidad y comunicación van acopladas |
+| 22 | 183 | Las propuestas difieren en cómo garantizan la integridad de lo consolidado |
+| 23 | 188 | El coordinador recibe menos contribuciones y ya consolidadas: cambia peso y latencia |
+| 24 | 192 | La sincronización es **corrección**, no solo eficiencia: sin ella la agregación pierde fundamento |
+| 25 | 200 | Los flujos multinivel comparten tres etapas y difieren en dónde va la agregación |
+| 26 | 211 | Separa el beneficio de tráfico del de privacidad: dependen de cosas distintas |
+| 27 | 215 | La comparación controlada de una sola variable es poco frecuente en la literatura |
+| 28 | 220 | **Delimita el modelo de amenazas**: el canal protegido no cubre al participante legítimo |
+| 29 | 224 | Por qué la integración transparente es lo que permite aislar el costo experimentalmente |
+
+## Además: TODO 14 corregido
+
+En `06_TODO_REF_Resueltos.md` estaba mapeado como `Alshammari2026,Sorescu2025` pero al aplicarlo
+había quedado solo `Sorescu2025`, que mide algoritmos aislados y no dentro de un sistema federado.
+La frase nueva de L115 aporta `Alshammari2026` para la parte federada, que era la que faltaba.
+
+## Frases que refuerzan la honestidad del paper
+
+Tres de las frases nuevas cierran huecos argumentales que un revisor podría señalar:
+
+- **L100** y **L220** dejan explícito que ASCON protege el canal pero **no** cubre poisoning,
+  clientes bizantinos ni ataques de inferencia. Esto alinea §2.2 y §3.6 con la limitación
+  ya declarada en §6.3 y evita que la propuesta parezca reclamar más de lo que mide.
+- **L192** justifica por qué la sincronización de versiones es previa al análisis de convergencia,
+  lo que respalda el protocolo descrito en §4.5.
+- **L224** explica por qué el diseño permite atribuir la diferencia PLAIN/ASCON al mecanismo
+  y no al entrenamiento — es el argumento que sostiene la validez interna de §5.4.
+
+## Verificación
+
+- `pdflatex` ×3 → **0 errores**, **0 referencias o citas sin resolver**
+- **42 bibitems, 42 citados**: cero huérfanas, cero indefinidas
+- Sin `TODO`, `??`, `XX.XX`, `limitadolmente` ni `los los` en el `.tex` ni en el PDF
+- Las 29 frases verificadas una a una en el `.tex`
